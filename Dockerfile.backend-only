@@ -1,0 +1,73 @@
+# Simple backend-only build for testing
+FROM node:18-alpine
+
+# Install system dependencies for terminal functionality and kubernetes tools
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    openssh-client \
+    ca-certificates \
+    openssl \
+    util-linux \
+    ncurses-terminfo \
+    coreutils \
+    procps \
+    && rm -rf /var/cache/apk/*
+
+# Install kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod +x kubectl \
+    && mv kubectl /usr/local/bin/
+
+# Install helm
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+    && chmod 700 get_helm.sh \
+    && ./get_helm.sh \
+    && rm get_helm.sh
+
+# Create app directory
+WORKDIR /app
+
+# Copy backend package files
+COPY app/backend/package*.json ./
+
+# Install backend dependencies
+RUN npm ci --omit=dev
+
+# Copy backend source
+COPY app/backend/ ./
+
+# Create a simple static frontend for testing
+RUN mkdir -p ./frontend/build && echo '<html><body><h1>K8s Exam Simulator - Backend Working!</h1><p>API Health: <a href="/api/health">/api/health</a></p></body></html>' > ./frontend/build/index.html
+
+# Copy helm templates and question bank
+COPY helm-templates/ ./helm-templates/
+COPY question-bank/ ./question-bank/
+COPY scoring-scripts/ ./scoring-scripts/
+
+# Create necessary directories
+RUN mkdir -p /tmp/generated-charts \
+    && mkdir -p /root/.kube
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV KUBECONFIG=/root/.kube/config
+ENV TERM=xterm
+ENV SHELL=/bin/bash
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/api/health || exit 1
+
+# Create entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Start application
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["npm", "start"]

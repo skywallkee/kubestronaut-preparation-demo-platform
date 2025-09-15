@@ -3,24 +3,27 @@
 # Stage 1: Build frontend
 FROM node:18-alpine AS frontend-build
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app/frontend
 
-# Copy frontend package files
+# Copy frontend package files first (for better layer caching)
 COPY app/frontend/package*.json ./
 
-# Clear npm cache and install all dependencies (including dev for build)
-RUN npm cache clean --force && npm install --verbose
+# Install dependencies with optimizations for CI
+RUN npm ci --omit=optional --ignore-scripts
 
-# Copy frontend source
+# Copy frontend source after dependency installation
 COPY app/frontend/ ./
 
-# Ensure clean build environment and build frontend
-RUN rm -rf node_modules/.cache && npm run build
+# Build frontend application
+RUN npm run build
 
 # Stage 2: Build backend and final image
 FROM node:18-alpine
 
-# Install system dependencies
+# Install system dependencies in single layer
 RUN apk add --no-cache \
     bash \
     curl \
@@ -28,59 +31,61 @@ RUN apk add --no-cache \
     openssh-client \
     ca-certificates \
     openssl \
+    util-linux \
+    ncurses-terminfo \
+    coreutils \
+    procps \
     && rm -rf /var/cache/apk/*
 
-# Install kubectl
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-    && chmod +x kubectl \
-    && mv kubectl /usr/local/bin/
-
-# Install helm
-RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
-    && chmod 700 get_helm.sh \
-    && ./get_helm.sh \
-    && rm get_helm.sh
+# Install kubectl and helm in single layer to minimize image size
+RUN KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt) && \
+    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/ && \
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+    chmod 700 get_helm.sh && \
+    ./get_helm.sh && \
+    rm get_helm.sh
 
 # Create app directory
 WORKDIR /app
 
-# Copy backend package files
+# Copy backend package files for dependency layer caching
 COPY app/backend/package*.json ./
 
-# Install backend dependencies
-RUN npm install --production
+# Install backend production dependencies
+RUN npm ci --omit=dev --ignore-scripts
 
-# Copy backend source
+# Copy backend source code
 COPY app/backend/ ./
 
-# Copy built frontend
+# Copy built frontend from previous stage
 COPY --from=frontend-build /app/frontend/build ./frontend/build
 
-# Copy helm templates and question bank
+# Copy configuration files and templates
 COPY helm-templates/ ./helm-templates/
 COPY question-bank/ ./question-bank/
 COPY scoring-scripts/ ./scoring-scripts/
+COPY docker-entrypoint.sh /usr/local/bin/
 
-# Create necessary directories
-RUN mkdir -p /tmp/generated-charts \
-    && mkdir -p /root/.kube
+# Set up permissions and directories in one layer
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    mkdir -p /tmp/generated-charts /root/.kube
 
-# Set environment variables
-ENV NODE_ENV=production
-ENV PORT=8080
-ENV KUBECONFIG=/root/.kube/config
+# Set production environment variables
+ENV NODE_ENV=production \
+    PORT=8080 \
+    KUBECONFIG=/root/.kube/config \
+    TERM=xterm \
+    SHELL=/bin/bash
 
-# Expose port
+# Expose application port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Health check with proper endpoint
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/api/health || exit 1
 
-# Create entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Start application
+# Set up entrypoint and default command
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["npm", "start"]

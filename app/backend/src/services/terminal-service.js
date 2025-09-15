@@ -1,19 +1,43 @@
 const { spawn } = require('child_process');
 const os = require('os');
+const fs = require('fs');
+
+// Store original signal handlers
+let originalSigintHandlers = [];
+
+// Custom signal handling for terminal sessions
+function enableSignalPassthrough() {
+  // Remove all existing SIGINT handlers completely
+  originalSigintHandlers = process.listeners('SIGINT');
+  process.removeAllListeners('SIGINT');
+
+  // Don't add any SIGINT handler at all - let the signal pass through to parent terminal
+  console.log('Removed all SIGINT handlers - CTRL+C should work in host terminal');
+}
+
+function disableSignalPassthrough() {
+  // Restore original handlers
+  process.removeAllListeners('SIGINT');
+  originalSigintHandlers.forEach(handler => {
+    process.on('SIGINT', handler);
+  });
+}
 
 class TerminalService {
   constructor() {
     this.sessions = new Map();
+    // Make available globally for signal handler
+    global.terminalService = this;
   }
 
   initialize(namespace) {
     this.namespace = namespace;
-    
+
     namespace.on('connection', (socket) => {
       console.log(`Terminal client connected: ${socket.id}`);
-      
+
       this.createTerminalSession(socket);
-      
+
       socket.on('disconnect', () => {
         console.log(`Terminal client disconnected: ${socket.id}`);
         this.destroyTerminalSession(socket.id);
@@ -23,29 +47,34 @@ class TerminalService {
 
   createTerminalSession(socket) {
     try {
-      // Create a new terminal process with proper interactive configuration
+      // Create a new terminal process
       const shell = this.getShell();
       const args = this.getShellArgs();
-      
+
       const terminal = spawn(shell, args, {
-        cwd: process.env.HOME || process.cwd(),
+        cwd: '/tmp',
         env: {
-          ...process.env,
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
+          // Optimized environment for clean terminal output and kubectl formatting
+          PATH: process.env.PATH,
+          HOME: '/tmp',
+          TERM: 'xterm',
           KUBECONFIG: process.env.KUBECONFIG || `${os.homedir()}/.kube/config`,
-          PS1: '\\[\\e[32m\\]k8s-exam\\[\\e[0m\\]:\\[\\e[34m\\]\\w\\[\\e[0m\\]$ ',
-          // Important: Force interactive mode
-          FORCE_COLOR: '1',
-          NODE_NO_READLINE: '1'
+          COLUMNS: '120',  // Wider for better kubectl table formatting
+          LINES: '30',
+          LANG: 'en_US.UTF-8',  // Better for kubectl table formatting
+          LC_ALL: 'en_US.UTF-8',
+          // Force kubectl to use table format with proper spacing
+          KUBECTL_EXTERNAL_DIFF: '',
+          FORCE_COLOR: '0'  // Disable colors for cleaner output
         },
         stdio: ['pipe', 'pipe', 'pipe'],
-        detached: false
+        detached: true, // Detach for proper signal handling
+        shell: false
       });
 
-      // Set stdin to raw mode equivalent for better input handling
-      if (terminal.stdin && terminal.stdin.setRawMode) {
-        terminal.stdin.setRawMode(true);
+      // Configure stdin properly
+      if (terminal.stdin) {
+        terminal.stdin.setEncoding('utf8');
       }
 
       // Store session
@@ -54,13 +83,25 @@ class TerminalService {
         socket
       });
 
-      // Handle terminal output
+      // Enable signal passthrough when first session is created
+      if (this.sessions.size === 1) {
+        enableSignalPassthrough();
+        console.log('Signal passthrough enabled for terminal sessions');
+      }
+
+      // Handle terminal output with proper formatting
       terminal.stdout.on('data', (data) => {
-        socket.emit('terminal-data', data.toString());
+        let output = data.toString();
+        // Ensure proper line endings for terminal display
+        output = output.replace(/\n/g, '\r\n');
+        socket.emit('terminal-data', output);
       });
 
       terminal.stderr.on('data', (data) => {
-        socket.emit('terminal-data', data.toString());
+        let output = data.toString();
+        // Ensure proper line endings for terminal display
+        output = output.replace(/\n/g, '\r\n');
+        socket.emit('terminal-data', output);
       });
 
       // Handle terminal exit
@@ -76,38 +117,36 @@ class TerminalService {
         socket.emit('terminal-data', `\r\n\x1b[31mTerminal error: ${error.message}\x1b[0m\r\n`);
       });
 
-      // Handle input from client with proper echoing
+      // Handle input - simple pass-through to terminal
       socket.on('terminal-input', (data) => {
         if (terminal && terminal.stdin && !terminal.killed) {
-          // For basic functionality, we can echo the input back to show typing
-          if (data === '\r') {
-            // Enter key - send to process and echo newline
-            terminal.stdin.write('\n');
-            socket.emit('terminal-data', '\r\n');
-          } else if (data === '\u007f' || data === '\b') {
-            // Backspace - handle deletion
-            terminal.stdin.write('\b \b');
-            socket.emit('terminal-data', '\b \b');
-          } else {
-            // Regular character - send to process and echo back
-            terminal.stdin.write(data);
-            socket.emit('terminal-data', data);
-          }
+          // Pass all input directly to terminal (including CTRL+C)
+          terminal.stdin.write(data);
         }
       });
 
-      // Handle terminal resize (no-op for basic spawn, but keep for compatibility)
+      // Handle terminal resize
       socket.on('terminal-resize', (size) => {
-        // Basic spawn doesn't support resize, but we can store the info
         console.log(`Terminal resize requested: ${size.cols}x${size.rows}`);
       });
 
-      // Send welcome message after a short delay
+      // Initialize environment after shell starts
       setTimeout(() => {
-        const welcomeMessage = this.getWelcomeMessage();
-        socket.emit('terminal-data', welcomeMessage);
-        // Send initial prompt
-        socket.emit('terminal-data', '\r\n$ ');
+        // Set up environment with proper terminal and kubectl settings
+        terminal.stdin.write('export PS1="k8s-exam:/tmp$ "\n');
+        terminal.stdin.write('alias k="kubectl"\n');
+        terminal.stdin.write('export COLUMNS=120\n');
+        terminal.stdin.write('export LINES=30\n');
+        terminal.stdin.write('stty cols 120 rows 30 2>/dev/null || true\n');  // Set terminal size
+        terminal.stdin.write('cd /tmp\n');
+        terminal.stdin.write('clear\n');
+
+        // Show welcome message after setup
+        setTimeout(() => {
+          const welcomeMessage = this.getWelcomeMessage();
+          socket.emit('terminal-data', '\r\n' + welcomeMessage);
+          socket.emit('terminal-data', 'k8s-exam:/tmp$ ');
+        }, 500);
       }, 1000);
 
     } catch (error) {
@@ -122,8 +161,8 @@ class TerminalService {
       try {
         if (session.terminal && !session.terminal.killed) {
           session.terminal.kill('SIGTERM');
-          
-          // Force kill after 3 seconds if process doesn't exit
+
+          // Force kill after 3 seconds if needed
           setTimeout(() => {
             if (!session.terminal.killed) {
               try {
@@ -137,13 +176,18 @@ class TerminalService {
       } catch (error) {
         console.warn('Error destroying terminal session:', error.message);
       }
-      
+
       this.sessions.delete(socketId);
+
+      // Disable signal passthrough when last session is destroyed
+      if (this.sessions.size === 0) {
+        disableSignalPassthrough();
+        console.log('Signal passthrough disabled - no more terminal sessions');
+      }
     }
   }
 
   getShell() {
-    // Use bash on Unix systems, cmd on Windows
     if (process.platform === 'win32') {
       return 'cmd.exe';
     } else {
@@ -152,50 +196,30 @@ class TerminalService {
   }
 
   getShellArgs() {
-    // Return appropriate shell arguments
     if (process.platform === 'win32') {
       return [];
     } else {
-      return ['-l']; // Login shell to load full environment
+      return ['-i']; // Simple interactive shell
     }
   }
 
   getWelcomeMessage() {
-    // Get cluster info for display
-    const clusterInfo = this.getClusterInfo();
-    
-    const messages = [
-      '\x1b[36m╔══════════════════════════════════════════════════════════════════╗\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m               \x1b[1mKubernetes Exam Terminal Environment\x1b[0m               \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m╠══════════════════════════════════════════════════════════════════╣\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m                                                                  \x1b[36m║\x1b[0m\r\n',
-      `\x1b[36m║\x1b[0m  \x1b[32m✓\x1b[0m Connected to cluster: \x1b[33m${clusterInfo.name}\x1b[0m${' '.repeat(Math.max(0, 29 - clusterInfo.name.length))}\x1b[36m║\x1b[0m\r\n`,
-      `\x1b[36m║\x1b[0m  \x1b[34m🌐\x1b[0m Context: \x1b[37m${clusterInfo.context}\x1b[0m${' '.repeat(Math.max(0, 44 - clusterInfo.context.length))}\x1b[36m║\x1b[0m\r\n`,
-      '\x1b[36m║\x1b[0m  \x1b[33m⚡\x1b[0m kubectl and helm are available for use                     \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m  \x1b[34m📚\x1b[0m Use standard Kubernetes commands to solve questions        \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m                                                                  \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m  \x1b[35mQuick commands:\x1b[0m                                              \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m    \x1b[37mkubectl get nodes\x1b[0m           - View cluster nodes          \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m    \x1b[37mkubectl get pods --all-namespaces\x1b[0m - View all pods          \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m    \x1b[37mkubectl config current-context\x1b[0m - Current context         \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m║\x1b[0m                                                                  \x1b[36m║\x1b[0m\r\n',
-      '\x1b[36m╚══════════════════════════════════════════════════════════════════╝\x1b[0m\r\n',
-      '\r\n'
-    ];
-
-    return messages.join('');
-  }
-
-  getClusterInfo() {
-    // Mock cluster information for now
-    // In a real implementation, this would query the actual cluster
-    const clusterName = process.env.CLUSTER_NAME || 'k8s-exam-cluster';
-    const context = process.env.KUBE_CONTEXT || 'exam-context';
-    
-    return {
-      name: clusterName,
-      context: context
-    };
+    // Simple welcome message using proper terminal line endings
+    return [
+      '\x1b[36m╔══════════════════════════════════════════════════════╗\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m           \x1b[1mKubernetes Exam Terminal\x1b[0m               \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m╠══════════════════════════════════════════════════════╣\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m                                                      \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m  \x1b[32m✓\x1b[0m Connected to: \x1b[33mk8s-exam-cluster\x1b[0m            \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m  \x1b[33m⚡\x1b[0m kubectl available (alias: \x1b[37mk\x1b[0m)              \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m                                                      \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m  \x1b[35mQuick commands:\x1b[0m                                \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m    \x1b[37mk get nodes\x1b[0m     - View cluster nodes           \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m    \x1b[37mk get pods -A\x1b[0m   - View all pods                \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m    \x1b[37mk get ns\x1b[0m        - View namespaces              \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m║\x1b[0m                                                      \x1b[36m║\x1b[0m\r\n',
+      '\x1b[36m╚══════════════════════════════════════════════════════╝\x1b[0m\r\n'
+    ].join('');
   }
 
   // Cleanup all sessions

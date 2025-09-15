@@ -18,7 +18,8 @@ class ExamService {
         ...q,
         id: index + 1,
         flagged: false,
-        completed: false
+        completed: false,
+        viewed: false
       })),
       duration: this.getDuration(type), // in seconds
       startTime: null,
@@ -46,6 +47,8 @@ class ExamService {
     // If exam is already in progress, allow resume
     if (this.currentExam.status === 'in_progress') {
       console.log(`Resuming exam ${this.currentExam.id}`);
+      // Mark current question as viewed when resuming
+      this.markCurrentQuestionViewed();
       return {
         ...this.currentExam,
         message: 'Exam resumed',
@@ -62,9 +65,14 @@ class ExamService {
     // Start the exam
     this.currentExam.startTime = new Date();
     this.currentExam.status = 'in_progress';
-    
+
+    // Mark the first question as viewed
+    if (this.currentExam.questions.length > 0) {
+      this.currentExam.questions[0].viewed = true;
+    }
+
     console.log(`Started exam ${this.currentExam.id} at ${this.currentExam.startTime}`);
-    
+
     return {
       ...this.currentExam,
       message: 'Exam started successfully',
@@ -116,7 +124,12 @@ class ExamService {
     // Move to next question
     this.currentExam.currentQuestionIndex += 1;
     const currentQuestion = this.currentExam.questions[this.currentExam.currentQuestionIndex];
-    
+
+    // Mark the new question as viewed
+    if (currentQuestion) {
+      currentQuestion.viewed = true;
+    }
+
     return {
       currentIndex: this.currentExam.currentQuestionIndex,
       question: currentQuestion,
@@ -160,14 +173,27 @@ class ExamService {
     }
 
     currentQuestion.completed = true;
+    currentQuestion.viewed = true; // Mark as viewed when completed
     currentQuestion.flagged = false; // Remove flag when marking as complete
-    
+
     console.log(`Question ${currentQuestion.id} marked as completed`);
-    
+
     return {
       completed: true,
       questionId: currentQuestion.id
     };
+  }
+
+  markCurrentQuestionViewed() {
+    if (!this.currentExam || this.currentExam.status !== 'in_progress') {
+      return;
+    }
+
+    const currentQuestion = this.currentExam.questions[this.currentExam.currentQuestionIndex];
+    if (currentQuestion) {
+      currentQuestion.viewed = true;
+      console.log(`Question ${currentQuestion.id} marked as viewed`);
+    }
   }
 
   getExamProgress() {

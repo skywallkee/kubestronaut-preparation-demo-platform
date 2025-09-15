@@ -15,6 +15,9 @@ router.get('/current', async (req, res) => {
       return res.status(404).json({ error: 'No current question found' });
     }
 
+    // Mark current question as viewed
+    currentQuestion.viewed = true;
+
     res.json({
       question: {
         id: currentQuestion.id,
@@ -22,13 +25,15 @@ router.get('/current', async (req, res) => {
         description: currentQuestion.description,
         points: currentQuestion.points,
         flagged: currentQuestion.flagged || false,
-        completed: currentQuestion.completed || false
+        completed: currentQuestion.completed || false,
+        viewed: currentQuestion.viewed || false
       },
       currentIndex: exam.currentQuestionIndex,
       totalQuestions: exam.questions.length,
       progress: {
         completed: exam.questions.filter(q => q.completed).length,
-        flagged: exam.questions.filter(q => q.flagged && !q.completed).length
+        flagged: exam.questions.filter(q => q.flagged && !q.completed).length,
+        viewed: exam.questions.filter(q => q.viewed).length
       }
     });
   } catch (error) {
@@ -85,12 +90,12 @@ router.get('/flagged', async (req, res) => {
   }
 });
 
-// Go to specific flagged question
+// Go to specific question
 router.post('/goto', async (req, res) => {
   try {
     const { questionIndex } = req.body;
     const exam = ExamService.getCurrentExam();
-    
+
     if (!exam || exam.status !== 'in_progress') {
       return res.status(400).json({ error: 'No active exam found' });
     }
@@ -100,11 +105,11 @@ router.post('/goto', async (req, res) => {
     }
 
     const question = exam.questions[questionIndex];
-    if (!question.flagged) {
-      return res.status(400).json({ error: 'Question is not flagged' });
-    }
-
     exam.currentQuestionIndex = questionIndex;
+
+    // Mark question as viewed when navigating to it
+    const ExamService = require('../services/exam-service');
+    ExamService.markCurrentQuestionViewed();
 
     res.json({
       success: true,
@@ -115,7 +120,8 @@ router.post('/goto', async (req, res) => {
         description: question.description,
         points: question.points,
         flagged: question.flagged,
-        completed: question.completed
+        completed: question.completed,
+        viewed: question.viewed
       }
     });
   } catch (error) {

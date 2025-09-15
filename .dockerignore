@@ -12,3 +12,10 @@ coverage
 .env.production.local
 .DS_Store
 *.log
+.venv
+app/generated-charts
+"Screenshot*.png"
+docker-build-guide.md
+*.md
+.claude
+.venv
