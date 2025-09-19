@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-032",
+  "title": "Create Pod with Annotations",
+  "description": "Create a Pod named annotated-pod using image nginx:1.20-alpine with annotation description='This is a test pod'.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Core Concepts",
+  "tags": [
+    "annotations",
+    "metadata",
+    "pods"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run annotated-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > annotated-pod.yaml",
+      "2. Add annotations:",
+      "   annotations:",
+      "     description: 'This is a test pod'",
+      "3. Apply pod:",
+      "   kubectl apply -f annotated-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod annotated-pod -o jsonpath='{.metadata.annotations.description}'",
+      "expected": "This is a test pod",
+      "points": 3,
+      "description": "Pod should have correct annotation"
+    }
+  ]
+}

@@ -1,6 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const ExamService = require('../services/exam-service');
+const QuestionService = require('../services/question-provider/question-service');
+
+// Get questions by exam type and difficulty (standalone endpoint)
+router.get('/', async (req, res) => {
+  try {
+    const { exam_type, difficulty } = req.query;
+    
+    if (!exam_type || !difficulty) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters: exam_type and difficulty' 
+      });
+    }
+
+    const questions = await QuestionService.getQuestions(exam_type, difficulty);
+    res.json(questions);
+  } catch (error) {
+    console.error('Error getting questions:', error);
+    res.status(500).json({ error: 'Failed to get questions' });
+  }
+});
 
 // Get current question
 router.get('/current', async (req, res) => {

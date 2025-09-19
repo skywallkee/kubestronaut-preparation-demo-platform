@@ -1,0 +1,50 @@
+{
+  "id": "ckad-e-020",
+  "title": "Create Pod with Secret as Volume",
+  "description": "Create a Pod named secret-vol-pod using image nginx:1.20-alpine that mounts the db-secret as a volume at /etc/secrets.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Configuration",
+  "tags": [
+    "secrets",
+    "volumes",
+    "mounts"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods",
+      "secrets"
+    ],
+    "prerequisites": [
+      "db-secret exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run secret-vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > secret-vol-pod.yaml",
+      "2. Add volumes section:",
+      "   volumes:",
+      "   - name: secret-vol",
+      "     secret:",
+      "       secretName: db-secret",
+      "3. Add volumeMounts:",
+      "   volumeMounts:",
+      "   - name: secret-vol",
+      "     mountPath: /etc/secrets",
+      "4. Apply pod:",
+      "   kubectl apply -f secret-vol-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl exec secret-vol-pod -- ls /etc/secrets/username",
+      "expected": "/etc/secrets/username",
+      "points": 5,
+      "description": "Secret should be mounted as files"
+    }
+  ]
+}

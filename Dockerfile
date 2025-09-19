@@ -3,21 +3,30 @@
 # Stage 1: Build frontend
 FROM node:18-alpine AS frontend-build
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+# Install build dependencies in one layer
+RUN apk add --no-cache python3 make g++ && \
+    npm config set fund false && \
+    npm config set audit-level none
 
 WORKDIR /app/frontend
 
 # Copy frontend package files first (for better layer caching)
 COPY app/frontend/package*.json ./
+COPY app/frontend/craco.config.js ./
+COPY app/frontend/.env ./
 
-# Install dependencies with optimizations for CI
-RUN npm ci --omit=optional --ignore-scripts
+# Install dependencies with aggressive optimizations for faster builds
+ENV GENERATE_SOURCEMAP=false
+ENV DISABLE_ESLINT_PLUGIN=true
+ENV SKIP_PREFLIGHT_CHECK=true
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+RUN npm ci --omit=optional --ignore-scripts --silent --prefer-offline --no-audit --no-fund
 
 # Copy frontend source after dependency installation
 COPY app/frontend/ ./
 
-# Build frontend application
+# Build frontend application with production optimizations
 RUN npm run build
 
 # Stage 2: Build backend and final image
@@ -53,8 +62,8 @@ WORKDIR /app
 # Copy backend package files for dependency layer caching
 COPY app/backend/package*.json ./
 
-# Install backend production dependencies
-RUN npm ci --omit=dev --ignore-scripts
+# Install backend production dependencies with optimizations
+RUN npm ci --omit=dev --ignore-scripts --silent --no-audit --no-fund
 
 # Copy backend source code
 COPY app/backend/ ./
@@ -66,6 +75,10 @@ COPY --from=frontend-build /app/frontend/build ./frontend/build
 COPY helm-templates/ ./helm-templates/
 COPY question-bank/ ./question-bank/
 COPY scoring-scripts/ ./scoring-scripts/
+
+# Copy generated charts if they exist
+COPY app/generated-charts/ ./generated-charts/
+
 COPY docker-entrypoint.sh /usr/local/bin/
 
 # Set up permissions and directories in one layer

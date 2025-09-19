@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-034",
+  "title": "Create Pod with Port Specification",
+  "description": "Create a Pod named port-pod using image nginx:1.20-alpine that exposes container port 80.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Core Concepts",
+  "tags": [
+    "ports",
+    "containers",
+    "pods"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run port-pod --image=nginx:1.20-alpine --port=80 --dry-run=client -o yaml > port-pod.yaml",
+      "2. Verify ports section is present",
+      "3. Apply pod:",
+      "   kubectl apply -f port-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod port-pod -o jsonpath='{.spec.containers[0].ports[0].containerPort}'",
+      "expected": "80",
+      "points": 3,
+      "description": "Pod should expose port 80"
+    }
+  ]
+}

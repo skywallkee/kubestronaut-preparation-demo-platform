@@ -1,1 +1,122 @@
-# Placeholder for CKAD questions
+{
+  "examType": "ckad",
+  "version": "1.0",
+  "metadata": {
+    "totalQuestions": 50,
+    "questionsPerExam": 17,
+    "passingScore": 67,
+    "duration": 120,
+    "certification": "Certified Kubernetes Application Developer",
+    "provider": "Cloud Native Computing Foundation (CNCF)",
+    "difficulties": {
+      "easy": {
+        "count": 50,
+        "directory": "easy",
+        "description": "Beginner-level questions focusing on fundamental CKAD concepts"
+      },
+      "intermediate": {
+        "count": 0,
+        "directory": "intermediate",
+        "description": "Intermediate-level questions requiring deeper understanding"
+      },
+      "hard": {
+        "count": 0,
+        "directory": "hard",
+        "description": "Advanced-level questions for complex scenarios"
+      }
+    }
+  },
+  "categories": [
+    {
+      "name": "Core Concepts",
+      "weight": 13,
+      "description": "Basic Kubernetes objects - Pods, Namespaces, Labels, Annotations"
+    },
+    {
+      "name": "Configuration",
+      "weight": 18,
+      "description": "ConfigMaps, Secrets, Environment Variables, Resource Management"
+    },
+    {
+      "name": "Multi-Container Pods",
+      "weight": 10,
+      "description": "Sidecar, Ambassador, Adapter patterns, Init Containers"
+    },
+    {
+      "name": "Observability",
+      "weight": 18,
+      "description": "Liveness, Readiness, Startup Probes, Logging, Monitoring"
+    },
+    {
+      "name": "Pod Design",
+      "weight": 20,
+      "description": "Deployments, Jobs, CronJobs, Labels, Annotations, Resource Limits"
+    },
+    {
+      "name": "Services & Networking",
+      "weight": 13,
+      "description": "Services, Ingress, Network Policies"
+    },
+    {
+      "name": "State Persistence",
+      "weight": 8,
+      "description": "Volumes, PVCs, Storage Classes"
+    }
+  ],
+  "questionFiles": {
+    "easy": [
+      "ckad-e-001.json",
+      "ckad-e-002.json",
+      "ckad-e-003.json",
+      "ckad-e-004.json",
+      "ckad-e-005.json",
+      "ckad-e-006.json",
+      "ckad-e-007.json",
+      "ckad-e-008.json",
+      "ckad-e-009.json",
+      "ckad-e-010.json",
+      "ckad-e-011.json",
+      "ckad-e-012.json",
+      "ckad-e-013.json",
+      "ckad-e-014.json",
+      "ckad-e-015.json",
+      "ckad-e-016.json",
+      "ckad-e-017.json",
+      "ckad-e-018.json",
+      "ckad-e-019.json",
+      "ckad-e-020.json",
+      "ckad-e-021.json",
+      "ckad-e-022.json",
+      "ckad-e-023.json",
+      "ckad-e-024.json",
+      "ckad-e-025.json",
+      "ckad-e-026.json",
+      "ckad-e-027.json",
+      "ckad-e-028.json",
+      "ckad-e-029.json",
+      "ckad-e-030.json",
+      "ckad-e-031.json",
+      "ckad-e-032.json",
+      "ckad-e-033.json",
+      "ckad-e-034.json",
+      "ckad-e-035.json",
+      "ckad-e-036.json",
+      "ckad-e-037.json",
+      "ckad-e-038.json",
+      "ckad-e-039.json",
+      "ckad-e-040.json",
+      "ckad-e-041.json",
+      "ckad-e-042.json",
+      "ckad-e-043.json",
+      "ckad-e-044.json",
+      "ckad-e-045.json",
+      "ckad-e-046.json",
+      "ckad-e-047.json",
+      "ckad-e-048.json",
+      "ckad-e-049.json",
+      "ckad-e-050.json"
+    ],
+    "intermediate": [],
+    "hard": []
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-048",
+  "title": "Create Pod with Image Pull Policy",
+  "description": "Create a Pod named pull-policy-pod using image nginx:1.20-alpine with imagePullPolicy set to Always.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Core Concepts",
+  "tags": [
+    "images",
+    "pullpolicy",
+    "pods"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run pull-policy-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > pull-policy-pod.yaml",
+      "2. Add imagePullPolicy:",
+      "   imagePullPolicy: Always",
+      "3. Apply pod:",
+      "   kubectl apply -f pull-policy-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod pull-policy-pod -o jsonpath='{.spec.containers[0].imagePullPolicy}'",
+      "expected": "Always",
+      "points": 3,
+      "description": "Pod should have Always image pull policy"
+    }
+  ]
+}

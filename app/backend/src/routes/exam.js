@@ -36,6 +36,7 @@ router.get('/current', async (req, res) => {
       difficulty: exam.difficulty,
       questions: exam.questions.map(q => ({
         id: q.id,
+        originalId: q.originalId,
         title: q.title,
         description: q.description,
         points: q.points,

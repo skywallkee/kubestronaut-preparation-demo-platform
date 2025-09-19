@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-046",
+  "title": "Create Pod with Tolerations",
+  "description": "Create a Pod named toleration-pod using image nginx:1.20-alpine that tolerates taint key=value with NoSchedule effect.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Pod Design",
+  "tags": [
+    "tolerations",
+    "taints",
+    "scheduling"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run toleration-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > toleration-pod.yaml",
+      "2. Add tolerations:",
+      "   tolerations:",
+      "   - key: key",
+      "     operator: Equal",
+      "     value: value",
+      "     effect: NoSchedule",
+      "3. Apply pod:",
+      "   kubectl apply -f toleration-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod toleration-pod -o jsonpath='{.spec.tolerations[0].key}'",
+      "expected": "key",
+      "points": 5,
+      "description": "Pod should have toleration for key=value"
+    }
+  ]
+}

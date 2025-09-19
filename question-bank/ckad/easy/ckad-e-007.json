@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-007",
+  "title": "Create a ConfigMap",
+  "description": "Create a ConfigMap named app-config with key 'database_url' and value 'mysql://localhost:3306/mydb'.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Configuration",
+  "tags": [
+    "configmap",
+    "configuration",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "configmaps"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMap:",
+      "   kubectl create configmap app-config --from-literal=database_url='mysql://localhost:3306/mydb'",
+      "2. Verify ConfigMap:",
+      "   kubectl get configmap app-config",
+      "3. Check data:",
+      "   kubectl describe configmap app-config"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -o jsonpath='{.data.database_url}'",
+      "expected": "mysql://localhost:3306/mydb",
+      "points": 3,
+      "description": "ConfigMap should contain correct data"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "id": "ckad-e-005",
+  "title": "Expose a Deployment with ClusterIP Service",
+  "description": "Create a ClusterIP Service named web-svc that exposes the web-deploy Deployment on port 80.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Services",
+  "tags": [
+    "services",
+    "clusterip",
+    "expose"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "services",
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Expose deployment:",
+      "   kubectl expose deployment web-deploy --name=web-svc --port=80 --target-port=80",
+      "2. Verify service:",
+      "   kubectl get service web-svc",
+      "3. Check endpoints:",
+      "   kubectl get endpoints web-svc"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service web-svc -o jsonpath='{.spec.type}'",
+      "expected": "ClusterIP",
+      "points": 3,
+      "description": "Service should be ClusterIP type"
+    }
+  ]
+}

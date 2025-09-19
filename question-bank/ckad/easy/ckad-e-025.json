@@ -1,0 +1,45 @@
+{
+  "id": "ckad-e-025",
+  "title": "Create Pod with ServiceAccount",
+  "description": "Create a Pod named sa-pod using image nginx:1.20-alpine that uses the app-sa ServiceAccount.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Security",
+  "tags": [
+    "serviceaccount",
+    "pods",
+    "security"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods",
+      "serviceaccounts"
+    ],
+    "prerequisites": [
+      "app-sa ServiceAccount exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run sa-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > sa-pod.yaml",
+      "2. Add serviceAccountName:",
+      "   serviceAccountName: app-sa",
+      "3. Apply pod:",
+      "   kubectl apply -f sa-pod.yaml",
+      "4. Verify:",
+      "   kubectl get pod sa-pod -o yaml | grep serviceAccount"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod sa-pod -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "app-sa",
+      "points": 4,
+      "description": "Pod should use app-sa ServiceAccount"
+    }
+  ]
+}

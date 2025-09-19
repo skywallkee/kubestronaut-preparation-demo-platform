@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample-pod
+  namespace: k8s-exam-ckad
+  labels:
+    app: sample-app
+    exam-resource: "true"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.20
+    ports:
+    - containerPort: 80
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"

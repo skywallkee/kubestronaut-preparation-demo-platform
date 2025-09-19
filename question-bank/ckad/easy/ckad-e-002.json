@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-002",
+  "title": "Create a Simple Pod",
+  "description": "Create a single Pod of image httpd:2.4.41-alpine in Namespace default. The Pod should be named pod1 and the container should be named pod1-container.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Core Concepts",
+  "tags": [
+    "pods",
+    "creation",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run pod1 --image=httpd:2.4.41-alpine --dry-run=client -o yaml > pod1.yaml",
+      "2. Edit yaml to change container name to pod1-container",
+      "3. Apply the pod:",
+      "   kubectl apply -f pod1.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod pod1 -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 3,
+      "description": "Pod should be running"
+    }
+  ]
+}

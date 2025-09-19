@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-022",
+  "title": "Describe a Pod",
+  "description": "Get detailed information about the multi-pod and save the output to /opt/course/22/pod-describe.txt.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Troubleshooting",
+  "tags": [
+    "describe",
+    "debugging",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "multi-pod exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Describe pod:",
+      "   kubectl describe pod multi-pod",
+      "2. Save output to file:",
+      "   kubectl describe pod multi-pod > /opt/course/22/pod-describe.txt",
+      "3. Verify file:",
+      "   head /opt/course/22/pod-describe.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/22/pod-describe.txt",
+      "expected": "true",
+      "points": 2,
+      "description": "Describe file should exist"
+    }
+  ]
+}

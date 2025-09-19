@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const archiver = require('archiver');
+const QuestionService = require('../question-provider/question-service');
 
 class HelmService {
   constructor() {
@@ -22,10 +23,13 @@ class HelmService {
       // Create chart directory
       await this.ensureDirectoryExists(chartPath);
       
-      // Generate chart files
-      await this.generateChartYaml(chartPath, examType, difficulty);
-      await this.generateValuesYaml(chartPath, examType, difficulty);
-      await this.generateTemplates(chartPath, examType, difficulty);
+      // Get infrastructure requirements from selected questions
+      const infrastructure = await QuestionService.getInfrastructureRequirements(examType, difficulty);
+      
+      // Generate chart files with infrastructure requirements
+      await this.generateChartYaml(chartPath, examType, difficulty, infrastructure);
+      await this.generateValuesYaml(chartPath, examType, difficulty, infrastructure);
+      await this.generateTemplates(chartPath, examType, difficulty, infrastructure);
 
       console.log(`Helm chart generated successfully at ${chartPath}`);
       return chartPath;
@@ -36,7 +40,7 @@ class HelmService {
     }
   }
 
-  async generateChartYaml(chartPath, examType, difficulty) {
+  async generateChartYaml(chartPath, examType, difficulty, infrastructure) {
     const chartYaml = {
       apiVersion: 'v2',
       name: `k8s-exam-${examType}-${difficulty}`,
@@ -69,40 +73,40 @@ class HelmService {
     await fs.writeFile(path.join(chartPath, 'Chart.yaml'), yamlContent);
   }
 
-  async generateValuesYaml(chartPath, examType, difficulty) {
+  async generateValuesYaml(chartPath, examType, difficulty, infrastructure) {
     const values = this.getDefaultValues(examType, difficulty);
     
     const valuesYaml = this.objectToYaml(values, 0);
     await fs.writeFile(path.join(chartPath, 'values.yaml'), valuesYaml);
   }
 
-  async generateTemplates(chartPath, examType, difficulty) {
+  async generateTemplates(chartPath, examType, difficulty, infrastructure) {
     const templatesPath = path.join(chartPath, 'templates');
     await this.ensureDirectoryExists(templatesPath);
 
     // Generate namespace template
     await this.generateNamespaceTemplate(templatesPath, examType, difficulty);
     
-    // Generate exam environment templates based on type
+    // Generate exam environment templates based on type and infrastructure requirements
     switch (examType) {
       case 'ckad':
-        await this.generateCKADTemplates(templatesPath, difficulty);
+        await this.generateCKADTemplates(templatesPath, difficulty, infrastructure);
         break;
       case 'cka':
-        await this.generateCKATemplates(templatesPath, difficulty);
+        await this.generateCKATemplates(templatesPath, difficulty, infrastructure);
         break;
       case 'cks':
-        await this.generateCKSTemplates(templatesPath, difficulty);
+        await this.generateCKSTemplates(templatesPath, difficulty, infrastructure);
         break;
       case 'kcna':
-        await this.generateKCNATemplates(templatesPath, difficulty);
+        await this.generateKCNATemplates(templatesPath, difficulty, infrastructure);
         break;
       default:
-        await this.generateBasicTemplates(templatesPath, difficulty);
+        await this.generateBasicTemplates(templatesPath, difficulty, infrastructure);
     }
 
-    // Generate NOTES.txt
-    await this.generateNotes(templatesPath, examType, difficulty);
+    // Generate NOTES.txt with infrastructure requirements
+    await this.generateNotes(templatesPath, examType, difficulty, infrastructure);
   }
 
   async generateNamespaceTemplate(templatesPath, examType, difficulty) {
@@ -137,32 +141,22 @@ data:
     await fs.writeFile(path.join(templatesPath, 'namespace.yaml'), namespaceTemplate);
   }
 
-  async generateCKADTemplates(templatesPath, difficulty) {
-    // Generate CKAD-specific templates (Pods, Deployments, Services, etc.)
-    const templates = [
-      {
-        name: 'sample-pod.yaml',
-        content: `apiVersion: v1
-kind: Pod
-metadata:
-  name: sample-pod
-  namespace: k8s-exam-ckad
-  labels:
-    app: sample-app
-spec:
-  containers:
-  - name: nginx
-    image: nginx:1.20
-    ports:
-    - containerPort: 80`
-      },
-      {
+  async generateCKADTemplates(templatesPath, difficulty, infrastructure) {
+    // Generate CKAD-specific templates based on infrastructure requirements
+    const templates = [];
+
+    // Generate deployments if needed
+    if (infrastructure.deployments.length > 0) {
+      templates.push({
         name: 'sample-deployment.yaml',
         content: `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sample-deployment
   namespace: k8s-exam-ckad
+  labels:
+    app: sample-app
+    exam-resource: "true"
 spec:
   replicas: 1
   selector:
@@ -177,16 +171,135 @@ spec:
       - name: nginx
         image: nginx:1.20
         ports:
-        - containerPort: 80`
-      }
-    ];
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"`
+      });
+    }
 
+    // Generate services if needed
+    if (infrastructure.services.length > 0) {
+      templates.push({
+        name: 'sample-service.yaml',
+        content: `apiVersion: v1
+kind: Service
+metadata:
+  name: sample-service
+  namespace: k8s-exam-ckad
+  labels:
+    app: sample-app
+    exam-resource: "true"
+spec:
+  selector:
+    app: sample-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP`
+      });
+    }
+
+    // Generate ConfigMaps if needed
+    if (infrastructure.configMaps.length > 0) {
+      templates.push({
+        name: 'sample-configmap.yaml',
+        content: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-config
+  namespace: k8s-exam-ckad
+  labels:
+    exam-resource: "true"
+data:
+  app.properties: |
+    debug=false
+    database.host=localhost
+    database.port=5432
+  config.yaml: |
+    server:
+      port: 8080
+      timeout: 30s`
+      });
+    }
+
+    // Generate Secrets if needed
+    if (infrastructure.secrets.length > 0) {
+      templates.push({
+        name: 'sample-secret.yaml',
+        content: `apiVersion: v1
+kind: Secret
+metadata:
+  name: sample-secret
+  namespace: k8s-exam-ckad
+  labels:
+    exam-resource: "true"
+type: Opaque
+data:
+  username: YWRtaW4=  # admin
+  password: cGFzc3dvcmQ=  # password`
+      });
+    }
+
+    // Generate PVCs if needed
+    if (infrastructure.persistentVolumeClaims.length > 0) {
+      templates.push({
+        name: 'sample-pvc.yaml',
+        content: `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sample-pvc
+  namespace: k8s-exam-ckad
+  labels:
+    exam-resource: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi`
+      });
+    }
+
+    // Always include a basic pod template
+    templates.push({
+      name: 'sample-pod.yaml',
+      content: `apiVersion: v1
+kind: Pod
+metadata:
+  name: sample-pod
+  namespace: k8s-exam-ckad
+  labels:
+    app: sample-app
+    exam-resource: "true"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.20
+    ports:
+    - containerPort: 80
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"`
+    });
+
+    // Write all templates to files
     for (const template of templates) {
       await fs.writeFile(path.join(templatesPath, template.name), template.content);
     }
+    
+    console.log(`Generated ${templates.length} CKAD templates based on infrastructure requirements`);
   }
 
-  async generateCKATemplates(templatesPath, difficulty) {
+  async generateCKATemplates(templatesPath, difficulty, infrastructure) {
     // Generate CKA-specific templates (cluster admin tasks)
     const templates = [
       {
@@ -207,7 +320,7 @@ rules:
     }
   }
 
-  async generateCKSTemplates(templatesPath, difficulty) {
+  async generateCKSTemplates(templatesPath, difficulty, infrastructure) {
     // Generate CKS-specific templates (security-focused)
     const templates = [
       {
@@ -230,12 +343,12 @@ spec:
     }
   }
 
-  async generateKCNATemplates(templatesPath, difficulty) {
+  async generateKCNATemplates(templatesPath, difficulty, infrastructure) {
     // Generate KCNA-specific templates (basic resources)
-    await this.generateBasicTemplates(templatesPath, difficulty);
+    await this.generateBasicTemplates(templatesPath, difficulty, infrastructure);
   }
 
-  async generateBasicTemplates(templatesPath, difficulty) {
+  async generateBasicTemplates(templatesPath, difficulty, infrastructure) {
     // Generate basic templates for any exam type
     const basicTemplate = `# Basic template for ${difficulty} level exam
 # This template provides a starting point for exam tasks`;
@@ -243,12 +356,34 @@ spec:
     await fs.writeFile(path.join(templatesPath, 'README.md'), basicTemplate);
   }
 
-  async generateNotes(templatesPath, examType, difficulty) {
+  async generateNotes(templatesPath, examType, difficulty, infrastructure) {
+    // Get the selected questions for verification
+    let selectedQuestions = [];
+    try {
+      const questions = await QuestionService.getQuestions(examType, difficulty);
+      selectedQuestions = questions.map(q => `${q.originalId || q.id}: ${q.title}`);
+    } catch (error) {
+      console.warn('Could not load questions for NOTES.txt:', error.message);
+    }
+
     const notes = `EXAM ENVIRONMENT DEPLOYED SUCCESSFULLY!
 
 Exam Type: ${examType.toUpperCase()}
 Difficulty: ${difficulty}
 Namespace: k8s-exam-${examType}
+
+Selected Questions for this Exam:
+${selectedQuestions.length > 0 ? selectedQuestions.map(q => `  - ${q}`).join('\n') : '  - Questions will be loaded dynamically'}
+
+Infrastructure Deployed:
+  - Namespaces: ${infrastructure.namespaces.join(', ') || 'default'}
+  - Deployments: ${infrastructure.deployments.length > 0 ? '✓' : '✗'}
+  - Services: ${infrastructure.services.length > 0 ? '✓' : '✗'}
+  - ConfigMaps: ${infrastructure.configMaps.length > 0 ? '✓' : '✗'}
+  - Secrets: ${infrastructure.secrets.length > 0 ? '✓' : '✗'}
+  - PVCs: ${infrastructure.persistentVolumeClaims.length > 0 ? '✓' : '✗'}
+  - Network Policies: ${infrastructure.networkPolicies.length > 0 ? '✓' : '✗'}
+  - RBAC: ${infrastructure.rbac.length > 0 ? '✓' : '✗'}
 
 To verify your environment:
   kubectl get pods -n k8s-exam-${examType}
@@ -261,6 +396,8 @@ Important Notes:
 - Use the k8s-exam-${examType} namespace for your work
 - All exam resources should be created in this namespace
 - Check the exam-config ConfigMap for additional instructions
+- Resources marked with ✓ have sample templates deployed
+- Questions listed above will be served during the exam
 
 Good luck with your ${examType.toUpperCase()} exam!`;
 

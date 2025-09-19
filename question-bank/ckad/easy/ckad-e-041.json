@@ -1,0 +1,43 @@
+{
+  "id": "ckad-e-041",
+  "title": "Create Service with Session Affinity",
+  "description": "Create a Service named sticky-svc that exposes the web-deploy Deployment with session affinity set to ClientIP.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Services",
+  "tags": [
+    "services",
+    "affinity",
+    "sessions"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "services",
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create service yaml:",
+      "   kubectl expose deployment web-deploy --name=sticky-svc --port=80 --dry-run=client -o yaml > sticky-svc.yaml",
+      "2. Add sessionAffinity:",
+      "   sessionAffinity: ClientIP",
+      "3. Apply service:",
+      "   kubectl apply -f sticky-svc.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service sticky-svc -o jsonpath='{.spec.sessionAffinity}'",
+      "expected": "ClientIP",
+      "points": 4,
+      "description": "Service should have ClientIP session affinity"
+    }
+  ]
+}

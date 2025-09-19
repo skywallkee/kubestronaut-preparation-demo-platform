@@ -1,0 +1,14 @@
+apiVersion: v2
+name: k8s-exam-ckad-beginner
+description: Kubernetes CKAD exam environment - beginner level
+version: 1.0.0
+appVersion: 1.0.0
+keywords:
+  - kubernetes
+  - exam
+  - certification
+  - ckad
+home: https://github.com/kubernetes-exam-simulator
+maintainers:
+  - name: K8s Exam Simulator
+  - email: noreply@k8s-exam.local

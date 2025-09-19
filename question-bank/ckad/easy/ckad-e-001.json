@@ -1,0 +1,38 @@
+{
+  "id": "ckad-e-001",
+  "title": "List All Namespaces",
+  "description": "Get the list of all Namespaces in the cluster and save it to /opt/course/1/namespaces.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Core Concepts",
+  "tags": [
+    "namespaces",
+    "basic",
+    "listing"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "namespaces"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. List all namespaces:",
+      "   kubectl get namespaces",
+      "2. Save to file:",
+      "   kubectl get ns > /opt/course/1/namespaces"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/1/namespaces",
+      "expected": "true",
+      "points": 2,
+      "description": "File should exist with namespace list"
+    }
+  ]
+}

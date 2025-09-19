@@ -1,0 +1,43 @@
+{
+  "id": "ckad-e-042",
+  "title": "Create Pod with DNS Policy",
+  "description": "Create a Pod named dns-pod using image nginx:1.20-alpine with dnsPolicy set to None and custom DNS server 8.8.8.8.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Networking",
+  "tags": [
+    "dns",
+    "networking",
+    "pods"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run dns-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > dns-pod.yaml",
+      "2. Add dnsPolicy and dnsConfig:",
+      "   dnsPolicy: None",
+      "   dnsConfig:",
+      "     nameservers:",
+      "     - 8.8.8.8",
+      "3. Apply pod:",
+      "   kubectl apply -f dns-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod dns-pod -o jsonpath='{.spec.dnsPolicy}'",
+      "expected": "None",
+      "points": 5,
+      "description": "Pod should have None DNS policy"
+    }
+  ]
+}

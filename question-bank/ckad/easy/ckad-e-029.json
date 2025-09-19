@@ -1,0 +1,50 @@
+{
+  "id": "ckad-e-029",
+  "title": "Create Pod with PVC Mount",
+  "description": "Create a Pod named pvc-pod using image nginx:1.20-alpine that mounts the app-pvc at /data.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Storage",
+  "tags": [
+    "pvc",
+    "volumes",
+    "mounts"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods",
+      "persistentvolumeclaims"
+    ],
+    "prerequisites": [
+      "app-pvc exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run pvc-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > pvc-pod.yaml",
+      "2. Add volumes section:",
+      "   volumes:",
+      "   - name: data-vol",
+      "     persistentVolumeClaim:",
+      "       claimName: app-pvc",
+      "3. Add volumeMounts:",
+      "   volumeMounts:",
+      "   - name: data-vol",
+      "     mountPath: /data",
+      "4. Apply pod:",
+      "   kubectl apply -f pvc-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl exec pvc-pod -- ls -d /data",
+      "expected": "/data",
+      "points": 5,
+      "description": "PVC should be mounted at /data"
+    }
+  ]
+}

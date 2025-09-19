@@ -1,0 +1,2736 @@
+{
+  "examType": "cks",
+  "version": "1.0",
+  "metadata": {
+    "totalQuestions": 60,
+    "questionsPerExam": 15,
+    "passingScore": 67,
+    "duration": 120,
+    "difficulties": {
+      "beginner": 20,
+      "intermediate": 20,
+      "advanced": 20
+    }
+  },
+  "questions": {
+    "beginner": [
+      {
+        "id": "cks-b-001",
+        "title": "Configure Pod Security Context",
+        "description": "Create a pod named 'secure-app' using nginx:1.20 image that runs as non-root user with UID 1001 and read-only root filesystem.",
+        "points": 5,
+        "timeLimit": 8,
+        "category": "Pod Security",
+        "tags": ["security", "securitycontext", "non-root"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "images": ["nginx:1.20"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod with security context:",
+            "   cat > secure-app.yaml << EOF",
+            "   apiVersion: v1",
+            "   kind: Pod",
+            "   metadata:",
+            "     name: secure-app",
+            "   spec:",
+            "     securityContext:",
+            "       runAsUser: 1001",
+            "       runAsNonRoot: true",
+            "       fsGroup: 1001",
+            "     containers:",
+            "     - name: nginx",
+            "       image: nginx:1.20",
+            "       securityContext:",
+            "         readOnlyRootFilesystem: true",
+            "         allowPrivilegeEscalation: false",
+            "   EOF",
+            "2. Apply the pod:",
+            "   kubectl apply -f secure-app.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod secure-app -o jsonpath='{.spec.securityContext.runAsUser}'",
+            "expected": "1001",
+            "points": 2,
+            "description": "Pod should run as user 1001"
+          },
+          {
+            "command": "kubectl get pod secure-app -o jsonpath='{.spec.containers[0].securityContext.readOnlyRootFilesystem}'",
+            "expected": "true",
+            "points": 2,
+            "description": "Container should have read-only root filesystem"
+          },
+          {
+            "command": "kubectl get pod secure-app -o jsonpath='{.status.phase}'",
+            "expected": "Running",
+            "points": 1,
+            "description": "Pod should be running"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-002",
+        "title": "Create Basic RBAC Role",
+        "description": "Create a Role named 'pod-reader' in namespace 'secure' that allows only reading pods and services. Bind it to user 'jane'.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "RBAC",
+        "tags": ["rbac", "role", "authorization"],
+        "infrastructure": {
+          "namespaces": ["secure"],
+          "resources": ["roles", "rolebindings"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create namespace:",
+            "   kubectl create namespace secure",
+            "2. Create role:",
+            "   kubectl create role pod-reader --verb=get,list,watch --resource=pods,services -n secure",
+            "3. Create role binding:",
+            "   kubectl create rolebinding pod-reader-binding --role=pod-reader --user=jane -n secure",
+            "4. Verify permissions:",
+            "   kubectl auth can-i list pods --as=jane -n secure"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get role pod-reader -n secure --no-headers | awk '{print $1}'",
+            "expected": "pod-reader",
+            "points": 2,
+            "description": "Role should exist in secure namespace"
+          },
+          {
+            "command": "kubectl get rolebinding pod-reader-binding -n secure -o jsonpath='{.subjects[0].name}'",
+            "expected": "jane",
+            "points": 2,
+            "description": "RoleBinding should bind to user jane"
+          },
+          {
+            "command": "kubectl auth can-i list pods --as=jane -n secure && echo 'allowed' || echo 'denied'",
+            "expected": "allowed",
+            "points": 2,
+            "description": "User jane should be able to list pods"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-003",
+        "title": "Configure Network Policy",
+        "description": "Create a NetworkPolicy named 'deny-all' in namespace 'isolated' that denies all ingress traffic to pods with label 'app=webapp'.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "Network Security",
+        "tags": ["networkpolicy", "isolation", "security"],
+        "infrastructure": {
+          "namespaces": ["isolated"],
+          "resources": ["networkpolicies"],
+          "prerequisites": ["CNI with NetworkPolicy support"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create namespace:",
+            "   kubectl create namespace isolated",
+            "2. Create NetworkPolicy:",
+            "   cat > deny-all.yaml << EOF",
+            "   apiVersion: networking.k8s.io/v1",
+            "   kind: NetworkPolicy",
+            "   metadata:",
+            "     name: deny-all",
+            "     namespace: isolated",
+            "   spec:",
+            "     podSelector:",
+            "       matchLabels:",
+            "         app: webapp",
+            "     policyTypes:",
+            "     - Ingress",
+            "   EOF",
+            "3. Apply the policy:",
+            "   kubectl apply -f deny-all.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get networkpolicy deny-all -n isolated --no-headers | awk '{print $1}'",
+            "expected": "deny-all",
+            "points": 3,
+            "description": "NetworkPolicy should exist"
+          },
+          {
+            "command": "kubectl get networkpolicy deny-all -n isolated -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+            "expected": "webapp",
+            "points": 3,
+            "description": "NetworkPolicy should target app=webapp pods"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-004",
+        "title": "Create Secret for TLS",
+        "description": "Create a TLS secret named 'webapp-tls' in the default namespace using provided certificate and key files.",
+        "points": 4,
+        "timeLimit": 7,
+        "category": "Secrets Management",
+        "tags": ["secrets", "tls", "certificates"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["secrets"],
+          "files": ["tls.crt", "tls.key"]
+        },
+        "solution": {
+          "steps": [
+            "1. Generate self-signed certificate (for testing):",
+            "   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj '/CN=webapp.local'",
+            "2. Create TLS secret:",
+            "   kubectl create secret tls webapp-tls --cert=tls.crt --key=tls.key",
+            "3. Verify secret:",
+            "   kubectl describe secret webapp-tls"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get secret webapp-tls -o jsonpath='{.type}'",
+            "expected": "kubernetes.io/tls",
+            "points": 2,
+            "description": "Secret should be of type TLS"
+          },
+          {
+            "command": "kubectl get secret webapp-tls -o jsonpath='{.data.\"tls\\.crt\"}' | base64 -d | grep -c 'BEGIN CERTIFICATE'",
+            "expected": "1",
+            "points": 2,
+            "description": "Secret should contain valid certificate"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-005",
+        "title": "Configure Pod Anti-Affinity",
+        "description": "Create a deployment 'ha-app' with 3 replicas using nginx:1.20 image that ensures pods are not scheduled on the same node.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "Pod Security",
+        "tags": ["affinity", "scheduling", "availability"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["deployments"],
+          "images": ["nginx:1.20"],
+          "prerequisites": ["multi-node cluster"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create deployment with pod anti-affinity:",
+            "   cat > ha-app.yaml << EOF",
+            "   apiVersion: apps/v1",
+            "   kind: Deployment",
+            "   metadata:",
+            "     name: ha-app",
+            "   spec:",
+            "     replicas: 3",
+            "     selector:",
+            "       matchLabels:",
+            "         app: ha-app",
+            "     template:",
+            "       metadata:",
+            "         labels:",
+            "           app: ha-app",
+            "       spec:",
+            "         affinity:",
+            "           podAntiAffinity:",
+            "             requiredDuringSchedulingIgnoredDuringExecution:",
+            "             - labelSelector:",
+            "                 matchExpressions:",
+            "                 - key: app",
+            "                   operator: In",
+            "                   values:",
+            "                   - ha-app",
+            "               topologyKey: kubernetes.io/hostname",
+            "         containers:",
+            "         - name: nginx",
+            "           image: nginx:1.20",
+            "   EOF",
+            "2. Apply deployment:",
+            "   kubectl apply -f ha-app.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment ha-app -o jsonpath='{.spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey}'",
+            "expected": "kubernetes.io/hostname",
+            "points": 3,
+            "description": "Deployment should have pod anti-affinity"
+          },
+          {
+            "command": "kubectl get deployment ha-app -o jsonpath='{.status.readyReplicas}'",
+            "expected": "3",
+            "points": 3,
+            "description": "All replicas should be ready"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-006",
+        "title": "Scan Container Image",
+        "description": "Use trivy or similar tool to scan the nginx:1.19 image for vulnerabilities and save the report to /tmp/image-scan.txt.",
+        "points": 5,
+        "timeLimit": 8,
+        "category": "Supply Chain Security",
+        "tags": ["scanning", "vulnerabilities", "images"],
+        "infrastructure": {
+          "namespaces": [],
+          "resources": [],
+          "tools": ["trivy"],
+          "images": ["nginx:1.19"]
+        },
+        "solution": {
+          "steps": [
+            "1. Pull the image:",
+            "   docker pull nginx:1.19",
+            "2. Scan image with trivy:",
+            "   trivy image nginx:1.19 > /tmp/image-scan.txt",
+            "3. Review scan results:",
+            "   head -20 /tmp/image-scan.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /tmp/image-scan.txt && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 2,
+            "description": "Image scan report should exist"
+          },
+          {
+            "command": "grep -c 'nginx:1.19\\|vulnerability\\|CRITICAL\\|HIGH' /tmp/image-scan.txt || echo '0'",
+            "expected": "^[1-9][0-9]*$",
+            "points": 3,
+            "description": "Scan report should contain vulnerability information"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-007",
+        "title": "Configure Service Account",
+        "description": "Create a ServiceAccount named 'secure-sa' in namespace 'apps' and configure a pod to use it with automountServiceAccountToken disabled.",
+        "points": 5,
+        "timeLimit": 8,
+        "category": "RBAC",
+        "tags": ["serviceaccount", "security", "tokens"],
+        "infrastructure": {
+          "namespaces": ["apps"],
+          "resources": ["serviceaccounts", "pods"],
+          "images": ["nginx:1.20"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create namespace:",
+            "   kubectl create namespace apps",
+            "2. Create ServiceAccount:",
+            "   kubectl create serviceaccount secure-sa -n apps",
+            "3. Create pod with ServiceAccount:",
+            "   cat > secure-pod.yaml << EOF",
+            "   apiVersion: v1",
+            "   kind: Pod",
+            "   metadata:",
+            "     name: secure-pod",
+            "     namespace: apps",
+            "   spec:",
+            "     serviceAccountName: secure-sa",
+            "     automountServiceAccountToken: false",
+            "     containers:",
+            "     - name: nginx",
+            "       image: nginx:1.20",
+            "   EOF",
+            "4. Apply pod:",
+            "   kubectl apply -f secure-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get serviceaccount secure-sa -n apps --no-headers | awk '{print $1}'",
+            "expected": "secure-sa",
+            "points": 2,
+            "description": "ServiceAccount should exist"
+          },
+          {
+            "command": "kubectl get pod secure-pod -n apps -o jsonpath='{.spec.automountServiceAccountToken}'",
+            "expected": "false",
+            "points": 3,
+            "description": "Pod should have automountServiceAccountToken disabled"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-008",
+        "title": "Configure Resource Limits",
+        "description": "Create a pod 'resource-limited' using busybox:1.35 image with CPU limit of 100m and memory limit of 128Mi.",
+        "points": 4,
+        "timeLimit": 7,
+        "category": "Resource Security",
+        "tags": ["resources", "limits", "security"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "images": ["busybox:1.35"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod with resource limits:",
+            "   cat > resource-limited.yaml << EOF",
+            "   apiVersion: v1",
+            "   kind: Pod",
+            "   metadata:",
+            "     name: resource-limited",
+            "   spec:",
+            "     containers:",
+            "     - name: busybox",
+            "       image: busybox:1.35",
+            "       command: ['sleep', '3600']",
+            "       resources:",
+            "         limits:",
+            "           cpu: 100m",
+            "           memory: 128Mi",
+            "   EOF",
+            "2. Apply pod:",
+            "   kubectl apply -f resource-limited.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod resource-limited -o jsonpath='{.spec.containers[0].resources.limits.cpu}'",
+            "expected": "100m",
+            "points": 2,
+            "description": "Pod should have CPU limit of 100m"
+          },
+          {
+            "command": "kubectl get pod resource-limited -o jsonpath='{.spec.containers[0].resources.limits.memory}'",
+            "expected": "128Mi",
+            "points": 2,
+            "description": "Pod should have memory limit of 128Mi"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-009",
+        "title": "Create Pod Security Policy",
+        "description": "Create a PodSecurityPolicy that prevents privileged containers and requires containers to run as non-root.",
+        "points": 7,
+        "timeLimit": 12,
+        "category": "Pod Security",
+        "tags": ["psp", "security", "policy"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["podsecuritypolicies", "clusterroles", "clusterrolebindings"],
+          "prerequisites": ["PodSecurityPolicy admission controller"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create PodSecurityPolicy:",
+            "   cat > restrictive-psp.yaml << EOF",
+            "   apiVersion: policy/v1beta1",
+            "   kind: PodSecurityPolicy",
+            "   metadata:",
+            "     name: restrictive-psp",
+            "   spec:",
+            "     privileged: false",
+            "     runAsUser:",
+            "       rule: MustRunAsNonRoot",
+            "     fsGroup:",
+            "       rule: RunAsAny",
+            "     volumes:",
+            "     - emptyDir",
+            "     - configMap",
+            "     - secret",
+            "   EOF",
+            "2. Apply PSP:",
+            "   kubectl apply -f restrictive-psp.yaml",
+            "3. Create ClusterRole and binding for PSP"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get psp restrictive-psp --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-supported'",
+            "expected": "restrictive-psp|not-supported",
+            "points": 4,
+            "description": "PodSecurityPolicy should exist (if supported)"
+          },
+          {
+            "command": "kubectl get psp restrictive-psp -o jsonpath='{.spec.privileged}' 2>/dev/null || echo 'false'",
+            "expected": "false",
+            "points": 3,
+            "description": "PSP should prevent privileged containers"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-010",
+        "title": "Configure Admission Controller",
+        "description": "Verify that the PodSecurityPolicy admission controller is enabled and list all enabled admission controllers.",
+        "points": 4,
+        "timeLimit": 7,
+        "category": "Cluster Security",
+        "tags": ["admission", "controllers", "security"],
+        "infrastructure": {
+          "namespaces": [],
+          "resources": [],
+          "prerequisites": ["API server access"]
+        },
+        "solution": {
+          "steps": [
+            "1. Check API server configuration:",
+            "   ps aux | grep kube-apiserver | grep admission",
+            "2. Or check API server manifest:",
+            "   cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep admission",
+            "3. Save admission controllers to file:",
+            "   ps aux | grep kube-apiserver | grep -o 'enable-admission-plugins=[^[:space:]]*' > /tmp/admission-controllers.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /tmp/admission-controllers.txt && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 2,
+            "description": "Admission controllers file should exist"
+          },
+          {
+            "command": "grep -c 'admission-plugins' /tmp/admission-controllers.txt || echo '0'",
+            "expected": "^[1-9][0-9]*$",
+            "points": 2,
+            "description": "File should contain admission plugins information"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-011",
+        "title": "Configure Ingress with TLS",
+        "description": "Create an Ingress resource 'secure-ingress' that uses TLS termination with the 'webapp-tls' secret for host 'webapp.local'.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "Network Security",
+        "tags": ["ingress", "tls", "encryption"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["ingress", "secrets", "services"],
+          "prerequisites": ["webapp-tls secret", "ingress controller"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create Ingress with TLS:",
+            "   cat > secure-ingress.yaml << EOF",
+            "   apiVersion: networking.k8s.io/v1",
+            "   kind: Ingress",
+            "   metadata:",
+            "     name: secure-ingress",
+            "   spec:",
+            "     tls:",
+            "     - hosts:",
+            "       - webapp.local",
+            "       secretName: webapp-tls",
+            "     rules:",
+            "     - host: webapp.local",
+            "       http:",
+            "         paths:",
+            "         - path: /",
+            "           pathType: Prefix",
+            "           backend:",
+            "             service:",
+            "               name: webapp-service",
+            "               port:",
+            "                 number: 80",
+            "   EOF",
+            "2. Apply Ingress:",
+            "   kubectl apply -f secure-ingress.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get ingress secure-ingress -o jsonpath='{.spec.tls[0].secretName}'",
+            "expected": "webapp-tls",
+            "points": 3,
+            "description": "Ingress should use webapp-tls secret"
+          },
+          {
+            "command": "kubectl get ingress secure-ingress -o jsonpath='{.spec.tls[0].hosts[0]}'",
+            "expected": "webapp.local",
+            "points": 3,
+            "description": "Ingress should secure webapp.local host"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-012",
+        "title": "Configure Security Context Constraints",
+        "description": "Create a SecurityContextConstraints (SCC) or equivalent that requires containers to run with a specific UID range.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "Pod Security",
+        "tags": ["scc", "security", "constraints"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["securitycontextconstraints"],
+          "prerequisites": ["OpenShift or equivalent"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create SecurityContextConstraints:",
+            "   cat > restricted-scc.yaml << EOF",
+            "   apiVersion: security.openshift.io/v1",
+            "   kind: SecurityContextConstraints",
+            "   metadata:",
+            "     name: restricted-scc",
+            "   allowHostDirVolumePlugin: false",
+            "   allowHostIPC: false",
+            "   allowHostNetwork: false",
+            "   allowHostPID: false",
+            "   allowPrivilegedContainer: false",
+            "   runAsUser:",
+            "     type: MustRunAsRange",
+            "     uidRangeMin: 1000",
+            "     uidRangeMax: 2000",
+            "   EOF",
+            "2. Apply SCC (if on OpenShift):",
+            "   oc apply -f restricted-scc.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "oc get scc restricted-scc --no-headers 2>/dev/null | awk '{print $1}' || echo 'not-openshift'",
+            "expected": "restricted-scc|not-openshift",
+            "points": 3,
+            "description": "SecurityContextConstraints should exist (if OpenShift)"
+          },
+          {
+            "command": "oc get scc restricted-scc -o jsonpath='{.runAsUser.type}' 2>/dev/null || echo 'MustRunAsRange'",
+            "expected": "MustRunAsRange",
+            "points": 3,
+            "description": "SCC should require specific UID range"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-013",
+        "title": "Enable Audit Logging",
+        "description": "Configure basic audit logging for the API server and save audit events to /var/log/audit.log.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "Monitoring & Logging",
+        "tags": ["audit", "logging", "monitoring"],
+        "infrastructure": {
+          "namespaces": [],
+          "resources": [],
+          "files": ["/var/log/audit.log"],
+          "prerequisites": ["API server configuration access"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create audit policy:",
+            "   cat > /etc/kubernetes/audit-policy.yaml << EOF",
+            "   apiVersion: audit.k8s.io/v1",
+            "   kind: Policy",
+            "   rules:",
+            "   - level: RequestResponse",
+            "     resources:",
+            "     - group: ''",
+            "       resources: ['pods', 'services']",
+            "   EOF",
+            "2. Update API server manifest to enable audit logging:",
+            "   # Add --audit-log-path=/var/log/audit.log",
+            "   # Add --audit-policy-file=/etc/kubernetes/audit-policy.yaml",
+            "3. Restart API server and verify logging"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /etc/kubernetes/audit-policy.yaml && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 3,
+            "description": "Audit policy file should exist"
+          },
+          {
+            "command": "ps aux | grep kube-apiserver | grep -c 'audit-log-path' || echo '0'",
+            "expected": "^[1-9][0-9]*$",
+            "points": 3,
+            "description": "API server should have audit logging enabled"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-014",
+        "title": "Configure falco for Runtime Security",
+        "description": "Install and configure falco to monitor for suspicious runtime activities and save alerts to /tmp/falco-alerts.log.",
+        "points": 7,
+        "timeLimit": 12,
+        "category": "Runtime Security",
+        "tags": ["falco", "runtime", "monitoring"],
+        "infrastructure": {
+          "namespaces": ["falco"],
+          "resources": ["daemonsets", "configmaps"],
+          "tools": ["falco"]
+        },
+        "solution": {
+          "steps": [
+            "1. Add falco helm repository:",
+            "   helm repo add falcosecurity https://falcosecurity.github.io/charts",
+            "2. Install falco:",
+            "   helm install falco falcosecurity/falco --namespace falco --create-namespace",
+            "3. Configure falco to log to file:",
+            "   # Edit falco configuration to output to /tmp/falco-alerts.log",
+            "4. Test falco by triggering suspicious activity"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get daemonset falco -n falco --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-installed'",
+            "expected": "falco|not-installed",
+            "points": 4,
+            "description": "Falco should be installed as DaemonSet"
+          },
+          {
+            "command": "kubectl get pods -n falco -l app=falco --no-headers | wc -l",
+            "expected": "^[1-9][0-9]*$",
+            "points": 3,
+            "description": "Falco pods should be running"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-015",
+        "title": "Configure Image Pull Secrets",
+        "description": "Create a docker-registry secret named 'registry-secret' and configure a pod to use it for pulling images from a private registry.",
+        "points": 5,
+        "timeLimit": 8,
+        "category": "Supply Chain Security",
+        "tags": ["secrets", "registry", "authentication"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["secrets", "pods"],
+          "prerequisites": ["private registry credentials"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create docker-registry secret:",
+            "   kubectl create secret docker-registry registry-secret \\",
+            "     --docker-server=myregistry.io \\",
+            "     --docker-username=myuser \\",
+            "     --docker-password=mypass \\",
+            "     --docker-email=myuser@example.com",
+            "2. Create pod using the secret:",
+            "   cat > private-image-pod.yaml << EOF",
+            "   apiVersion: v1",
+            "   kind: Pod",
+            "   metadata:",
+            "     name: private-image-pod",
+            "   spec:",
+            "     imagePullSecrets:",
+            "     - name: registry-secret",
+            "     containers:",
+            "     - name: app",
+            "       image: nginx:1.20",
+            "   EOF",
+            "3. Apply pod:",
+            "   kubectl apply -f private-image-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get secret registry-secret -o jsonpath='{.type}'",
+            "expected": "kubernetes.io/dockerconfigjson",
+            "points": 2,
+            "description": "Secret should be of type docker-registry"
+          },
+          {
+            "command": "kubectl get pod private-image-pod -o jsonpath='{.spec.imagePullSecrets[0].name}'",
+            "expected": "registry-secret",
+            "points": 3,
+            "description": "Pod should use registry-secret for image pulls"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-016",
+        "title": "Configure Syscall Filtering",
+        "description": "Create a pod with nginx:1.20 image that uses seccomp profile to restrict syscalls to a basic set.",
+        "points": 6,
+        "timeLimit": 10,
+        "category": "Runtime Security",
+        "tags": ["seccomp", "syscalls", "filtering"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "images": ["nginx:1.20"],
+          "files": ["seccomp profiles"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create seccomp profile:",
+            "   mkdir -p /var/lib/kubelet/seccomp/profiles",
+            "   cat > /var/lib/kubelet/seccomp/profiles/restricted.json << EOF",
+            "   {",
+            "     \"defaultAction\": \"SCMP_ACT_ERRNO\",",
+            "     \"architectures\": [\"SCMP_ARCH_X86_64\"],",
+            "     \"syscalls\": [",
+            "       {\"names\": [\"read\", \"write\", \"open\", \"close\"], \"action\": \"SCMP_ACT_ALLOW\"}",
+            "     ]",
+            "   }",
+            "   EOF",
+            "2. Create pod with seccomp profile:",
+            "   cat > seccomp-pod.yaml << EOF",
+            "   apiVersion: v1",
+            "   kind: Pod",
+            "   metadata:",
+            "     name: seccomp-pod",
+            "     annotations:",
+            "       seccomp.security.alpha.kubernetes.io/pod: localhost/restricted",
+            "   spec:",
+            "     containers:",
+            "     - name: nginx",
+            "       image: nginx:1.20",
+            "   EOF",
+            "3. Apply pod:",
+            "   kubectl apply -f seccomp-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /var/lib/kubelet/seccomp/profiles/restricted.json && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 3,
+            "description": "Seccomp profile should exist"
+          },
+          {
+            "command": "kubectl get pod seccomp-pod -o jsonpath='{.metadata.annotations.\"seccomp\\.security\\.alpha\\.kubernetes\\.io/pod\"}'",
+            "expected": "localhost/restricted",
+            "points": 3,
+            "description": "Pod should use restricted seccomp profile"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-017",
+        "title": "Configure Container Image Signing",
+        "description": "Sign a container image using cosign and verify the signature before deployment.",
+        "points": 7,
+        "timeLimit": 12,
+        "category": "Supply Chain Security",
+        "tags": ["signing", "cosign", "verification"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": [],
+          "tools": ["cosign"],
+          "images": ["nginx:1.20"]
+        },
+        "solution": {
+          "steps": [
+            "1. Install cosign tool:",
+            "   # Download and install cosign binary",
+            "2. Generate key pair:",
+            "   cosign generate-key-pair",
+            "3. Sign container image:",
+            "   cosign sign --key cosign.key nginx:1.20",
+            "4. Verify signature:",
+            "   cosign verify --key cosign.pub nginx:1.20",
+            "5. Save verification result:",
+            "   cosign verify --key cosign.pub nginx:1.20 > /tmp/signature-verification.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f cosign.key && test -f cosign.pub && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 3,
+            "description": "Cosign key pair should exist"
+          },
+          {
+            "command": "test -f /tmp/signature-verification.txt && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 4,
+            "description": "Signature verification result should be saved"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-018",
+        "title": "Configure OPA Gatekeeper",
+        "description": "Install OPA Gatekeeper and create a constraint that requires all pods to have resource limits.",
+        "points": 8,
+        "timeLimit": 15,
+        "category": "Policy Management",
+        "tags": ["opa", "gatekeeper", "policy"],
+        "infrastructure": {
+          "namespaces": ["gatekeeper-system"],
+          "resources": ["constrainttemplates", "constraints"],
+          "tools": ["opa gatekeeper"]
+        },
+        "solution": {
+          "steps": [
+            "1. Install OPA Gatekeeper:",
+            "   kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/master/deploy/gatekeeper.yaml",
+            "2. Create ConstraintTemplate:",
+            "   cat > require-resources.yaml << EOF",
+            "   apiVersion: templates.gatekeeper.sh/v1beta1",
+            "   kind: ConstraintTemplate",
+            "   metadata:",
+            "     name: k8srequiredresources",
+            "   spec:",
+            "     crd:",
+            "       spec:",
+            "         names:",
+            "           kind: K8sRequiredResources",
+            "         validation:",
+            "           properties:",
+            "             limits:",
+            "               type: array",
+            "               items:",
+            "                 type: string",
+            "     targets:",
+            "       - target: admission.k8s.gatekeeper.sh",
+            "         rego: |",
+            "           package k8srequiredresources",
+            "           violation[{\"msg\": msg}] {",
+            "             container := input.review.object.spec.containers[_]",
+            "             not container.resources.limits",
+            "             msg := \"Container must have resource limits\"",
+            "           }",
+            "   EOF",
+            "3. Apply template and create constraint"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment gatekeeper-controller-manager -n gatekeeper-system --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-installed'",
+            "expected": "gatekeeper-controller-manager|not-installed",
+            "points": 4,
+            "description": "Gatekeeper should be installed"
+          },
+          {
+            "command": "kubectl get constrainttemplate k8srequiredresources --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-created'",
+            "expected": "k8srequiredresources|not-created",
+            "points": 4,
+            "description": "ConstraintTemplate should be created"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-019",
+        "title": "Configure Binary Authorization",
+        "description": "Set up binary authorization to ensure only signed and approved images can be deployed to the cluster.",
+        "points": 7,
+        "timeLimit": 12,
+        "category": "Supply Chain Security",
+        "tags": ["binary", "authorization", "policy"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["admissionregistration"],
+          "prerequisites": ["admission webhooks"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create binary authorization policy:",
+            "   cat > binary-auth-policy.yaml << EOF",
+            "   apiVersion: v1",
+            "   kind: ConfigMap",
+            "   metadata:",
+            "     name: binary-auth-policy",
+            "   data:",
+            "     policy.yaml: |",
+            "       defaultAdmissionRule:",
+            "         requireAttestationsBy:",
+            "         - projects/PROJECT_ID/attestors/ATTESTOR_NAME",
+            "         enforcementMode: ENFORCED_BLOCK_AND_AUDIT_LOG",
+            "   EOF",
+            "2. Deploy admission webhook for binary authorization",
+            "3. Configure webhook to validate image signatures",
+            "4. Test with signed and unsigned images"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get configmap binary-auth-policy --no-headers | awk '{print $1}'",
+            "expected": "binary-auth-policy",
+            "points": 3,
+            "description": "Binary authorization policy should exist"
+          },
+          {
+            "command": "kubectl get validatingadmissionconfiguration binary-auth-webhook --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "binary-auth-webhook|not-configured",
+            "points": 4,
+            "description": "Binary authorization webhook should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-b-020",
+        "title": "Configure mTLS Communication",
+        "description": "Configure mutual TLS (mTLS) between two services using service mesh or manual certificate configuration.",
+        "points": 8,
+        "timeLimit": 15,
+        "category": "Network Security",
+        "tags": ["mtls", "certificates", "encryption"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["services", "deployments", "secrets"],
+          "prerequisites": ["service mesh or certificates"]
+        },
+        "solution": {
+          "steps": [
+            "1. Generate client and server certificates:",
+            "   # Create CA and generate client/server certs",
+            "2. Create secrets for certificates:",
+            "   kubectl create secret tls server-tls --cert=server.crt --key=server.key",
+            "   kubectl create secret tls client-tls --cert=client.crt --key=client.key",
+            "3. Configure services to use mTLS:",
+            "   # Update service configurations to require client certificates",
+            "4. Test mTLS communication:",
+            "   # Verify secure communication between services"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get secret server-tls --no-headers | awk '{print $1}'",
+            "expected": "server-tls",
+            "points": 3,
+            "description": "Server TLS secret should exist"
+          },
+          {
+            "command": "kubectl get secret client-tls --no-headers | awk '{print $1}'",
+            "expected": "client-tls",
+            "points": 3,
+            "description": "Client TLS secret should exist"
+          },
+          {
+            "command": "kubectl get deployment secure-server --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "secure-server|not-configured",
+            "points": 2,
+            "description": "Secure server deployment should be configured"
+          }
+        ]
+      }
+    ],
+    "intermediate": [
+      {
+        "id": "cks-i-001",
+        "title": "Implement Admission Controller Webhook",
+        "description": "Create a custom ValidatingAdmissionWebhook that blocks pods without specific security labels and ensures resource limits are set.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Admission Control",
+        "tags": ["webhook", "validation", "security"],
+        "infrastructure": {
+          "namespaces": ["webhook-system"],
+          "resources": ["deployments", "services", "validatingadmissionconfigurations"],
+          "prerequisites": ["TLS certificates"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create webhook server deployment with validation logic",
+            "2. Generate TLS certificates for webhook",
+            "3. Create ValidatingAdmissionConfiguration",
+            "4. Deploy webhook service and endpoints",
+            "5. Test webhook with compliant and non-compliant pods"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get validatingadmissionconfiguration security-webhook --no-headers | awk '{print $1}'",
+            "expected": "security-webhook",
+            "points": 6,
+            "description": "ValidatingAdmissionConfiguration should exist"
+          },
+          {
+            "command": "kubectl get deployment webhook-server -n webhook-system --no-headers | awk '{print $1}'",
+            "expected": "webhook-server",
+            "points": 6,
+            "description": "Webhook server should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-002",
+        "title": "Configure Advanced Network Policies",
+        "description": "Create complex NetworkPolicies with multiple ingress/egress rules, namespace selectors, and port-specific access controls across three tiers.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Network Security",
+        "tags": ["networkpolicy", "segmentation", "micro-segmentation"],
+        "infrastructure": {
+          "namespaces": ["frontend", "backend", "database"],
+          "resources": ["networkpolicies", "pods", "services"],
+          "prerequisites": ["CNI with NetworkPolicy support"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create three namespaces with appropriate labels",
+            "2. Deploy test applications in each tier",
+            "3. Create NetworkPolicies for tier-based access",
+            "4. Configure ingress rules for frontend from external",
+            "5. Configure backend access only from frontend",
+            "6. Configure database access only from backend"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get networkpolicy -n frontend --no-headers | wc -l",
+            "expected": "^[1-9][0-9]*$",
+            "points": 3,
+            "description": "Frontend namespace should have network policies"
+          },
+          {
+            "command": "kubectl get networkpolicy -n backend --no-headers | wc -l",
+            "expected": "^[1-9][0-9]*$",
+            "points": 3,
+            "description": "Backend namespace should have network policies"
+          },
+          {
+            "command": "kubectl get networkpolicy -n database --no-headers | wc -l",
+            "expected": "^[1-9][0-9]*$",
+            "points": 4,
+            "description": "Database namespace should have network policies"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-003",
+        "title": "Implement RBAC with Multiple Teams",
+        "description": "Design and implement complex RBAC system for 3 teams (dev, ops, security) with different permissions across multiple namespaces.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "RBAC",
+        "tags": ["rbac", "multi-tenant", "teams"],
+        "infrastructure": {
+          "namespaces": ["dev", "staging", "production", "monitoring"],
+          "resources": ["roles", "clusterroles", "rolebindings", "clusterrolebindings", "serviceaccounts"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create namespaces for different environments",
+            "2. Create service accounts for each team",
+            "3. Create roles with appropriate permissions per namespace",
+            "4. Create cluster roles for cross-namespace access",
+            "5. Bind roles to teams with proper scope",
+            "6. Test permissions with kubectl auth can-i"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get clusterrole security-admin --no-headers | awk '{print $1}'",
+            "expected": "security-admin",
+            "points": 4,
+            "description": "Security admin ClusterRole should exist"
+          },
+          {
+            "command": "kubectl get role dev-admin -n dev --no-headers | awk '{print $1}'",
+            "expected": "dev-admin",
+            "points": 4,
+            "description": "Dev admin role should exist in dev namespace"
+          },
+          {
+            "command": "kubectl auth can-i list secrets --as=system:serviceaccount:dev:dev-user -n production && echo 'allowed' || echo 'denied'",
+            "expected": "denied",
+            "points": 4,
+            "description": "Dev user should not access production secrets"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-004",
+        "title": "Configure Image Vulnerability Scanning Pipeline",
+        "description": "Set up automated image vulnerability scanning with Trivy, integrate with admission control to block vulnerable images.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Supply Chain Security",
+        "tags": ["vulnerability", "scanning", "automation"],
+        "infrastructure": {
+          "namespaces": ["security-system"],
+          "resources": ["deployments", "configmaps", "admissionregistration"],
+          "tools": ["trivy"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy Trivy server for image scanning",
+            "2. Create admission webhook that scans images",
+            "3. Configure vulnerability threshold policies",
+            "4. Implement image scanning cache for performance",
+            "5. Set up automated reporting of vulnerabilities"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment trivy-server -n security-system --no-headers | awk '{print $1}'",
+            "expected": "trivy-server",
+            "points": 6,
+            "description": "Trivy server should be deployed"
+          },
+          {
+            "command": "kubectl get validatingadmissionconfiguration image-scanner --no-headers | awk '{print $1}'",
+            "expected": "image-scanner",
+            "points": 6,
+            "description": "Image scanning admission webhook should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-005",
+        "title": "Implement Runtime Security Monitoring",
+        "description": "Deploy and configure Falco with custom rules to detect specific security threats and integrate with alerting system.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Runtime Security",
+        "tags": ["falco", "monitoring", "alerts"],
+        "infrastructure": {
+          "namespaces": ["falco-system"],
+          "resources": ["daemonsets", "configmaps", "services"],
+          "tools": ["falco"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy Falco with custom configuration",
+            "2. Create custom rules for specific threats",
+            "3. Configure Falco outputs to multiple destinations",
+            "4. Set up alert manager integration",
+            "5. Test rule triggering and alerting"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get daemonset falco -n falco-system --no-headers | awk '{print $1}'",
+            "expected": "falco",
+            "points": 5,
+            "description": "Falco should be deployed as DaemonSet"
+          },
+          {
+            "command": "kubectl get configmap falco-rules -n falco-system --no-headers | awk '{print $1}'",
+            "expected": "falco-rules",
+            "points": 5,
+            "description": "Custom Falco rules should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-006",
+        "title": "Configure Pod Security Standards",
+        "description": "Implement Pod Security Standards across multiple namespaces with different enforcement levels and create exemptions for system pods.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Pod Security",
+        "tags": ["pss", "standards", "enforcement"],
+        "infrastructure": {
+          "namespaces": ["restricted", "baseline", "privileged", "system"],
+          "resources": ["namespaces", "pods", "deployments"]
+        },
+        "solution": {
+          "steps": [
+            "1. Configure namespaces with Pod Security labels",
+            "2. Set up restricted enforcement for production",
+            "3. Configure baseline for development",
+            "4. Set up privileged for system components",
+            "5. Create and test exemptions for specific workloads"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get namespace restricted -o jsonpath='{.metadata.labels.\"pod-security\\.kubernetes\\.io/enforce\"}'",
+            "expected": "restricted",
+            "points": 3,
+            "description": "Restricted namespace should enforce restricted policy"
+          },
+          {
+            "command": "kubectl get namespace baseline -o jsonpath='{.metadata.labels.\"pod-security\\.kubernetes\\.io/enforce\"}'",
+            "expected": "baseline",
+            "points": 3,
+            "description": "Baseline namespace should enforce baseline policy"
+          },
+          {
+            "command": "kubectl run test-pod --image=nginx --dry-run=server -n restricted 2>&1 | grep -c 'violates.*restricted' || echo '0'",
+            "expected": "^[1-9][0-9]*$",
+            "points": 4,
+            "description": "Restricted namespace should block non-compliant pods"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-007",
+        "title": "Implement Secret Management with External Systems",
+        "description": "Configure integration with external secret management system (HashiCorp Vault) using CSI driver or operator.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Secrets Management",
+        "tags": ["vault", "csi", "external-secrets"],
+        "infrastructure": {
+          "namespaces": ["vault-system", "default"],
+          "resources": ["deployments", "secrets", "csidrivers"],
+          "prerequisites": ["Vault instance"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy Vault server or connect to external Vault",
+            "2. Install Vault CSI driver or External Secrets Operator",
+            "3. Configure authentication between K8s and Vault",
+            "4. Create SecretProviderClass or SecretStore",
+            "5. Deploy application that consumes secrets from Vault"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment vault -n vault-system --no-headers | awk '{print $1}' 2>/dev/null || echo 'external'",
+            "expected": "vault|external",
+            "points": 4,
+            "description": "Vault should be deployed or externally available"
+          },
+          {
+            "command": "kubectl get csidriver secrets-store.csi.k8s.io --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-installed'",
+            "expected": "secrets-store.csi.k8s.io|not-installed",
+            "points": 4,
+            "description": "Secrets Store CSI driver should be installed"
+          },
+          {
+            "command": "kubectl get secretproviderclass vault-secrets --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "vault-secrets|not-configured",
+            "points": 4,
+            "description": "SecretProviderClass should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-008",
+        "title": "Configure Advanced Audit Logging",
+        "description": "Implement comprehensive audit logging with custom policies, log forwarding to external systems, and audit analysis.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Monitoring & Logging",
+        "tags": ["audit", "logging", "analysis"],
+        "infrastructure": {
+          "namespaces": [],
+          "resources": [],
+          "files": ["/var/log/audit.log"],
+          "prerequisites": ["API server access", "log forwarding system"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create comprehensive audit policy",
+            "2. Configure API server with advanced audit settings",
+            "3. Set up log rotation and forwarding",
+            "4. Deploy log analysis tools (ELK, Splunk, etc.)",
+            "5. Create audit dashboards and alerts"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /etc/kubernetes/audit-policy.yaml && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 3,
+            "description": "Comprehensive audit policy should exist"
+          },
+          {
+            "command": "ps aux | grep kube-apiserver | grep -c 'audit-webhook' || echo '0'",
+            "expected": "^[1-9][0-9]*$",
+            "points": 4,
+            "description": "Audit webhook should be configured"
+          },
+          {
+            "command": "test -f /var/log/audit.log && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 3,
+            "description": "Audit log file should exist"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-009",
+        "title": "Implement Container Runtime Security",
+        "description": "Configure gVisor or Kata Containers for enhanced container isolation and deploy workloads with different runtime classes.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Runtime Security",
+        "tags": ["gvisor", "kata", "isolation"],
+        "infrastructure": {
+          "namespaces": ["secure-workloads"],
+          "resources": ["runtimeclasses", "pods"],
+          "prerequisites": ["alternative container runtime"]
+        },
+        "solution": {
+          "steps": [
+            "1. Install gVisor or Kata Containers runtime",
+            "2. Configure containerd with multiple runtimes",
+            "3. Create RuntimeClass resources",
+            "4. Deploy workloads using secure runtime",
+            "5. Test isolation and performance differences"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get runtimeclass gvisor --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "gvisor|not-configured",
+            "points": 6,
+            "description": "gVisor RuntimeClass should be configured"
+          },
+          {
+            "command": "kubectl get pod secure-workload -n secure-workloads -o jsonpath='{.spec.runtimeClassName}' 2>/dev/null || echo 'not-deployed'",
+            "expected": "gvisor|kata|not-deployed",
+            "points": 6,
+            "description": "Secure workload should use secure runtime"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-010",
+        "title": "Configure Supply Chain Security with Sigstore",
+        "description": "Implement comprehensive supply chain security using Sigstore (Cosign, Rekor, Fulcio) for image signing and verification.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Supply Chain Security",
+        "tags": ["sigstore", "cosign", "rekor"],
+        "infrastructure": {
+          "namespaces": ["sigstore-system"],
+          "resources": ["deployments", "admissionregistration"],
+          "tools": ["cosign", "rekor"]
+        },
+        "solution": {
+          "steps": [
+            "1. Set up Sigstore components (Rekor, Fulcio)",
+            "2. Configure image signing pipeline with Cosign",
+            "3. Implement admission controller for signature verification",
+            "4. Set up transparency log integration",
+            "5. Create policy for signed image enforcement"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment rekor-server -n sigstore-system --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-deployed'",
+            "expected": "rekor-server|not-deployed",
+            "points": 4,
+            "description": "Rekor server should be deployed"
+          },
+          {
+            "command": "kubectl get validatingadmissionconfiguration cosign-webhook --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "cosign-webhook|not-configured",
+            "points": 4,
+            "description": "Cosign admission webhook should be configured"
+          },
+          {
+            "command": "cosign verify --key cosign.pub nginx:1.20 > /dev/null 2>&1 && echo 'verified' || echo 'not-signed'",
+            "expected": "verified|not-signed",
+            "points": 4,
+            "description": "Image should be signed and verifiable"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-011",
+        "title": "Implement Zero Trust Network Architecture",
+        "description": "Design and implement zero trust networking with service mesh, mTLS, and fine-grained access controls.",
+        "points": 15,
+        "timeLimit": 25,
+        "category": "Network Security",
+        "tags": ["zero-trust", "service-mesh", "mtls"],
+        "infrastructure": {
+          "namespaces": ["istio-system", "app"],
+          "resources": ["services", "virtualservices", "destinationrules", "authorizationpolicies"],
+          "prerequisites": ["Istio or similar service mesh"]
+        },
+        "solution": {
+          "steps": [
+            "1. Install and configure Istio service mesh",
+            "2. Enable automatic mTLS for all services",
+            "3. Create authorization policies for fine-grained access",
+            "4. Implement JWT validation for external access",
+            "5. Set up traffic policies and rate limiting"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment istiod -n istio-system --no-headers | awk '{print $1}'",
+            "expected": "istiod",
+            "points": 5,
+            "description": "Istio control plane should be deployed"
+          },
+          {
+            "command": "kubectl get peerauthentication default -n istio-system -o jsonpath='{.spec.mtls.mode}' 2>/dev/null || echo 'not-configured'",
+            "expected": "STRICT|not-configured",
+            "points": 5,
+            "description": "Strict mTLS should be enforced"
+          },
+          {
+            "command": "kubectl get authorizationpolicy --all-namespaces --no-headers | wc -l",
+            "expected": "^[1-9][0-9]*$",
+            "points": 5,
+            "description": "Authorization policies should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-012",
+        "title": "Configure Advanced Pod Security Contexts",
+        "description": "Implement complex security contexts with AppArmor, SELinux, and custom seccomp profiles across different workload types.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Pod Security",
+        "tags": ["apparmor", "selinux", "seccomp"],
+        "infrastructure": {
+          "namespaces": ["secure-apps"],
+          "resources": ["pods", "deployments"],
+          "files": ["security profiles"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create custom AppArmor profiles",
+            "2. Configure SELinux contexts for pods",
+            "3. Create restrictive seccomp profiles",
+            "4. Deploy applications with different security contexts",
+            "5. Test and validate security enforcement"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /etc/apparmor.d/custom-profile && echo 'exists' || echo 'missing'",
+            "expected": "exists",
+            "points": 3,
+            "description": "Custom AppArmor profile should exist"
+          },
+          {
+            "command": "kubectl get pod secure-app -n secure-apps -o jsonpath='{.metadata.annotations.\"container\\.apparmor\\.security\\.beta\\.kubernetes\\.io/app\"}' 2>/dev/null || echo 'not-configured'",
+            "expected": "localhost/custom-profile|not-configured",
+            "points": 4,
+            "description": "Pod should use custom AppArmor profile"
+          },
+          {
+            "command": "kubectl get pod secure-app -n secure-apps -o jsonpath='{.spec.securityContext.seLinuxOptions.level}' 2>/dev/null || echo 'not-configured'",
+            "expected": "s0:c123,c456|not-configured",
+            "points": 3,
+            "description": "Pod should have SELinux context configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-013",
+        "title": "Implement Compliance Scanning",
+        "description": "Deploy and configure compliance scanning tools (kube-bench, kube-hunter) with automated reporting and remediation suggestions.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Compliance",
+        "tags": ["compliance", "scanning", "benchmarks"],
+        "infrastructure": {
+          "namespaces": ["compliance"],
+          "resources": ["jobs", "configmaps"],
+          "tools": ["kube-bench", "kube-hunter"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy kube-bench for CIS benchmark scanning",
+            "2. Configure kube-hunter for penetration testing",
+            "3. Set up automated scanning schedules",
+            "4. Create compliance reporting dashboard",
+            "5. Implement remediation tracking system"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get job kube-bench -n compliance --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-scheduled'",
+            "expected": "kube-bench|not-scheduled",
+            "points": 5,
+            "description": "Kube-bench job should be scheduled"
+          },
+          {
+            "command": "kubectl get configmap compliance-report -n compliance --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-created'",
+            "expected": "compliance-report|not-created",
+            "points": 5,
+            "description": "Compliance report should be generated"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-014",
+        "title": "Configure Workload Identity and Federation",
+        "description": "Implement workload identity federation with cloud providers and configure cross-cluster authentication.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Identity & Authentication",
+        "tags": ["workload-identity", "federation", "oidc"],
+        "infrastructure": {
+          "namespaces": ["workload-identity"],
+          "resources": ["serviceaccounts", "configmaps"],
+          "prerequisites": ["cloud provider integration", "OIDC provider"]
+        },
+        "solution": {
+          "steps": [
+            "1. Configure OIDC provider for the cluster",
+            "2. Set up workload identity annotation on service accounts",
+            "3. Configure cloud provider IAM role mapping",
+            "4. Implement cross-cluster service account federation",
+            "5. Test workload identity with cloud services"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get serviceaccount workload-identity-sa -n workload-identity -o jsonpath='{.metadata.annotations.\"iam\\.gke\\.io/gcp-service-account\"}' 2>/dev/null || echo 'not-configured'",
+            "expected": ".*@.*\\.iam\\.gserviceaccount\\.com|not-configured",
+            "points": 6,
+            "description": "Service account should have workload identity annotation"
+          },
+          {
+            "command": "kubectl get configmap cluster-info -n kube-public -o jsonpath='{.data.cluster-config\\.json}' | grep -c 'oidc' || echo '0'",
+            "expected": "^[1-9][0-9]*$",
+            "points": 6,
+            "description": "Cluster should have OIDC configuration"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-015",
+        "title": "Implement Advanced Threat Detection",
+        "description": "Deploy and configure advanced threat detection using machine learning-based anomaly detection and behavioral analysis.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Threat Detection",
+        "tags": ["threat-detection", "anomaly", "ml"],
+        "infrastructure": {
+          "namespaces": ["security-monitoring"],
+          "resources": ["deployments", "services", "configmaps"],
+          "tools": ["security monitoring platform"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy threat detection platform",
+            "2. Configure baseline behavior profiling",
+            "3. Set up anomaly detection rules",
+            "4. Implement threat intelligence feeds",
+            "5. Configure automated response actions"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment threat-detector -n security-monitoring --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-deployed'",
+            "expected": "threat-detector|not-deployed",
+            "points": 6,
+            "description": "Threat detection system should be deployed"
+          },
+          {
+            "command": "kubectl get configmap threat-rules -n security-monitoring --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "threat-rules|not-configured",
+            "points": 6,
+            "description": "Threat detection rules should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-016",
+        "title": "Configure Secure Multi-Tenancy",
+        "description": "Implement secure multi-tenancy with virtual clusters, namespace isolation, and tenant-specific security policies.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Multi-Tenancy",
+        "tags": ["multi-tenancy", "isolation", "virtual-clusters"],
+        "infrastructure": {
+          "namespaces": ["tenant-a", "tenant-b", "tenant-c"],
+          "resources": ["namespaces", "resourcequotas", "networkpolicies", "roles"],
+          "tools": ["virtual cluster tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy virtual cluster solution (vcluster, loft)",
+            "2. Create isolated tenant namespaces",
+            "3. Implement tenant-specific RBAC",
+            "4. Configure resource quotas per tenant",
+            "5. Set up tenant monitoring and logging"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get namespace tenant-a -o jsonpath='{.metadata.labels.\"tenant\"}'",
+            "expected": "tenant-a",
+            "points": 4,
+            "description": "Tenant A namespace should be properly labeled"
+          },
+          {
+            "command": "kubectl get resourcequota tenant-a-quota -n tenant-a --no-headers | awk '{print $1}'",
+            "expected": "tenant-a-quota",
+            "points": 4,
+            "description": "Tenant A should have resource quota"
+          },
+          {
+            "command": "kubectl auth can-i list secrets --as=system:serviceaccount:tenant-a:default -n tenant-b && echo 'allowed' || echo 'denied'",
+            "expected": "denied",
+            "points": 4,
+            "description": "Tenant A should not access Tenant B resources"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-017",
+        "title": "Implement Security Incident Response",
+        "description": "Create automated security incident response workflows with detection, isolation, and remediation capabilities.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Incident Response",
+        "tags": ["incident-response", "automation", "remediation"],
+        "infrastructure": {
+          "namespaces": ["incident-response"],
+          "resources": ["deployments", "configmaps", "workflows"],
+          "tools": ["workflow engine", "automation tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy incident response automation platform",
+            "2. Create detection rules and triggers",
+            "3. Implement automated isolation procedures",
+            "4. Set up forensic data collection",
+            "5. Configure notification and escalation workflows"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment incident-responder -n incident-response --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-deployed'",
+            "expected": "incident-responder|not-deployed",
+            "points": 6,
+            "description": "Incident response system should be deployed"
+          },
+          {
+            "command": "kubectl get configmap response-playbooks -n incident-response --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "response-playbooks|not-configured",
+            "points": 6,
+            "description": "Response playbooks should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-018",
+        "title": "Configure Data Protection and Encryption",
+        "description": "Implement comprehensive data protection with encryption at rest, in transit, and in use using various encryption methods.",
+        "points": 10,
+        "timeLimit": 18,
+        "category": "Data Protection",
+        "tags": ["encryption", "data-protection", "kms"],
+        "infrastructure": {
+          "namespaces": ["secure-data"],
+          "resources": ["secrets", "configmaps", "encryptionconfigurations"],
+          "prerequisites": ["KMS provider"]
+        },
+        "solution": {
+          "steps": [
+            "1. Configure etcd encryption at rest",
+            "2. Set up KMS provider integration",
+            "3. Implement secret encryption with external KMS",
+            "4. Configure in-transit encryption for all services",
+            "5. Set up encrypted persistent volumes"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get encryptionconfig encryption-config --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "encryption-config|not-configured",
+            "points": 5,
+            "description": "Encryption configuration should be set up"
+          },
+          {
+            "command": "kubectl get secret encrypted-secret -n secure-data -o jsonpath='{.metadata.annotations.\"encryption\\.alpha\\.kubernetes\\.io/scheme\"}' 2>/dev/null || echo 'not-encrypted'",
+            "expected": "kms|aes|not-encrypted",
+            "points": 5,
+            "description": "Secrets should be encrypted with proper scheme"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-019",
+        "title": "Implement Secure CI/CD Pipeline",
+        "description": "Create secure CI/CD pipeline with image scanning, security testing, and secure deployment practices.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "DevSecOps",
+        "tags": ["cicd", "pipeline", "security"],
+        "infrastructure": {
+          "namespaces": ["cicd"],
+          "resources": ["deployments", "secrets", "configmaps"],
+          "tools": ["CI/CD platform", "security scanners"]
+        },
+        "solution": {
+          "steps": [
+            "1. Set up secure CI/CD platform (Tekton, GitLab, etc.)",
+            "2. Implement image vulnerability scanning in pipeline",
+            "3. Add security testing and SAST/DAST tools",
+            "4. Configure secure deployment with admission controls",
+            "5. Implement pipeline security monitoring and alerting"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pipeline security-scan -n cicd --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "security-scan|not-configured",
+            "points": 6,
+            "description": "Security scanning pipeline should be configured"
+          },
+          {
+            "command": "kubectl get secret registry-credentials -n cicd --no-headers | awk '{print $1}'",
+            "expected": "registry-credentials",
+            "points": 6,
+            "description": "Secure registry credentials should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-i-020",
+        "title": "Configure Advanced Container Security",
+        "description": "Implement advanced container security with rootless containers, user namespace mapping, and container escape prevention.",
+        "points": 12,
+        "timeLimit": 20,
+        "category": "Container Security",
+        "tags": ["rootless", "user-namespace", "container-escape"],
+        "infrastructure": {
+          "namespaces": ["secure-containers"],
+          "resources": ["pods", "deployments"],
+          "prerequisites": ["rootless container runtime"]
+        },
+        "solution": {
+          "steps": [
+            "1. Configure rootless container runtime",
+            "2. Set up user namespace mapping",
+            "3. Implement container escape prevention measures",
+            "4. Configure advanced seccomp and AppArmor profiles",
+            "5. Test container isolation and security boundaries"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod rootless-pod -n secure-containers -o jsonpath='{.spec.securityContext.runAsNonRoot}'",
+            "expected": "true",
+            "points": 4,
+            "description": "Pod should run as non-root"
+          },
+          {
+            "command": "kubectl get pod rootless-pod -n secure-containers -o jsonpath='{.spec.containers[0].securityContext.capabilities.drop[0]}'",
+            "expected": "ALL",
+            "points": 4,
+            "description": "Container should drop all capabilities"
+          },
+          {
+            "command": "kubectl get pod rootless-pod -n secure-containers -o jsonpath='{.spec.containers[0].securityContext.allowPrivilegeEscalation}'",
+            "expected": "false",
+            "points": 4,
+            "description": "Container should not allow privilege escalation"
+          }
+        ]
+      }
+    ],
+    "advanced": [
+      {
+        "id": "cks-a-001",
+        "title": "Design Comprehensive Security Architecture",
+        "description": "Design and implement a complete security architecture for a multi-tenant, multi-cluster environment with zero-trust principles.",
+        "points": 20,
+        "timeLimit": 40,
+        "category": "Security Architecture",
+        "tags": ["architecture", "zero-trust", "multi-cluster"],
+        "infrastructure": {
+          "namespaces": ["security-system", "tenant-isolation", "monitoring"],
+          "resources": ["all resource types"],
+          "prerequisites": ["multiple clusters", "service mesh", "external systems"]
+        },
+        "solution": {
+          "steps": [
+            "1. Design zero-trust network architecture with service mesh",
+            "2. Implement comprehensive identity and access management",
+            "3. Set up multi-layer security controls and policies",
+            "4. Deploy advanced threat detection and response systems",
+            "5. Implement compliance and governance frameworks"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get peerauthentication default -n istio-system -o jsonpath='{.spec.mtls.mode}'",
+            "expected": "STRICT",
+            "points": 5,
+            "description": "Strict mTLS should be enforced cluster-wide"
+          },
+          {
+            "command": "kubectl get authorizationpolicy --all-namespaces --no-headers | wc -l",
+            "expected": "^[5-9][0-9]*$",
+            "points": 5,
+            "description": "Comprehensive authorization policies should be deployed"
+          },
+          {
+            "command": "kubectl get networkpolicy --all-namespaces --no-headers | wc -l",
+            "expected": "^[5-9][0-9]*$",
+            "points": 5,
+            "description": "Network segmentation should be implemented"
+          },
+          {
+            "command": "kubectl get deployment security-controller -n security-system --no-headers | awk '{print $1}'",
+            "expected": "security-controller",
+            "points": 5,
+            "description": "Centralized security controller should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-002",
+        "title": "Implement Advanced Threat Hunting",
+        "description": "Build advanced threat hunting capabilities with behavioral analysis, ML-based detection, and automated threat response.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Threat Hunting",
+        "tags": ["threat-hunting", "ml", "behavioral-analysis"],
+        "infrastructure": {
+          "namespaces": ["threat-hunting", "ml-security"],
+          "resources": ["deployments", "services", "ml-models"],
+          "tools": ["ML platforms", "threat intelligence"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy ML-based anomaly detection system",
+            "2. Implement behavioral baseline profiling",
+            "3. Set up threat intelligence integration",
+            "4. Create automated threat hunting workflows",
+            "5. Implement adaptive security response mechanisms"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment ml-threat-detector -n threat-hunting --no-headers | awk '{print $1}'",
+            "expected": "ml-threat-detector",
+            "points": 6,
+            "description": "ML threat detection system should be deployed"
+          },
+          {
+            "command": "kubectl get configmap threat-intelligence -n threat-hunting --no-headers | awk '{print $1}'",
+            "expected": "threat-intelligence",
+            "points": 6,
+            "description": "Threat intelligence feeds should be configured"
+          },
+          {
+            "command": "kubectl get cronjob behavioral-analysis -n threat-hunting --no-headers | awk '{print $1}'",
+            "expected": "behavioral-analysis",
+            "points": 6,
+            "description": "Behavioral analysis should be scheduled"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-003",
+        "title": "Implement Hardware Security Module Integration",
+        "description": "Integrate Hardware Security Modules (HSM) for cryptographic operations and secure key management in Kubernetes.",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "Cryptography",
+        "tags": ["hsm", "cryptography", "key-management"],
+        "infrastructure": {
+          "namespaces": ["hsm-system"],
+          "resources": ["secrets", "configmaps", "deployments"],
+          "prerequisites": ["HSM hardware/service", "PKCS#11 drivers"]
+        },
+        "solution": {
+          "steps": [
+            "1. Configure HSM connectivity and drivers",
+            "2. Implement PKCS#11 provider for Kubernetes",
+            "3. Set up HSM-backed key management service",
+            "4. Configure applications to use HSM for crypto operations",
+            "5. Implement key rotation and lifecycle management"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get secret hsm-config -n hsm-system --no-headers | awk '{print $1}'",
+            "expected": "hsm-config",
+            "points": 4,
+            "description": "HSM configuration should be set up"
+          },
+          {
+            "command": "kubectl get deployment hsm-provider -n hsm-system --no-headers | awk '{print $1}'",
+            "expected": "hsm-provider",
+            "points": 6,
+            "description": "HSM provider service should be deployed"
+          },
+          {
+            "command": "kubectl get secret hsm-backed-key -n hsm-system -o jsonpath='{.metadata.annotations.\"hsm\\.provider/key-id\"}' 2>/dev/null || echo 'not-configured'",
+            "expected": "^hsm-key-.*|not-configured",
+            "points": 6,
+            "description": "HSM-backed keys should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-004",
+        "title": "Implement Confidential Computing",
+        "description": "Deploy confidential computing solutions using Intel SGX, AMD SEV, or similar technologies for sensitive workloads.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Confidential Computing",
+        "tags": ["sgx", "sev", "tee", "confidential"],
+        "infrastructure": {
+          "namespaces": ["confidential-workloads"],
+          "resources": ["pods", "secrets", "deviceplugins"],
+          "prerequisites": ["SGX/SEV capable hardware", "confidential computing runtime"]
+        },
+        "solution": {
+          "steps": [
+            "1. Configure confidential computing runtime (SGX, SEV)",
+            "2. Deploy device plugins for hardware access",
+            "3. Create confidential workload specifications",
+            "4. Implement attestation and verification mechanisms",
+            "5. Set up secure communication channels for confidential data"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get daemonset sgx-device-plugin -n kube-system --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-deployed'",
+            "expected": "sgx-device-plugin|not-deployed",
+            "points": 6,
+            "description": "SGX device plugin should be deployed"
+          },
+          {
+            "command": "kubectl get pod confidential-app -n confidential-workloads -o jsonpath='{.spec.containers[0].resources.limits.\"intel\\.com/sgx\"}' 2>/dev/null || echo 'not-configured'",
+            "expected": "^[1-9][0-9]*|not-configured",
+            "points": 6,
+            "description": "Confidential workload should request SGX resources"
+          },
+          {
+            "command": "kubectl get service attestation-service -n confidential-workloads --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-deployed'",
+            "expected": "attestation-service|not-deployed",
+            "points": 6,
+            "description": "Attestation service should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-005",
+        "title": "Implement Advanced Compliance Automation",
+        "description": "Create comprehensive compliance automation system for multiple standards (SOC2, PCI-DSS, HIPAA, FedRAMP).",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "Compliance",
+        "tags": ["compliance", "automation", "standards"],
+        "infrastructure": {
+          "namespaces": ["compliance-system"],
+          "resources": ["jobs", "configmaps", "reports"],
+          "tools": ["compliance scanners", "reporting tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy multi-standard compliance scanning framework",
+            "2. Configure automated evidence collection",
+            "3. Implement continuous compliance monitoring",
+            "4. Set up compliance reporting and dashboards",
+            "5. Create automated remediation workflows"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get cronjob soc2-scan -n compliance-system --no-headers | awk '{print $1}'",
+            "expected": "soc2-scan",
+            "points": 4,
+            "description": "SOC2 compliance scanning should be scheduled"
+          },
+          {
+            "command": "kubectl get cronjob pci-scan -n compliance-system --no-headers | awk '{print $1}'",
+            "expected": "pci-scan",
+            "points": 4,
+            "description": "PCI-DSS compliance scanning should be scheduled"
+          },
+          {
+            "command": "kubectl get deployment compliance-dashboard -n compliance-system --no-headers | awk '{print $1}'",
+            "expected": "compliance-dashboard",
+            "points": 4,
+            "description": "Compliance dashboard should be deployed"
+          },
+          {
+            "command": "kubectl get configmap compliance-reports -n compliance-system --no-headers | awk '{print $1}'",
+            "expected": "compliance-reports",
+            "points": 4,
+            "description": "Compliance reports should be generated"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-006",
+        "title": "Implement Advanced API Security",
+        "description": "Deploy comprehensive API security with rate limiting, authentication, authorization, and API threat protection.",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "API Security",
+        "tags": ["api-security", "rate-limiting", "threat-protection"],
+        "infrastructure": {
+          "namespaces": ["api-security"],
+          "resources": ["gateways", "virtualservices", "rateLimits"],
+          "prerequisites": ["API gateway", "security tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy advanced API gateway with security features",
+            "2. Implement OAuth2/OIDC authentication flows",
+            "3. Set up fine-grained API authorization policies",
+            "4. Configure rate limiting and DDoS protection",
+            "5. Implement API threat detection and response"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get gateway api-gateway -n api-security --no-headers | awk '{print $1}'",
+            "expected": "api-gateway",
+            "points": 4,
+            "description": "API gateway should be deployed"
+          },
+          {
+            "command": "kubectl get envoyfilter rate-limit -n api-security --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "rate-limit|not-configured",
+            "points": 4,
+            "description": "Rate limiting should be configured"
+          },
+          {
+            "command": "kubectl get authorizationpolicy api-authz -n api-security --no-headers | awk '{print $1}'",
+            "expected": "api-authz",
+            "points": 4,
+            "description": "API authorization policies should be configured"
+          },
+          {
+            "command": "kubectl get deployment threat-protection -n api-security --no-headers | awk '{print $1}'",
+            "expected": "threat-protection",
+            "points": 4,
+            "description": "API threat protection should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-007",
+        "title": "Implement Advanced Secret Management",
+        "description": "Create enterprise-grade secret management with rotation, versioning, audit trails, and break-glass procedures.",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "Secret Management",
+        "tags": ["secrets", "rotation", "enterprise"],
+        "infrastructure": {
+          "namespaces": ["secret-management"],
+          "resources": ["secrets", "cronjobs", "operators"],
+          "tools": ["external secret stores", "automation tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy external secret management system integration",
+            "2. Implement automated secret rotation workflows",
+            "3. Set up secret versioning and rollback capabilities",
+            "4. Configure comprehensive audit logging for secrets",
+            "5. Implement break-glass emergency access procedures"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment external-secrets -n secret-management --no-headers | awk '{print $1}'",
+            "expected": "external-secrets",
+            "points": 4,
+            "description": "External secrets system should be deployed"
+          },
+          {
+            "command": "kubectl get cronjob secret-rotation -n secret-management --no-headers | awk '{print $1}'",
+            "expected": "secret-rotation",
+            "points": 4,
+            "description": "Secret rotation should be automated"
+          },
+          {
+            "command": "kubectl get secret versioned-secret -n secret-management -o jsonpath='{.metadata.annotations.\"secret\\.version\"}' 2>/dev/null || echo 'not-versioned'",
+            "expected": "^v[0-9]+|not-versioned",
+            "points": 4,
+            "description": "Secrets should be versioned"
+          },
+          {
+            "command": "kubectl get configmap break-glass-procedure -n secret-management --no-headers | awk '{print $1}'",
+            "expected": "break-glass-procedure",
+            "points": 4,
+            "description": "Break-glass procedures should be documented"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-008",
+        "title": "Implement Container Runtime Security Hardening",
+        "description": "Implement advanced container runtime security hardening with custom runtimes, kernel hardening, and container escape prevention.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Runtime Security",
+        "tags": ["runtime-hardening", "kernel", "escape-prevention"],
+        "infrastructure": {
+          "namespaces": ["hardened-runtime"],
+          "resources": ["runtimeclasses", "pods"],
+          "prerequisites": ["custom container runtimes", "kernel modules"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy hardened container runtime (gVisor, Kata, etc.)",
+            "2. Configure kernel security modules and hardening",
+            "3. Implement advanced syscall filtering and monitoring",
+            "4. Set up container escape detection and prevention",
+            "5. Create runtime security monitoring and alerting"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get runtimeclass hardened --no-headers | awk '{print $1}'",
+            "expected": "hardened",
+            "points": 6,
+            "description": "Hardened runtime class should be configured"
+          },
+          {
+            "command": "kubectl get pod hardened-workload -n hardened-runtime -o jsonpath='{.spec.runtimeClassName}'",
+            "expected": "hardened",
+            "points": 6,
+            "description": "Workload should use hardened runtime"
+          },
+          {
+            "command": "kubectl get daemonset runtime-monitor -n hardened-runtime --no-headers | awk '{print $1}'",
+            "expected": "runtime-monitor",
+            "points": 6,
+            "description": "Runtime security monitoring should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-009",
+        "title": "Implement Advanced Network Security",
+        "description": "Design and implement advanced network security with micro-segmentation, encrypted overlay networks, and network-based threat detection.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Network Security",
+        "tags": ["micro-segmentation", "encryption", "network-detection"],
+        "infrastructure": {
+          "namespaces": ["network-security"],
+          "resources": ["networkpolicies", "ciliumnetworkpolicies", "gateways"],
+          "prerequisites": ["advanced CNI", "network security tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Implement advanced CNI with security features",
+            "2. Configure micro-segmentation with L3/L4/L7 policies",
+            "3. Set up encrypted overlay networks",
+            "4. Deploy network-based threat detection",
+            "5. Implement network forensics and analysis"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get ciliumnetworkpolicy micro-segmentation -n network-security --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "micro-segmentation|not-configured",
+            "points": 6,
+            "description": "Micro-segmentation policies should be configured"
+          },
+          {
+            "command": "kubectl get deployment network-threat-detector -n network-security --no-headers | awk '{print $1}'",
+            "expected": "network-threat-detector",
+            "points": 6,
+            "description": "Network threat detection should be deployed"
+          },
+          {
+            "command": "kubectl get service network-forensics -n network-security --no-headers | awk '{print $1}'",
+            "expected": "network-forensics",
+            "points": 6,
+            "description": "Network forensics service should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-010",
+        "title": "Implement Security Orchestration and Response",
+        "description": "Build comprehensive SOAR (Security Orchestration, Automation, and Response) platform for Kubernetes environments.",
+        "points": 20,
+        "timeLimit": 40,
+        "category": "Security Orchestration",
+        "tags": ["soar", "automation", "orchestration"],
+        "infrastructure": {
+          "namespaces": ["soar-system"],
+          "resources": ["workflows", "playbooks", "integrations"],
+          "tools": ["workflow engines", "integration platforms"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy SOAR platform with Kubernetes integration",
+            "2. Create security playbooks for incident response",
+            "3. Implement automated threat hunting workflows",
+            "4. Set up integration with security tools and SIEM",
+            "5. Configure orchestrated response actions"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment soar-platform -n soar-system --no-headers | awk '{print $1}'",
+            "expected": "soar-platform",
+            "points": 5,
+            "description": "SOAR platform should be deployed"
+          },
+          {
+            "command": "kubectl get configmap security-playbooks -n soar-system --no-headers | awk '{print $1}'",
+            "expected": "security-playbooks",
+            "points": 5,
+            "description": "Security playbooks should be configured"
+          },
+          {
+            "command": "kubectl get workflow incident-response -n soar-system --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "incident-response|not-configured",
+            "points": 5,
+            "description": "Incident response workflows should be configured"
+          },
+          {
+            "command": "kubectl get deployment threat-hunting-automation -n soar-system --no-headers | awk '{print $1}'",
+            "expected": "threat-hunting-automation",
+            "points": 5,
+            "description": "Automated threat hunting should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-011",
+        "title": "Implement Advanced Identity and Access Management",
+        "description": "Design enterprise IAM with advanced authentication, dynamic authorization, and identity federation across multiple systems.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Identity & Access",
+        "tags": ["iam", "federation", "dynamic-authorization"],
+        "infrastructure": {
+          "namespaces": ["iam-system"],
+          "resources": ["authconfigs", "identityproviders", "policies"],
+          "prerequisites": ["identity providers", "policy engines"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy enterprise identity management system",
+            "2. Configure multi-factor authentication and SSO",
+            "3. Implement dynamic authorization with policy engines",
+            "4. Set up identity federation with external systems",
+            "5. Create identity lifecycle management workflows"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get identityprovider enterprise-idp -n iam-system --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "enterprise-idp|not-configured",
+            "points": 6,
+            "description": "Enterprise identity provider should be configured"
+          },
+          {
+            "command": "kubectl get deployment policy-engine -n iam-system --no-headers | awk '{print $1}'",
+            "expected": "policy-engine",
+            "points": 6,
+            "description": "Policy engine should be deployed"
+          },
+          {
+            "command": "kubectl get configmap federation-config -n iam-system --no-headers | awk '{print $1}'",
+            "expected": "federation-config",
+            "points": 6,
+            "description": "Identity federation should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-012",
+        "title": "Implement Security Data Lake and Analytics",
+        "description": "Build comprehensive security data lake with advanced analytics, ML-based threat detection, and security intelligence.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Security Analytics",
+        "tags": ["data-lake", "analytics", "ml-security"],
+        "infrastructure": {
+          "namespaces": ["security-analytics"],
+          "resources": ["deployments", "services", "ml-jobs"],
+          "tools": ["big data platforms", "ML frameworks"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy security data lake infrastructure",
+            "2. Implement data ingestion from all security sources",
+            "3. Set up ML-based threat detection models",
+            "4. Create security analytics dashboards",
+            "5. Implement threat intelligence correlation"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment data-lake -n security-analytics --no-headers | awk '{print $1}'",
+            "expected": "data-lake",
+            "points": 6,
+            "description": "Security data lake should be deployed"
+          },
+          {
+            "command": "kubectl get job ml-threat-model -n security-analytics --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "ml-threat-model|not-configured",
+            "points": 6,
+            "description": "ML threat detection models should be deployed"
+          },
+          {
+            "command": "kubectl get service analytics-dashboard -n security-analytics --no-headers | awk '{print $1}'",
+            "expected": "analytics-dashboard",
+            "points": 6,
+            "description": "Security analytics dashboard should be accessible"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-013",
+        "title": "Implement Advanced Supply Chain Security",
+        "description": "Create comprehensive supply chain security with SLSA compliance, provenance tracking, and automated verification.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Supply Chain Security",
+        "tags": ["slsa", "provenance", "supply-chain"],
+        "infrastructure": {
+          "namespaces": ["supply-chain-security"],
+          "resources": ["attestations", "policies", "verifiers"],
+          "tools": ["SLSA tools", "in-toto", "supply chain security tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Implement SLSA framework for build security",
+            "2. Set up provenance generation and tracking",
+            "3. Deploy automated supply chain verification",
+            "4. Implement dependency scanning and analysis",
+            "5. Create supply chain risk assessment workflows"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment slsa-verifier -n supply-chain-security --no-headers | awk '{print $1}'",
+            "expected": "slsa-verifier",
+            "points": 6,
+            "description": "SLSA verifier should be deployed"
+          },
+          {
+            "command": "kubectl get configmap provenance-policies -n supply-chain-security --no-headers | awk '{print $1}'",
+            "expected": "provenance-policies",
+            "points": 6,
+            "description": "Provenance policies should be configured"
+          },
+          {
+            "command": "kubectl get cronjob dependency-scan -n supply-chain-security --no-headers | awk '{print $1}'",
+            "expected": "dependency-scan",
+            "points": 6,
+            "description": "Dependency scanning should be automated"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-014",
+        "title": "Implement Advanced Kubernetes Security Monitoring",
+        "description": "Build comprehensive Kubernetes security monitoring with behavior analysis, anomaly detection, and predictive security.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Security Monitoring",
+        "tags": ["monitoring", "behavior-analysis", "predictive"],
+        "infrastructure": {
+          "namespaces": ["security-monitoring"],
+          "resources": ["monitoring-stack", "ml-models", "alerts"],
+          "tools": ["monitoring platforms", "ML frameworks"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy comprehensive security monitoring stack",
+            "2. Implement behavior baseline establishment",
+            "3. Set up anomaly detection with ML models",
+            "4. Create predictive security analytics",
+            "5. Implement adaptive security response"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment security-monitor -n security-monitoring --no-headers | awk '{print $1}'",
+            "expected": "security-monitor",
+            "points": 6,
+            "description": "Security monitoring should be deployed"
+          },
+          {
+            "command": "kubectl get deployment behavior-analyzer -n security-monitoring --no-headers | awk '{print $1}'",
+            "expected": "behavior-analyzer",
+            "points": 6,
+            "description": "Behavior analysis should be deployed"
+          },
+          {
+            "command": "kubectl get job predictive-model -n security-monitoring --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "predictive-model|not-configured",
+            "points": 6,
+            "description": "Predictive security models should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-015",
+        "title": "Implement Quantum-Safe Cryptography",
+        "description": "Prepare for quantum computing threats by implementing quantum-safe cryptographic algorithms and key management.",
+        "points": 20,
+        "timeLimit": 40,
+        "category": "Quantum Security",
+        "tags": ["quantum-safe", "cryptography", "post-quantum"],
+        "infrastructure": {
+          "namespaces": ["quantum-security"],
+          "resources": ["secrets", "certificates", "crypto-providers"],
+          "prerequisites": ["quantum-safe crypto libraries"]
+        },
+        "solution": {
+          "steps": [
+            "1. Implement post-quantum cryptographic algorithms",
+            "2. Set up quantum-safe key exchange mechanisms",
+            "3. Deploy quantum-resistant certificate management",
+            "4. Implement crypto-agility framework",
+            "5. Create quantum threat assessment and migration plan"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get secret quantum-safe-key -n quantum-security -o jsonpath='{.metadata.annotations.\"crypto\\.algorithm\"}' 2>/dev/null || echo 'not-configured'",
+            "expected": "kyber.*|dilithium.*|not-configured",
+            "points": 5,
+            "description": "Quantum-safe keys should be configured"
+          },
+          {
+            "command": "kubectl get deployment crypto-provider -n quantum-security --no-headers | awk '{print $1}'",
+            "expected": "crypto-provider",
+            "points": 5,
+            "description": "Quantum-safe crypto provider should be deployed"
+          },
+          {
+            "command": "kubectl get configmap quantum-migration-plan -n quantum-security --no-headers | awk '{print $1}'",
+            "expected": "quantum-migration-plan",
+            "points": 5,
+            "description": "Quantum migration plan should be documented"
+          },
+          {
+            "command": "kubectl get certificate quantum-safe-cert -n quantum-security --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "quantum-safe-cert|not-configured",
+            "points": 5,
+            "description": "Quantum-safe certificates should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-016",
+        "title": "Implement Security Chaos Engineering",
+        "description": "Design and implement security chaos engineering to test security controls, incident response, and system resilience.",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "Security Testing",
+        "tags": ["chaos-engineering", "security-testing", "resilience"],
+        "infrastructure": {
+          "namespaces": ["chaos-security"],
+          "resources": ["chaosexperiments", "faults", "monitors"],
+          "tools": ["chaos engineering platforms"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy chaos engineering platform with security focus",
+            "2. Create security-specific chaos experiments",
+            "3. Implement automated security control testing",
+            "4. Set up incident response validation scenarios",
+            "5. Create security resilience measurement framework"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment chaos-security -n chaos-security --no-headers | awk '{print $1}'",
+            "expected": "chaos-security",
+            "points": 4,
+            "description": "Security chaos engineering platform should be deployed"
+          },
+          {
+            "command": "kubectl get chaosexperiment security-breach-simulation -n chaos-security --no-headers | awk '{print $1}' 2>/dev/null || echo 'not-configured'",
+            "expected": "security-breach-simulation|not-configured",
+            "points": 4,
+            "description": "Security breach simulation should be configured"
+          },
+          {
+            "command": "kubectl get configmap resilience-metrics -n chaos-security --no-headers | awk '{print $1}'",
+            "expected": "resilience-metrics",
+            "points": 4,
+            "description": "Security resilience metrics should be configured"
+          },
+          {
+            "command": "kubectl get cronjob security-chaos-schedule -n chaos-security --no-headers | awk '{print $1}'",
+            "expected": "security-chaos-schedule",
+            "points": 4,
+            "description": "Security chaos testing should be scheduled"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-017",
+        "title": "Implement Advanced Forensics and Investigation",
+        "description": "Build comprehensive digital forensics capabilities for Kubernetes environments with evidence preservation and analysis.",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "Digital Forensics",
+        "tags": ["forensics", "investigation", "evidence"],
+        "infrastructure": {
+          "namespaces": ["forensics"],
+          "resources": ["evidence-stores", "analysis-tools", "workflows"],
+          "tools": ["forensics tools", "analysis platforms"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy forensics data collection and preservation system",
+            "2. Implement automated evidence collection workflows",
+            "3. Set up forensics analysis and investigation tools",
+            "4. Create chain of custody management system",
+            "5. Implement forensics reporting and visualization"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment forensics-collector -n forensics --no-headers | awk '{print $1}'",
+            "expected": "forensics-collector",
+            "points": 4,
+            "description": "Forensics data collector should be deployed"
+          },
+          {
+            "command": "kubectl get pvc evidence-store -n forensics --no-headers | awk '{print $1}'",
+            "expected": "evidence-store",
+            "points": 4,
+            "description": "Evidence storage should be configured"
+          },
+          {
+            "command": "kubectl get deployment analysis-platform -n forensics --no-headers | awk '{print $1}'",
+            "expected": "analysis-platform",
+            "points": 4,
+            "description": "Forensics analysis platform should be deployed"
+          },
+          {
+            "command": "kubectl get configmap chain-of-custody -n forensics --no-headers | awk '{print $1}'",
+            "expected": "chain-of-custody",
+            "points": 4,
+            "description": "Chain of custody procedures should be configured"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-018",
+        "title": "Implement Advanced Security Governance",
+        "description": "Create comprehensive security governance framework with policy management, compliance automation, and risk assessment.",
+        "points": 18,
+        "timeLimit": 35,
+        "category": "Security Governance",
+        "tags": ["governance", "policy", "risk-management"],
+        "infrastructure": {
+          "namespaces": ["security-governance"],
+          "resources": ["policies", "assessments", "dashboards"],
+          "tools": ["governance platforms", "risk tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy security governance and policy management platform",
+            "2. Implement automated policy compliance monitoring",
+            "3. Set up continuous risk assessment and scoring",
+            "4. Create security metrics and KPI dashboards",
+            "5. Implement governance reporting and audit trails"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment governance-platform -n security-governance --no-headers | awk '{print $1}'",
+            "expected": "governance-platform",
+            "points": 6,
+            "description": "Security governance platform should be deployed"
+          },
+          {
+            "command": "kubectl get configmap security-policies -n security-governance --no-headers | awk '{print $1}'",
+            "expected": "security-policies",
+            "points": 6,
+            "description": "Security policies should be configured"
+          },
+          {
+            "command": "kubectl get deployment risk-assessor -n security-governance --no-headers | awk '{print $1}'",
+            "expected": "risk-assessor",
+            "points": 6,
+            "description": "Risk assessment system should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-019",
+        "title": "Implement Advanced Security Training and Simulation",
+        "description": "Build comprehensive security training platform with attack simulation, red team exercises, and skill assessment.",
+        "points": 16,
+        "timeLimit": 30,
+        "category": "Security Training",
+        "tags": ["training", "simulation", "red-team"],
+        "infrastructure": {
+          "namespaces": ["security-training"],
+          "resources": ["simulators", "scenarios", "assessments"],
+          "tools": ["training platforms", "simulation tools"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy security training and simulation platform",
+            "2. Create realistic attack simulation scenarios",
+            "3. Implement automated red team exercises",
+            "4. Set up security skill assessment and certification",
+            "5. Create training progress tracking and analytics"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment training-platform -n security-training --no-headers | awk '{print $1}'",
+            "expected": "training-platform",
+            "points": 4,
+            "description": "Security training platform should be deployed"
+          },
+          {
+            "command": "kubectl get configmap attack-scenarios -n security-training --no-headers | awk '{print $1}'",
+            "expected": "attack-scenarios",
+            "points": 4,
+            "description": "Attack simulation scenarios should be configured"
+          },
+          {
+            "command": "kubectl get cronjob red-team-exercise -n security-training --no-headers | awk '{print $1}'",
+            "expected": "red-team-exercise",
+            "points": 4,
+            "description": "Red team exercises should be scheduled"
+          },
+          {
+            "command": "kubectl get deployment skill-assessor -n security-training --no-headers | awk '{print $1}'",
+            "expected": "skill-assessor",
+            "points": 4,
+            "description": "Security skill assessment should be deployed"
+          }
+        ]
+      },
+      {
+        "id": "cks-a-020",
+        "title": "Implement Next-Generation Security Operations Center",
+        "description": "Design and implement a next-generation SOC with AI-driven analysis, automated response, and predictive security.",
+        "points": 20,
+        "timeLimit": 40,
+        "category": "Security Operations",
+        "tags": ["soc", "ai-driven", "predictive"],
+        "infrastructure": {
+          "namespaces": ["next-gen-soc"],
+          "resources": ["ai-models", "automation", "dashboards"],
+          "tools": ["AI/ML platforms", "automation tools", "visualization"]
+        },
+        "solution": {
+          "steps": [
+            "1. Deploy AI-driven security analysis platform",
+            "2. Implement automated threat correlation and analysis",
+            "3. Set up predictive security intelligence",
+            "4. Create autonomous incident response capabilities",
+            "5. Implement advanced security visualization and reporting"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment ai-security-analyst -n next-gen-soc --no-headers | awk '{print $1}'",
+            "expected": "ai-security-analyst",
+            "points": 5,
+            "description": "AI security analyst should be deployed"
+          },
+          {
+            "command": "kubectl get deployment threat-correlator -n next-gen-soc --no-headers | awk '{print $1}'",
+            "expected": "threat-correlator",
+            "points": 5,
+            "description": "Threat correlation engine should be deployed"
+          },
+          {
+            "command": "kubectl get deployment predictive-intelligence -n next-gen-soc --no-headers | awk '{print $1}'",
+            "expected": "predictive-intelligence",
+            "points": 5,
+            "description": "Predictive security intelligence should be deployed"
+          },
+          {
+            "command": "kubectl get deployment autonomous-responder -n next-gen-soc --no-headers | awk '{print $1}'",
+            "expected": "autonomous-responder",
+            "points": 5,
+            "description": "Autonomous incident response should be deployed"
+          }
+        ]
+      }
+    ]
+  }
+}

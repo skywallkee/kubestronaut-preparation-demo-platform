@@ -1,449 +1,491 @@
 #!/bin/bash
 
+# Kubernetes Exam Simulator - Docker Deployment Startup Script
+# This script builds and runs the application in a Docker container with all fixes
+# Includes original Docker functionality plus streamlined interactive configuration
+
 set -e
+
+echo "🐳 Starting Kubernetes Exam Simulator (Docker Deployment)"
+echo "================================================"
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD_GREEN='\033[1;32m'
+DIM='\033[2m'
 NC='\033[0m' # No Color
-
-# Configuration
-CONTAINER_NAME="k8s-exam-simulator"
-IMAGE_NAME="k8s-exam-simulator"
-DEFAULT_PORT="8080"
-
-echo -e "${BLUE}🚀 Kubernetes Exam Simulator - Docker Setup${NC}"
-echo "================================================="
 
 # Function to print colored output
 print_status() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
 }
+
+print_input() {
+    echo -e "${CYAN}[INPUT]${NC} $1"
+}
+
+print_default() {
+    echo -e "${BOLD_GREEN}[DEFAULT]${NC} $1"
+}
+
+# Step 1: Verify we're in the project root
+PROJECT_ROOT="/mnt/c/Users/ramaistroaie/OneDrive - ENDAVA/Documents/kubernetes-demo-platform"
+
+if [ ! -f "$PROJECT_ROOT/Dockerfile" ]; then
+    print_error "Dockerfile not found. Please run this script from the project root."
+    exit 1
+fi
+
+cd "$PROJECT_ROOT"
+print_success "Project root verified"
+
+# Step 2: Streamlined Interactive Configuration
+echo ""
+echo "🔧 Configuration (press Enter for defaults)"
+echo "================================================"
+
+# Port selection with input field
+print_input "Application port:"
+print_default "Press Enter for default: ${BOLD_GREEN}8080${NC}"
+read -p "Port: " port_input
+if [[ "$port_input" =~ ^[0-9]+$ ]] && [ "$port_input" -ge 1000 ] && [ "$port_input" -le 65535 ]; then
+    APP_PORT=$port_input
+elif [ -z "$port_input" ]; then
+    APP_PORT=8080
+    print_success "Using default port: 8080"
+else
+    print_warning "Invalid port '$port_input'. Using default 8080."
+    APP_PORT=8080
+fi
+
+if [ "$APP_PORT" != "8080" ]; then
+    print_success "Using port: $APP_PORT"
+fi
+
+# Kubernetes context selection
+echo ""
+print_input "Kubernetes Configuration:"
 
 # Check if kubectl is available
-check_kubectl() {
-    if ! command -v kubectl &> /dev/null; then
-        print_error "kubectl is not installed or not in PATH"
-        echo "Please install kubectl first: https://kubernetes.io/docs/tasks/tools/"
-        exit 1
-    fi
-    print_status "kubectl is available"
-}
+if ! command -v kubectl &> /dev/null; then
+    print_warning "kubectl not found on host system"
+    KUBECTL_AVAILABLE=false
+else
+    KUBECTL_AVAILABLE=true
+    print_success "kubectl found on host system"
+fi
 
-# Check if Docker is available and running
-check_docker() {
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed or not in PATH"
-        echo "Please install Docker first: https://docs.docker.com/get-docker/"
-        exit 1
-    fi
+# Kubeconfig and context selection
+MOUNT_KUBECONFIG=""
+KUBE_CONTEXT=""
 
-    if ! docker info &> /dev/null; then
-        print_error "Docker is not running"
-        echo "Please start Docker and try again"
-        exit 1
-    fi
-    print_status "Docker is available and running"
-}
-
-# Get available Kubernetes contexts
-get_contexts() {
-    echo
-    echo -e "${BLUE}🔍 Checking available Kubernetes contexts...${NC}"
-
-    if ! kubectl config get-contexts &> /dev/null; then
-        print_error "No Kubernetes contexts found"
-        echo "Please set up your kubeconfig first with 'kubectl config'"
-        exit 1
-    fi
-
-    # Get contexts in a clean format
-    contexts=$(kubectl config get-contexts -o name)
-    current_context=$(kubectl config current-context 2>/dev/null || echo "")
-
-    if [ -z "$contexts" ]; then
-        print_error "No Kubernetes contexts available"
-        exit 1
-    fi
-
-    echo -e "${GREEN}Available Kubernetes contexts:${NC}"
-    echo
-
-    # Display contexts with numbers
-    i=1
-    declare -a context_array
-    while IFS= read -r context; do
-        context_array[$i]="$context"
-        if [ "$context" = "$current_context" ]; then
-            echo -e "  ${GREEN}$i) $context (current)${NC}"
+if [ "$KUBECTL_AVAILABLE" = true ]; then
+    # Check for kubeconfig
+    if [ -f "$HOME/.kube/config" ]; then
+        print_success "Found kubeconfig at $HOME/.kube/config"
+        
+        # Get current context
+        current_context=$(kubectl config current-context 2>/dev/null || echo "")
+        
+        if [ -n "$current_context" ]; then
+            print_input "Kubernetes context:"
+            print_default "Press Enter for default: ${BOLD_GREEN}$current_context${NC}"
+            echo -e "  ${DIM}Or type:${NC}"
+            echo -e "  ${DIM}- 'none' to run without kubeconfig${NC}"
+            echo -e "  ${DIM}- context name to use specific context${NC}"
+            
+            # Get available contexts for reference
+            contexts=$(kubectl config get-contexts -o name 2>/dev/null || echo "")
+            if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
+                echo -e "  ${DIM}Available: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
+            fi
+            
+            read -p "Context: " context_input
+            
+            if [ -z "$context_input" ]; then
+                # Default: use current context
+                KUBE_CONTEXT=$current_context
+                MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                print_success "Using default context: $current_context"
+            elif [ "$context_input" = "none" ]; then
+                # Run isolated
+                KUBE_CONTEXT=""
+                MOUNT_KUBECONFIG=""
+                print_status "Container will run isolated (no kubeconfig)"
+            else
+                # Check if specified context exists
+                if echo "$contexts" | grep -q "^$context_input$"; then
+                    KUBE_CONTEXT=$context_input
+                    MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                    print_success "Using context: $context_input"
+                else
+                    print_warning "Context '$context_input' not found. Using default: $current_context"
+                    KUBE_CONTEXT=$current_context
+                    MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                fi
+            fi
         else
-            echo -e "  $i) $context"
+            print_warning "No current context found in kubeconfig"
+            MOUNT_KUBECONFIG=""
+            KUBE_CONTEXT=""
         fi
-        ((i++))
-    done <<< "$contexts"
-
-    echo
-    echo -e "${YELLOW}Which context would you like to use for the exam?${NC}"
-    echo "Enter the number (1-$((i-1))) or press Enter to use current context:"
-    read -r choice
-
-    # Handle user choice
-    if [ -z "$choice" ]; then
-        if [ -z "$current_context" ]; then
-            print_error "No current context set"
-            exit 1
-        fi
-        selected_context="$current_context"
-        print_status "Using current context: $selected_context"
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -lt "$i" ]; then
-        selected_context="${context_array[$choice]}"
-        print_status "Selected context: $selected_context"
     else
-        print_error "Invalid choice"
+        print_warning "No kubeconfig found at $HOME/.kube/config"
+        MOUNT_KUBECONFIG=""
+        KUBE_CONTEXT=""
+    fi
+else
+    print_status "Skipping Kubernetes configuration (kubectl not available)"
+    MOUNT_KUBECONFIG=""
+    KUBE_CONTEXT=""
+fi
+
+# Networking configuration
+echo ""
+print_input "Container networking:"
+print_default "Press Enter for default: ${BOLD_GREEN}bridge${NC} (isolated with port mapping)"
+echo -e "  ${DIM}Or type:${NC}"
+echo -e "  ${DIM}- 'host' for host networking${NC}"
+echo -e "  ${DIM}- network name for custom network${NC}"
+read -p "Network: " network_input
+
+if [ -z "$network_input" ]; then
+    # Default: bridge network
+    NETWORK_CONFIG="-p $APP_PORT:8080"
+    NETWORK_MODE="bridge"
+    print_success "Using default: bridge network"
+elif [ "$network_input" = "host" ]; then
+    NETWORK_CONFIG="--network host"
+    NETWORK_MODE="host"
+    print_success "Using host network"
+    print_warning "Application accessible on all host interfaces"
+else
+    # Custom network
+    NETWORK_CONFIG="--network $network_input -p $APP_PORT:8080"
+    NETWORK_MODE="custom ($network_input)"
+    print_success "Using custom network: $network_input"
+fi
+
+# Docker options
+echo ""
+print_input "Docker options:"
+print_default "Press Enter for default: ${BOLD_GREEN}standard${NC} (no special privileges)"
+echo -e "  ${DIM}Or type:${NC}"
+echo -e "  ${DIM}- 'privileged' for privileged mode${NC}"
+echo -e "  ${DIM}- custom options (e.g., '--privileged --cap-add=SYS_ADMIN')${NC}"
+read -p "Options: " docker_options_input
+
+if [ -z "$docker_options_input" ]; then
+    # Default: standard run
+    ADDITIONAL_OPTIONS=""
+    print_success "Using default: standard Docker options"
+elif [ "$docker_options_input" = "privileged" ]; then
+    ADDITIONAL_OPTIONS="--privileged"
+    print_success "Using privileged mode"
+    print_warning "Running with elevated privileges"
+else
+    # Custom options
+    ADDITIONAL_OPTIONS="$docker_options_input"
+    print_success "Using custom options: $docker_options_input"
+fi
+
+# Step 3: Display configuration summary
+echo ""
+echo "📋 Configuration Summary"
+echo "================================================"
+echo -e "Port: ${GREEN}$APP_PORT${NC}"
+echo -e "Network: ${GREEN}$NETWORK_MODE${NC}"
+if [ -n "$KUBE_CONTEXT" ]; then
+    echo -e "Kubernetes Context: ${GREEN}$KUBE_CONTEXT${NC}"
+else
+    echo -e "Kubernetes: ${YELLOW}Not configured${NC}"
+fi
+if [ -n "$ADDITIONAL_OPTIONS" ]; then
+    echo -e "Docker Options: ${GREEN}$ADDITIONAL_OPTIONS${NC}"
+else
+    echo -e "Docker Options: ${GREEN}Standard${NC}"
+fi
+echo ""
+
+# Quick confirmation
+print_input "Continue with this configuration?"
+print_default "Press Enter for ${BOLD_GREEN}Yes${NC}, or type 'n' for No"
+read -p "Continue? " confirm
+if [[ "$confirm" =~ ^[Nn] ]]; then
+    print_status "Aborted by user"
+    exit 0
+fi
+
+# Step 4: Verify project structure
+print_status "Verifying project structure..."
+REQUIRED_DIRS=(
+    "app/backend"
+    "app/frontend"
+    "question-bank"
+    "helm-templates"
+)
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        print_error "Required directory not found: $dir"
         exit 1
     fi
+done
 
-    # Set the selected context as current
-    if [ "$selected_context" != "$current_context" ]; then
-        echo -e "${YELLOW}Switching to context: $selected_context${NC}"
-        kubectl config use-context "$selected_context"
-    fi
+# Check question bank content for all exam types
+EXAM_TYPES=("ckad" "cka" "cks" "kcna")
+DIFFICULTIES=("easy" "intermediate" "hard")
+TOTAL_QUESTIONS=0
 
-    # Test connection
-    echo
-    echo -e "${BLUE}🔗 Testing connection to Kubernetes cluster...${NC}"
-    if kubectl cluster-info &> /dev/null; then
-        print_status "Successfully connected to cluster"
-        kubectl cluster-info | head -2
-    else
-        print_warning "Could not connect to cluster, but continuing anyway"
-        echo "The application will start without cluster access"
-    fi
-}
-
-# Create kubeconfig for container
-create_container_kubeconfig() {
-    echo
-    echo -e "${BLUE}📁 Preparing kubeconfig for container...${NC}"
-
-    # Create temporary directory for kubeconfig
-    TEMP_KUBE_DIR=$(mktemp -d)
-    CONTAINER_KUBECONFIG="$TEMP_KUBE_DIR/config"
-
-    # Export current kubeconfig to temporary file
-    kubectl config view --raw --minify > "$CONTAINER_KUBECONFIG"
-
-    if [ ! -s "$CONTAINER_KUBECONFIG" ]; then
-        print_error "Failed to create kubeconfig"
-        exit 1
-    fi
-
-    # Get the current server URL
-    current_server=$(kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.server}')
-
-    # Fix localhost/127.0.0.1 URLs for Docker container access
-    if [[ "$current_server" == *"127.0.0.1"* ]] || [[ "$current_server" == *"localhost"* ]]; then
-        print_warning "Detected localhost server URL: $current_server"
-
-        # Detect the host platform and suggest fixes
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Linux - use host.docker.internal or docker0 interface IP
-            if command -v ip &> /dev/null; then
-                docker_host_ip=$(ip route show | grep docker0 | awk '{print $NF}' | head -1)
-                if [ -z "$docker_host_ip" ]; then
-                    docker_host_ip="172.17.0.1"  # Default docker0 gateway
+print_status "Checking question banks for Docker build..."
+for exam_type in "${EXAM_TYPES[@]}"; do
+    EXAM_DIR="question-bank/$exam_type"
+    if [ -d "$EXAM_DIR" ]; then
+        print_status "Found $exam_type exam type"
+        
+        for difficulty in "${DIFFICULTIES[@]}"; do
+            DIFFICULTY_DIR="$EXAM_DIR/$difficulty"
+            if [ -d "$DIFFICULTY_DIR" ]; then
+                QUESTION_COUNT=$(find "$DIFFICULTY_DIR" -name "*.json" | wc -l)
+                if [ $QUESTION_COUNT -gt 0 ]; then
+                    print_success "  $difficulty: $QUESTION_COUNT questions"
+                    TOTAL_QUESTIONS=$((TOTAL_QUESTIONS + QUESTION_COUNT))
+                else
+                    print_warning "  $difficulty: no questions found"
                 fi
             else
-                docker_host_ip="172.17.0.1"
+                print_warning "  $difficulty: directory not found"
             fi
-
-            new_server=$(echo "$current_server" | sed -E 's/(127\.0\.0\.1|localhost)/'"$docker_host_ip"'/g')
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS - use host.docker.internal
-            new_server=$(echo "$current_server" | sed -E 's/(127\.0\.0\.1|localhost)/host.docker.internal/g')
-        elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-            # Windows - use host.docker.internal
-            new_server=$(echo "$current_server" | sed -E 's/(127\.0\.0\.1|localhost)/host.docker.internal/g')
-        else
-            # Unknown OS - try host.docker.internal
-            new_server=$(echo "$current_server" | sed -E 's/(127\.0\.0\.1|localhost)/host.docker.internal/g')
-        fi
-
-        print_status "Converting server URL for container access"
-        echo "Original: $current_server"
-        echo "Modified: $new_server"
-        print_warning "Adding insecure-skip-tls-verify=true for Docker networking"
-        echo "This is safe for local development clusters like Rancher Desktop"
-
-        # Update the kubeconfig with the new server URL and disable certificate verification
-        # Use a more robust method to replace the server URL and add insecure-skip-tls-verify
-        python3 -c "
-import yaml, sys
-with open('$CONTAINER_KUBECONFIG', 'r') as f:
-    config = yaml.safe_load(f)
-config['clusters'][0]['cluster']['server'] = '$new_server'
-# Add insecure-skip-tls-verify for localhost/Docker scenarios
-if 'host.docker.internal' in '$new_server' or '172.17.0.1' in '$new_server':
-    config['clusters'][0]['cluster']['insecure-skip-tls-verify'] = True
-    # Remove certificate-authority-data to avoid conflicts
-    if 'certificate-authority-data' in config['clusters'][0]['cluster']:
-        del config['clusters'][0]['cluster']['certificate-authority-data']
-with open('$CONTAINER_KUBECONFIG', 'w') as f:
-    yaml.dump(config, f, default_flow_style=False)
-" 2>/dev/null || {
-            # Fallback to sed if python/yaml is not available
-            sed -i.bak "s|$current_server|$new_server|g" "$CONTAINER_KUBECONFIG"
-            # Add insecure-skip-tls-verify for Docker networking
-            if [[ "$new_server" == *"host.docker.internal"* ]] || [[ "$new_server" == *"172.17.0.1"* ]]; then
-                sed -i.bak '/server:/a\    insecure-skip-tls-verify: true' "$CONTAINER_KUBECONFIG"
-                # Remove certificate-authority-data line if present
-                sed -i.bak '/certificate-authority-data:/d' "$CONTAINER_KUBECONFIG"
-            fi
-            rm -f "$CONTAINER_KUBECONFIG.bak"
-        }
-
-        final_server="$new_server"
+        done
     else
-        final_server="$current_server"
-        print_status "Server URL is accessible from container"
+        print_warning "$exam_type exam type not found"
     fi
+done
 
-    print_status "Created kubeconfig for container"
-    echo "Context: $(kubectl config current-context)"
-    echo "Server: $final_server"
-}
+print_success "Total questions available for Docker build: $TOTAL_QUESTIONS"
 
-# Stop and remove existing container
-cleanup_container() {
-    if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo
-        echo -e "${YELLOW}🧹 Cleaning up existing container...${NC}"
-        docker stop "$CONTAINER_NAME" &> /dev/null || true
-        docker rm "$CONTAINER_NAME" &> /dev/null || true
-        print_status "Removed existing container"
+if [ $TOTAL_QUESTIONS -eq 0 ]; then
+    print_error "No questions found in any question bank"
+    exit 1
+fi
+
+# Verify critical backend files
+CRITICAL_FILES=(
+    "app/backend/src/index.js"
+    "app/backend/src/routes/questions.js"
+    "app/backend/src/routes/exam.js"
+    "app/backend/src/routes/helm.js"
+    "app/backend/src/services/question-provider/question-service.js"
+    "app/backend/src/services/helm-generator/helm-service.js"
+)
+
+for file in "${CRITICAL_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        print_error "Critical file missing: $file"
+        exit 1
     fi
-}
+done
 
-# Build Docker image
-build_image() {
-    echo
-    echo -e "${BLUE}🔨 Building Docker image...${NC}"
+print_success "All critical files present for Docker build"
 
-    # Ask user which build type they want
-    echo "Choose build type:"
-    echo -e "${GREEN}  1) Full build with React frontend (slower, ~2-5 minutes)${NC}"
-    echo "  2) Backend-only build for testing (faster, ~30 seconds)"
-    echo
-    read -p "Enter choice (1 or 2, default: 1): " build_choice
+# Step 5: Stop any existing containers
+print_status "Stopping any existing containers..."
+docker stop k8s-exam-simulator 2>/dev/null || true
+docker rm k8s-exam-simulator 2>/dev/null || true
+print_success "Existing containers cleaned up"
 
-    case $build_choice in
-        1|"")
-            echo "Building full application with React frontend..."
-            docker build -t "$IMAGE_NAME:latest" .
-            ;;
-        2)
-            echo "Building backend-only version for testing..."
-            docker build -f Dockerfile.backend-only -t "$IMAGE_NAME:latest" .
-            ;;
-        *)
-            print_error "Invalid choice, using backend-only build"
-            docker build -f Dockerfile.backend-only -t "$IMAGE_NAME:latest" .
-            ;;
-    esac
+# Step 6: Remove old images (optional - use --clean flag)
+if [ "$1" = "--clean" ]; then
+    print_status "Removing old Docker images..."
+    docker rmi k8s-exam-simulator 2>/dev/null || true
+    docker system prune -f
+    print_success "Old images cleaned up"
+fi
 
-    print_status "Docker image built successfully"
-}
+# Step 7: Build Docker image with optimizations
+print_status "Building Docker image with caching optimizations (this may take a few minutes)..."
+print_status "Using Docker layer caching for faster builds on subsequent runs"
 
-# Get port for application
-get_port() {
-    echo
-    read -p "Enter port for application (default: $DEFAULT_PORT): " port
-    port=${port:-$DEFAULT_PORT}
+# Use BuildKit for better performance and caching
+export DOCKER_BUILDKIT=1
 
-    # Check if port is in use
-    if netstat -tuln 2>/dev/null | grep -q ":$port " || ss -tuln 2>/dev/null | grep -q ":$port "; then
-        print_warning "Port $port appears to be in use"
-        read -p "Continue anyway? (y/N): " continue_anyway
-        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
-            echo "Please choose a different port and run the script again"
-            exit 1
-        fi
-    fi
-}
+if docker build -t k8s-exam-simulator .; then
+    print_success "Docker image built successfully"
+else
+    print_error "Docker build failed"
+    exit 1
+fi
 
-# Run Docker container
-run_container() {
-    echo
-    echo -e "${BLUE}🚀 Starting container...${NC}"
+# Step 8: Run the container with selected configuration
+print_status "Starting Docker container with selected configuration..."
 
-    # Determine Docker run arguments based on OS and detected networking needs
-    docker_args=""
+# Build the docker run command
+DOCKER_CMD="docker run -d --name k8s-exam-simulator"
+DOCKER_CMD="$DOCKER_CMD $NETWORK_CONFIG"
+DOCKER_CMD="$DOCKER_CMD -e NODE_ENV=production -e PORT=8080"
 
-    # Check if we need host networking or special host access
-    current_server=$(kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.server}')
-    use_host_networking=false
+if [ -n "$KUBE_CONTEXT" ]; then
+    DOCKER_CMD="$DOCKER_CMD -e KUBE_CONTEXT=$KUBE_CONTEXT"
+fi
 
-    if [[ "$current_server" == *"127.0.0.1"* ]] || [[ "$current_server" == *"localhost"* ]]; then
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # On Linux, offer choice between host networking and bridge with modified kubeconfig
-            echo "Detected Linux with localhost cluster."
-            echo "Choose networking mode:"
-            echo -e "${GREEN}  1) Host networking (recommended for localhost clusters)${NC}"
-            echo "  2) Bridge networking with modified kubeconfig"
-            read -p "Enter choice (1 or 2, default: 1): " net_choice
+if [ -n "$MOUNT_KUBECONFIG" ]; then
+    DOCKER_CMD="$DOCKER_CMD $MOUNT_KUBECONFIG"
+fi
 
-            case ${net_choice:-1} in
-                1)
-                    echo "Using Docker host networking mode"
-                    docker_args="--network host"
-                    use_host_networking=true
-                    host_port="$port"  # Use the user's chosen port
-                    ;;
-                2)
-                    echo "Using bridge networking with kubeconfig modification"
-                    docker_args="--add-host host.docker.internal:host-gateway"
-                    host_port="$port"
-                    ;;
-            esac
-        else
-            # On macOS/Windows, Docker Desktop provides host.docker.internal
-            docker_args="--add-host host.docker.internal:host-gateway"
-            host_port="$port"
-        fi
+if [ -n "$ADDITIONAL_OPTIONS" ]; then
+    DOCKER_CMD="$DOCKER_CMD $ADDITIONAL_OPTIONS"
+fi
+
+DOCKER_CMD="$DOCKER_CMD k8s-exam-simulator"
+
+# Execute the command
+print_status "Executing: $DOCKER_CMD"
+eval $DOCKER_CMD
+
+# Wait for container to start
+print_status "Waiting for container to fully initialize..."
+sleep 8
+
+# Step 9: Check container startup and logs
+print_status "Checking container startup logs..."
+if ! docker ps | grep -q k8s-exam-simulator; then
+    print_error "Container failed to start"
+    docker logs k8s-exam-simulator
+    exit 1
+fi
+
+# Show container startup output
+echo ""
+echo "=== Container Startup Logs ==="
+docker logs k8s-exam-simulator | tail -20
+echo "============================="
+echo ""
+
+# Step 10: Test container health and new functionality
+print_status "Testing container health and new features..."
+
+# Determine the correct URL based on network mode
+if [ "$NETWORK_MODE" = "host" ]; then
+    TEST_URL="http://localhost:8080"
+else
+    TEST_URL="http://localhost:$APP_PORT"
+fi
+
+# Test health endpoint
+if curl -f -s $TEST_URL/api/health > /dev/null; then
+    print_success "Container is healthy and responding"
+else
+    print_error "Container health check failed"
+    docker logs k8s-exam-simulator
+    exit 1
+fi
+
+# Test questions API (NEW FIX VALIDATION)
+print_status "Testing questions API fixes..."
+QUESTIONS_RESPONSE=$(curl -s "$TEST_URL/api/questions?exam_type=ckad&difficulty=beginner")
+if echo "$QUESTIONS_RESPONSE" | grep -q "ckad-e-"; then
+    print_success "✅ Questions API returning real question data with original IDs"
+else
+    print_warning "⚠️  Questions API may not be returning real questions"
+    echo "Response preview: $(echo "$QUESTIONS_RESPONSE" | head -c 200)..."
+fi
+
+# Test helm API availability (NEW FIX VALIDATION)
+print_status "Testing Helm API integration..."
+HELM_RESPONSE=$(curl -s -X POST $TEST_URL/api/helm/generate \
+   -H "Content-Type: application/json" \
+   -d '{"type":"ckad","difficulty":"beginner"}')
+
+if echo "$HELM_RESPONSE" | grep -q "success"; then
+    print_success "✅ Helm API is working and generating charts with infrastructure requirements"
+else
+    print_warning "⚠️  Helm API response: $(echo "$HELM_RESPONSE" | head -c 200)..."
+fi
+
+# Step 11: Test kubectl/helm availability in container (ORIGINAL FUNCTIONALITY)
+print_status "Verifying Kubernetes tools in container..."
+docker exec k8s-exam-simulator kubectl version --client > /dev/null 2>&1 && \
+    print_success "✅ kubectl available in container" || \
+    print_warning "⚠️  kubectl check failed"
+
+docker exec k8s-exam-simulator helm version > /dev/null 2>&1 && \
+    print_success "✅ helm available in container" || \
+    print_warning "⚠️  helm check failed"
+
+# Step 12: Check cluster connectivity with selected context
+if [ -n "$KUBE_CONTEXT" ]; then
+    print_status "Testing Kubernetes cluster connectivity with context: $KUBE_CONTEXT"
+    if docker exec k8s-exam-simulator kubectl --context="$KUBE_CONTEXT" cluster-info > /dev/null 2>&1; then
+        NODE_COUNT=$(docker exec k8s-exam-simulator kubectl --context="$KUBE_CONTEXT" get nodes --no-headers 2>/dev/null | wc -l)
+        print_success "✅ Connected to Kubernetes cluster '$KUBE_CONTEXT' with $NODE_COUNT nodes"
     else
-        # External cluster, no special networking needed
-        host_port="$port"
-        docker_args=""
+        print_warning "⚠️  Cannot connect to cluster with context '$KUBE_CONTEXT'"
     fi
+else
+    print_status "Skipping cluster connectivity test (no context configured)"
+fi
 
-    if [ "$use_host_networking" = true ]; then
-        # Host networking mode - container uses host's network directly
-        docker run -d \
-            --name "$CONTAINER_NAME" \
-            --network host \
-            -v "$CONTAINER_KUBECONFIG:/root/.kube/config:ro" \
-            -e KUBECONFIG=/root/.kube/config \
-            -e PORT="$host_port" \
-            "$IMAGE_NAME:latest"
-        echo "Container started with host networking on port $host_port"
-    else
-        # Bridge networking mode with port mapping
-        docker run -d \
-            --name "$CONTAINER_NAME" \
-            -p "$host_port:8080" \
-            $docker_args \
-            -v "$CONTAINER_KUBECONFIG:/root/.kube/config:ro" \
-            -e KUBECONFIG=/root/.kube/config \
-            "$IMAGE_NAME:latest"
-        echo "Container started with port mapping $host_port:8080"
-    fi
-
-    print_status "Container started successfully"
-
-    # Wait a moment for startup
-    echo "Waiting for application to start..."
-    sleep 5
-
-    # Test health endpoint
-    if curl -sf "http://localhost:$host_port/api/health" > /dev/null; then
-        print_status "Application is healthy and ready"
-    else
-        print_warning "Application may still be starting up"
-    fi
-
-    echo
-    echo -e "808🎉 Kubernetes Exam Simulator is now running!${NC}"
-    echo "================================================="
-    echo -e "📱 Application URL: ${BLUE}http://localhost:$host_port${NC}"
-    echo -e "🏥 Health Check:   ${BLUE}http://localhost:$host_port/api/health${NC}"
-    echo -e "🔧 Kubernetes Context: ${YELLOW}$(kubectl config current-context)${NC}"
-    echo -e "📋 Container Name: ${YELLOW}$CONTAINER_NAME${NC}"
-    echo
-    echo "Commands to manage the container:"
-    echo "  View logs:     docker logs $CONTAINER_NAME"
-    echo "  Stop:          docker stop $CONTAINER_NAME"
-    echo "  Remove:        docker rm $CONTAINER_NAME"
-    echo "  Shell access:  docker exec -it $CONTAINER_NAME /bin/bash"
-    echo
-
-    # Offer to open browser
-    read -p "Open application in browser? (Y/n): " open_browser
-    if [[ ! "$open_browser" =~ ^[Nn]$ ]]; then
-        if command -v xdg-open &> /dev/null; then
-            xdg-open "http://localhost:$host_port" &> /dev/null || true
-        elif command -v open &> /dev/null; then
-            open "http://localhost:$host_port" &> /dev/null || true
-        else
-            echo "Please open http://localhost:$host_port in your browser"
-        fi
-    fi
-}
-
-# Cleanup function
-cleanup() {
-    if [ -n "$TEMP_KUBE_DIR" ] && [ -d "$TEMP_KUBE_DIR" ]; then
-        rm -rf "$TEMP_KUBE_DIR"
-    fi
-}
-
-# Set trap for cleanup
-trap cleanup EXIT
-
-# Main execution
-main() {
-    # Check prerequisites
-    check_kubectl
-    check_docker
-
-    # Get Kubernetes context
-    get_contexts
-
-    # Create kubeconfig for container
-    create_container_kubeconfig
-
-    # Clean up existing container
-    cleanup_container
-
-    # Build image
-    build_image
-
-    # Get port
-    get_port
-
-    # Run container
-    run_container
-}
-
-# Parse command line arguments
-case "${1:-}" in
-    --help|-h)
-        echo "Usage: $0 [OPTIONS]"
-        echo
-        echo "Kubernetes Exam Simulator Docker Setup Script"
-        echo
-        echo "This script will:"
-        echo "  1. Check for kubectl and Docker"
-        echo "  2. List available Kubernetes contexts"
-        echo "  3. Let you choose which context to use"
-        echo "  4. Build the Docker image"
-        echo "  5. Run the container with proper kubeconfig"
-        echo
-        echo "Options:"
-        echo "  -h, --help    Show this help message"
-        echo
-        exit 0
-        ;;
-    *)
-        main
-        ;;
-esac
+# Step 13: Display comprehensive success summary
+echo ""
+echo "================================================"
+print_success "Kubernetes Exam Simulator Docker Container Started!"
+echo "================================================"
+echo ""
+echo -e "🔗 Application: ${BOLD_GREEN}$TEST_URL${NC}"
+echo -e "🔗 Health Check: ${GREEN}$TEST_URL/api/health${NC}"
+echo -e "🔗 Questions API: ${GREEN}$TEST_URL/api/questions?exam_type=ckad&difficulty=beginner${NC}"
+echo ""
+echo -e "📝 Configuration:"
+echo -e "   Port: ${GREEN}$APP_PORT${NC}"
+echo -e "   Network: ${GREEN}$NETWORK_MODE${NC}"
+if [ -n "$KUBE_CONTEXT" ]; then
+    echo -e "   Kubernetes Context: ${GREEN}$KUBE_CONTEXT${NC}"
+fi
+echo ""
+echo -e "📝 Question Banks Available:"
+echo -e "   📚 Total Questions: ${GREEN}$TOTAL_QUESTIONS${NC} across all exam types"
+echo -e "   🎯 Exam Types: ${GREEN}CKAD, CKA, CKS, KCNA${NC}"
+echo -e "   📊 Difficulties: ${GREEN}Easy, Intermediate, Hard${NC}"
+echo ""
+echo -e "📝 Features Available:"
+echo -e "   ${GREEN}✅${NC} Real question loading from JSON files"
+echo -e "   ${GREEN}✅${NC} Question IDs displayed (ckad-e-001, etc.)"
+echo -e "   ${GREEN}✅${NC} Helm chart generation with infrastructure requirements"
+echo -e "   ${GREEN}✅${NC} Custom NOTES.txt with selected question IDs"
+echo -e "   ${GREEN}✅${NC} kubectl and helm tools available in container"
+echo -e "   ${GREEN}✅${NC} Kubernetes cluster integration (if configured)"
+echo ""
+echo -e "🎯 Complete Exam Workflow:"
+echo -e "   ${BOLD_GREEN}1.${NC} Visit $TEST_URL"
+echo -e "   ${BOLD_GREEN}2.${NC} Select exam type (CKAD/CKA/CKS/KCNA) and difficulty level"
+echo -e "   ${BOLD_GREEN}3.${NC} Click 'Generate Helm Chart' (uses real questions)"
+echo -e "   ${BOLD_GREEN}4.${NC} Download the generated chart with infrastructure requirements"
+echo -e "   ${BOLD_GREEN}5.${NC} Apply to your cluster: ${GREEN}helm install k8s-exam ./downloaded-chart${NC}"
+echo -e "   ${BOLD_GREEN}6.${NC} Return to application to start exam with real questions"
+echo ""
+echo -e "🐳 Docker Commands:"
+echo -e "   View logs: ${GREEN}docker logs k8s-exam-simulator${NC}"
+echo -e "   Execute shell: ${GREEN}docker exec -it k8s-exam-simulator /bin/bash${NC}"
+if [ -n "$KUBE_CONTEXT" ]; then
+    echo -e "   Test kubectl: ${GREEN}docker exec k8s-exam-simulator kubectl --context=$KUBE_CONTEXT get nodes${NC}"
+fi
+echo -e "   Stop container: ${GREEN}docker stop k8s-exam-simulator${NC}"
+echo -e "   Remove container: ${GREEN}docker rm k8s-exam-simulator${NC}"
+echo ""
+echo -e "${BOLD_GREEN}✅ Ready for Kubernetes certification practice across all exam types!${NC}"

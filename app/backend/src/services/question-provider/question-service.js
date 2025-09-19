@@ -3,7 +3,7 @@ const path = require('path');
 
 class QuestionService {
   constructor() {
-    this.questionBankPath = path.join(__dirname, '../../../../question-bank');
+    this.questionBankPath = path.join(__dirname, '../../../../../question-bank');
     this.cache = new Map();
   }
 
@@ -17,33 +17,62 @@ class QuestionService {
     }
 
     try {
-      // Load questions from JSON file
-      const questionsPath = path.join(this.questionBankPath, examType, 'questions.json');
-      const questionsData = await fs.readFile(questionsPath, 'utf8');
-      const allQuestions = JSON.parse(questionsData);
+      // Load main config to get question file list
+      const configPath = path.join(this.questionBankPath, examType, 'questions.json');
+      const configData = await fs.readFile(configPath, 'utf8');
+      const config = JSON.parse(configData);
 
-      // Filter by difficulty if questions have difficulty levels
-      let filteredQuestions = allQuestions.questions || allQuestions;
+      // Map difficulty levels to directory names
+      const difficultyMapping = {
+        'beginner': 'easy',
+        'intermediate': 'intermediate', 
+        'advanced': 'hard'
+      };
       
-      if (Array.isArray(filteredQuestions)) {
-        filteredQuestions = filteredQuestions.filter(q => 
-          !q.difficulty || q.difficulty === difficulty || difficulty === 'intermediate'
-        );
+      const mappedDifficulty = difficultyMapping[difficulty] || difficulty;
+
+      // Get question files for the specified difficulty
+      const questionFiles = config.questionFiles?.[mappedDifficulty] || [];
+      
+      if (questionFiles.length === 0) {
+        console.log(`No question files found for ${examType}-${difficulty}, falling back to mock questions`);
+        return this.getMockQuestions(examType, difficulty);
+      }
+
+      // Load individual question files
+      const questions = [];
+      const difficultyPath = path.join(this.questionBankPath, examType, mappedDifficulty);
+      
+      for (const fileName of questionFiles) {
+        try {
+          const questionPath = path.join(difficultyPath, fileName);
+          const questionData = await fs.readFile(questionPath, 'utf8');
+          const question = JSON.parse(questionData);
+          questions.push(question);
+        } catch (error) {
+          console.warn(`Failed to load question file ${fileName}:`, error.message);
+        }
       }
 
       // Randomize and limit question count based on exam type
       const maxQuestions = this.getMaxQuestions(examType);
-      const selectedQuestions = this.shuffleArray([...filteredQuestions])
+      const selectedQuestions = this.shuffleArray([...questions])
         .slice(0, maxQuestions);
 
-      // Add default properties if missing
+      // Add default properties if missing and ensure consistent structure
       const processedQuestions = selectedQuestions.map((question, index) => ({
         id: index + 1,
+        originalId: question.id,
         title: question.title || `Question ${index + 1}`,
         description: question.description || question.question || '',
         points: question.points || this.getDefaultPoints(examType),
         difficulty: question.difficulty || difficulty,
         category: question.category || 'General',
+        timeLimit: question.timeLimit || 10,
+        tags: question.tags || [],
+        infrastructure: question.infrastructure || { namespaces: [], resources: [], prerequisites: [] },
+        solution: question.solution || { steps: [] },
+        validations: question.validations || [],
         ...question
       }));
 
@@ -171,6 +200,115 @@ class QuestionService {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+  }
+
+  async getInfrastructureRequirements(examType, difficulty) {
+    // Get the questions that would be selected for the exam
+    const questions = await this.getQuestions(examType, difficulty);
+    
+    // Aggregate infrastructure requirements from all questions
+    const aggregatedRequirements = {
+      namespaces: new Set(),
+      resources: new Set(),
+      prerequisites: [],
+      deployments: new Set(),
+      services: new Set(),
+      configMaps: new Set(),
+      secrets: new Set(),
+      persistentVolumeClaims: new Set(),
+      networkPolicies: new Set(),
+      rbac: new Set()
+    };
+
+    // Process each question's infrastructure requirements
+    questions.forEach(question => {
+      const infra = question.infrastructure || {};
+      
+      // Add namespaces
+      if (infra.namespaces) {
+        infra.namespaces.forEach(ns => aggregatedRequirements.namespaces.add(ns));
+      }
+      
+      // Add resources
+      if (infra.resources) {
+        infra.resources.forEach(resource => aggregatedRequirements.resources.add(resource));
+      }
+      
+      // Add prerequisites
+      if (infra.prerequisites) {
+        aggregatedRequirements.prerequisites.push(...infra.prerequisites);
+      }
+
+      // Extract specific resource types from question content and tags
+      this.extractResourceTypes(question, aggregatedRequirements);
+    });
+
+    // Convert Sets to Arrays for JSON serialization
+    const requirements = {
+      namespaces: Array.from(aggregatedRequirements.namespaces),
+      resources: Array.from(aggregatedRequirements.resources),
+      prerequisites: aggregatedRequirements.prerequisites,
+      deployments: Array.from(aggregatedRequirements.deployments),
+      services: Array.from(aggregatedRequirements.services),
+      configMaps: Array.from(aggregatedRequirements.configMaps),
+      secrets: Array.from(aggregatedRequirements.secrets),
+      persistentVolumeClaims: Array.from(aggregatedRequirements.persistentVolumeClaims),
+      networkPolicies: Array.from(aggregatedRequirements.networkPolicies),
+      rbac: Array.from(aggregatedRequirements.rbac)
+    };
+
+    console.log(`Infrastructure requirements for ${examType}-${difficulty}:`, requirements);
+    return requirements;
+  }
+
+  extractResourceTypes(question, aggregated) {
+    const title = (question.title || '').toLowerCase();
+    const description = (question.description || '').toLowerCase();
+    const tags = question.tags || [];
+    const category = (question.category || '').toLowerCase();
+
+    // Check for deployments
+    if (title.includes('deployment') || description.includes('deployment') || 
+        tags.includes('deployments') || category.includes('deployment')) {
+      aggregated.deployments.add('deployment-resources');
+    }
+
+    // Check for services
+    if (title.includes('service') || description.includes('service') || 
+        tags.includes('services') || category.includes('service')) {
+      aggregated.services.add('service-resources');
+    }
+
+    // Check for configmaps
+    if (title.includes('configmap') || description.includes('configmap') || 
+        tags.includes('configmap') || category.includes('configuration')) {
+      aggregated.configMaps.add('configmap-resources');
+    }
+
+    // Check for secrets
+    if (title.includes('secret') || description.includes('secret') || 
+        tags.includes('secrets') || category.includes('secret')) {
+      aggregated.secrets.add('secret-resources');
+    }
+
+    // Check for PVCs
+    if (title.includes('pvc') || title.includes('persistentvolumeclaim') || 
+        description.includes('persistentvolumeclaim') || tags.includes('pvc') || 
+        category.includes('storage')) {
+      aggregated.persistentVolumeClaims.add('pvc-resources');
+    }
+
+    // Check for Network Policies
+    if (title.includes('network') || description.includes('network') || 
+        tags.includes('networking') || category.includes('network')) {
+      aggregated.networkPolicies.add('network-policy-resources');
+    }
+
+    // Check for RBAC
+    if (title.includes('rbac') || title.includes('role') || title.includes('serviceaccount') ||
+        description.includes('rbac') || tags.includes('rbac') || category.includes('security')) {
+      aggregated.rbac.add('rbac-resources');
+    }
   }
 
   clearCache() {

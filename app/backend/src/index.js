@@ -9,7 +9,8 @@ const path = require('path');
 const examRoutes = require('./routes/exam');
 const questionRoutes = require('./routes/questions');
 const helmRoutes = require('./routes/helm');
-const terminalService = require('./services/terminal-service');
+// Lazy load terminal service only when needed
+let terminalService = null;
 
 const app = express();
 const server = http.createServer(app);
@@ -188,9 +189,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Terminal WebSocket handling
+// Terminal WebSocket handling (lazy loaded)
 const terminalNamespace = io.of('/terminal');
-terminalService.initialize(terminalNamespace);
+terminalNamespace.on('connection', (socket) => {
+  // Load terminal service only when first terminal connection is made
+  if (!terminalService) {
+    console.log('Loading terminal service on first connection...');
+    terminalService = require('./services/terminal-service');
+    terminalService.initialize(terminalNamespace);
+  }
+});
 
 // Serve frontend for all other routes in production
 if (process.env.NODE_ENV === 'production') {

@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-044",
+  "title": "Get Events in Namespace",
+  "description": "Get all events in the default namespace and save them to /opt/course/44/events.txt.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Troubleshooting",
+  "tags": [
+    "events",
+    "debugging",
+    "monitoring"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "events"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Get events:",
+      "   kubectl get events",
+      "2. Save to file:",
+      "   kubectl get events > /opt/course/44/events.txt",
+      "3. Verify file:",
+      "   cat /opt/course/44/events.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/44/events.txt",
+      "expected": "true",
+      "points": 2,
+      "description": "Events file should exist"
+    }
+  ]
+}

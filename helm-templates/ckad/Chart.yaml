@@ -1,1 +1,19 @@
-# Placeholder for CKAD Helm templates
+apiVersion: v2
+name: ckad-exam-environment
+description: CKAD Certification Exam Environment
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - kubernetes
+  - ckad
+  - certification
+  - exam
+home: https://github.com/kubernetes/community
+sources:
+  - https://github.com/kubernetes/community
+maintainers:
+  - name: Exam Simulator
+    email: exam@simulator.local
+annotations:
+  category: Education

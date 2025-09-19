@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k8s-exam-ckad
+  labels:
+    app.kubernetes.io/name: k8s-exam
+    app.kubernetes.io/component: ckad
+    app.kubernetes.io/difficulty: beginner
+    app.kubernetes.io/managed-by: helm
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: exam-config
+  namespace: k8s-exam-ckad
+data:
+  exam-type: "ckad"
+  difficulty: "beginner"
+  instructions: |
+    Welcome to the CKAD exam environment!
+    
+    This is a beginner level exam simulation.
+    
+    Use kubectl commands to interact with this cluster.
+    All exam resources will be created in the k8s-exam-ckad namespace.
+    
+    Good luck!

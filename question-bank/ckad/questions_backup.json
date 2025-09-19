@@ -1,0 +1,1703 @@
+{
+  "examType": "ckad",
+  "version": "1.0",
+  "metadata": {
+    "totalQuestions": 50,
+    "questionsPerExam": 17,
+    "passingScore": 67,
+    "duration": 120,
+    "difficulties": {
+      "easy": 50,
+      "intermediate": 0,
+      "advanced": 0
+    }
+  },
+  "questions": {
+    "easy": [
+      {
+        "id": "ckad-e-001",
+        "title": "List All Namespaces",
+        "description": "Get the list of all Namespaces in the cluster and save it to /opt/course/1/namespaces.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Core Concepts",
+        "tags": ["namespaces", "basic", "listing"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["namespaces"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. List all namespaces:",
+            "   kubectl get namespaces",
+            "2. Save to file:",
+            "   kubectl get ns > /opt/course/1/namespaces"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/1/namespaces",
+            "expected": "true",
+            "points": 2,
+            "description": "File should exist with namespace list"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-002",
+        "title": "Create a Simple Pod",
+        "description": "Create a single Pod of image httpd:2.4.41-alpine in Namespace default. The Pod should be named pod1 and the container should be named pod1-container.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Core Concepts",
+        "tags": ["pods", "creation", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run pod1 --image=httpd:2.4.41-alpine --dry-run=client -o yaml > pod1.yaml",
+            "2. Edit yaml to change container name to pod1-container",
+            "3. Apply the pod:",
+            "   kubectl apply -f pod1.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod pod1 -o jsonpath='{.status.phase}'",
+            "expected": "Running",
+            "points": 3,
+            "description": "Pod should be running"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-003",
+        "title": "Create a Job",
+        "description": "Create a Job named simple-job in Namespace default that runs image busybox:1.31.0 and executes the command 'sleep 30 && echo done'. The Job should run once.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Workloads",
+        "tags": ["jobs", "batch", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["jobs"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create Job:",
+            "   kubectl create job simple-job --image=busybox:1.31.0 --dry-run=client -o yaml > job.yaml",
+            "2. Edit yaml to add command:",
+            "   command: ['sh', '-c', 'sleep 30 && echo done']",
+            "3. Apply the job:",
+            "   kubectl apply -f job.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get job simple-job -o jsonpath='{.status.succeeded}'",
+            "expected": "1",
+            "points": 4,
+            "description": "Job should complete successfully"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-004",
+        "title": "Create a Deployment",
+        "description": "Create a Deployment named web-deploy with 3 replicas using image nginx:1.20-alpine in Namespace default.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Workloads",
+        "tags": ["deployments", "scaling", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["deployments"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create deployment:",
+            "   kubectl create deployment web-deploy --image=nginx:1.20-alpine --replicas=3",
+            "2. Verify deployment:",
+            "   kubectl get deployment web-deploy",
+            "3. Check pods:",
+            "   kubectl get pods -l app=web-deploy"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment web-deploy -o jsonpath='{.status.replicas}'",
+            "expected": "3",
+            "points": 4,
+            "description": "Deployment should have 3 replicas"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-005",
+        "title": "Expose a Deployment with ClusterIP Service",
+        "description": "Create a ClusterIP Service named web-svc that exposes the web-deploy Deployment on port 80.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Services",
+        "tags": ["services", "clusterip", "expose"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["services", "deployments"],
+          "prerequisites": ["web-deploy deployment exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Expose deployment:",
+            "   kubectl expose deployment web-deploy --name=web-svc --port=80 --target-port=80",
+            "2. Verify service:",
+            "   kubectl get service web-svc",
+            "3. Check endpoints:",
+            "   kubectl get endpoints web-svc"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get service web-svc -o jsonpath='{.spec.type}'",
+            "expected": "ClusterIP",
+            "points": 3,
+            "description": "Service should be ClusterIP type"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-006",
+        "title": "Create a Pod with ReadinessProbe",
+        "description": "Create a Pod named probe-pod using image nginx:1.20-alpine with a readiness probe that checks HTTP GET on port 80 and path '/'.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Pod Design",
+        "tags": ["probes", "readiness", "health"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run probe-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > probe-pod.yaml",
+            "2. Add readinessProbe section:",
+            "   readinessProbe:",
+            "     httpGet:",
+            "       path: /",
+            "       port: 80",
+            "     initialDelaySeconds: 5",
+            "     periodSeconds: 5",
+            "3. Apply pod:",
+            "   kubectl apply -f probe-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod probe-pod -o jsonpath='{.status.containerStatuses[0].ready}'",
+            "expected": "true",
+            "points": 5,
+            "description": "Pod should be ready"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-007",
+        "title": "Create a ConfigMap",
+        "description": "Create a ConfigMap named app-config with key 'database_url' and value 'mysql://localhost:3306/mydb'.",
+        "points": 3,
+        "timeLimit": 6,
+        "category": "Configuration",
+        "tags": ["configmap", "configuration", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["configmaps"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create ConfigMap:",
+            "   kubectl create configmap app-config --from-literal=database_url='mysql://localhost:3306/mydb'",
+            "2. Verify ConfigMap:",
+            "   kubectl get configmap app-config",
+            "3. Check data:",
+            "   kubectl describe configmap app-config"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get configmap app-config -o jsonpath='{.data.database_url}'",
+            "expected": "mysql://localhost:3306/mydb",
+            "points": 3,
+            "description": "ConfigMap should contain correct data"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-008",
+        "title": "Create a Secret",
+        "description": "Create a Secret named db-secret with username 'admin' and password 'secret123'.",
+        "points": 3,
+        "timeLimit": 6,
+        "category": "Configuration",
+        "tags": ["secrets", "credentials", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["secrets"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create Secret:",
+            "   kubectl create secret generic db-secret --from-literal=username=admin --from-literal=password=secret123",
+            "2. Verify Secret:",
+            "   kubectl get secret db-secret",
+            "3. Check data (base64 encoded):",
+            "   kubectl get secret db-secret -o yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get secret db-secret -o jsonpath='{.data.username}' | base64 -d",
+            "expected": "admin",
+            "points": 3,
+            "description": "Secret should contain correct username"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-009",
+        "title": "Create Pod with Environment Variables from ConfigMap",
+        "description": "Create a Pod named env-pod using image busybox:1.31.0 that gets the database_url from the app-config ConfigMap as an environment variable named DB_URL.",
+        "points": 5,
+        "timeLimit": 10,
+        "category": "Configuration",
+        "tags": ["pods", "configmap", "environment"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods", "configmaps"],
+          "prerequisites": ["app-config ConfigMap exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run env-pod --image=busybox:1.31.0 --dry-run=client -o yaml > env-pod.yaml",
+            "2. Add env section:",
+            "   env:",
+            "   - name: DB_URL",
+            "     valueFrom:",
+            "       configMapKeyRef:",
+            "         name: app-config",
+            "         key: database_url",
+            "3. Add command to keep pod running:",
+            "   command: ['sleep', '3600']",
+            "4. Apply pod:",
+            "   kubectl apply -f env-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl exec env-pod -- env | grep DB_URL",
+            "expected": "DB_URL=mysql://localhost:3306/mydb",
+            "points": 5,
+            "description": "Pod should have correct environment variable"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-010",
+        "title": "Create Pod with Volume Mount",
+        "description": "Create a Pod named vol-pod using image nginx:1.20-alpine with an emptyDir volume named temp-vol mounted at /tmp/data.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Storage",
+        "tags": ["volumes", "emptydir", "mounts"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > vol-pod.yaml",
+            "2. Add volumes section:",
+            "   volumes:",
+            "   - name: temp-vol",
+            "     emptyDir: {}",
+            "3. Add volumeMounts section:",
+            "   volumeMounts:",
+            "   - name: temp-vol",
+            "     mountPath: /tmp/data",
+            "4. Apply pod:",
+            "   kubectl apply -f vol-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl exec vol-pod -- ls -d /tmp/data",
+            "expected": "/tmp/data",
+            "points": 4,
+            "description": "Volume should be mounted at /tmp/data"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-011",
+        "title": "Scale a Deployment",
+        "description": "Scale the web-deploy Deployment to 5 replicas.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Workloads",
+        "tags": ["scaling", "deployments", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["deployments"],
+          "prerequisites": ["web-deploy deployment exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Scale deployment:",
+            "   kubectl scale deployment web-deploy --replicas=5",
+            "2. Verify scaling:",
+            "   kubectl get deployment web-deploy",
+            "3. Check pods:",
+            "   kubectl get pods -l app=web-deploy"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment web-deploy -o jsonpath='{.spec.replicas}'",
+            "expected": "5",
+            "points": 2,
+            "description": "Deployment should have 5 replicas"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-012",
+        "title": "Create a Multi-Container Pod",
+        "description": "Create a Pod named multi-pod with two containers: main (nginx:1.20-alpine) and sidecar (busybox:1.31.0 running 'sleep 3600').",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Pod Design",
+        "tags": ["multi-container", "pods", "sidecar"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml with two containers:",
+            "   kubectl run multi-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > multi-pod.yaml",
+            "2. Add second container:",
+            "   - name: sidecar",
+            "     image: busybox:1.31.0",
+            "     command: ['sleep', '3600']",
+            "3. Apply pod:",
+            "   kubectl apply -f multi-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod multi-pod -o jsonpath='{.spec.containers[*].name}' | wc -w",
+            "expected": "2",
+            "points": 5,
+            "description": "Pod should have 2 containers"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-013",
+        "title": "Create a NodePort Service",
+        "description": "Create a NodePort Service named web-nodeport that exposes the web-deploy Deployment on port 80 with nodePort 30080.",
+        "points": 4,
+        "timeLimit": 8,
+        "category": "Services",
+        "tags": ["services", "nodeport", "expose"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["services", "deployments"],
+          "prerequisites": ["web-deploy deployment exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create NodePort service:",
+            "   kubectl expose deployment web-deploy --name=web-nodeport --type=NodePort --port=80 --target-port=80",
+            "2. Edit service to set nodePort:",
+            "   kubectl edit service web-nodeport",
+            "   # Add nodePort: 30080 under ports",
+            "3. Verify service:",
+            "   kubectl get service web-nodeport"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get service web-nodeport -o jsonpath='{.spec.ports[0].nodePort}'",
+            "expected": "30080",
+            "points": 4,
+            "description": "Service should have nodePort 30080"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-014",
+        "title": "Create Pod with Resource Limits",
+        "description": "Create a Pod named resource-pod using image nginx:1.20-alpine with memory request 64Mi and memory limit 128Mi.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Pod Design",
+        "tags": ["resources", "limits", "requests"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run resource-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > resource-pod.yaml",
+            "2. Add resources section:",
+            "   resources:",
+            "     requests:",
+            "       memory: '64Mi'",
+            "     limits:",
+            "       memory: '128Mi'",
+            "3. Apply pod:",
+            "   kubectl apply -f resource-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod resource-pod -o jsonpath='{.spec.containers[0].resources.limits.memory}'",
+            "expected": "128Mi",
+            "points": 4,
+            "description": "Pod should have memory limit of 128Mi"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-015",
+        "title": "Create Pod with Labels",
+        "description": "Create a Pod named labeled-pod using image nginx:1.20-alpine with labels app=web and version=1.0.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Core Concepts",
+        "tags": ["labels", "pods", "metadata"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod with labels:",
+            "   kubectl run labeled-pod --image=nginx:1.20-alpine --labels=app=web,version=1.0",
+            "2. Verify labels:",
+            "   kubectl get pod labeled-pod --show-labels",
+            "3. Check specific label:",
+            "   kubectl get pod -l app=web"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod labeled-pod -o jsonpath='{.metadata.labels.app}'",
+            "expected": "web",
+            "points": 3,
+            "description": "Pod should have app=web label"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-016",
+        "title": "Create Pod with LivenessProbe",
+        "description": "Create a Pod named liveness-pod using image nginx:1.20-alpine with a liveness probe that checks HTTP GET on port 80 and path '/'.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Pod Design",
+        "tags": ["probes", "liveness", "health"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run liveness-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > liveness-pod.yaml",
+            "2. Add livenessProbe section:",
+            "   livenessProbe:",
+            "     httpGet:",
+            "       path: /",
+            "       port: 80",
+            "     initialDelaySeconds: 10",
+            "     periodSeconds: 5",
+            "3. Apply pod:",
+            "   kubectl apply -f liveness-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl describe pod liveness-pod | grep -i liveness",
+            "expected": "Liveness",
+            "points": 5,
+            "description": "Pod should have liveness probe configured"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-017",
+        "title": "Create a CronJob",
+        "description": "Create a CronJob named daily-job that runs every day at midnight using image busybox:1.31.0 and command 'echo Hello World'.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Workloads",
+        "tags": ["cronjob", "scheduling", "batch"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["cronjobs"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create CronJob:",
+            "   kubectl create cronjob daily-job --schedule='0 0 * * *' --image=busybox:1.31.0 -- echo 'Hello World'",
+            "2. Verify CronJob:",
+            "   kubectl get cronjob daily-job",
+            "3. Check schedule:",
+            "   kubectl describe cronjob daily-job"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get cronjob daily-job -o jsonpath='{.spec.schedule}'",
+            "expected": "0 0 * * *",
+            "points": 4,
+            "description": "CronJob should have correct schedule"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-018",
+        "title": "Update Deployment Image",
+        "description": "Update the web-deploy Deployment to use image nginx:1.21-alpine.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Workloads",
+        "tags": ["deployments", "updates", "images"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["deployments"],
+          "prerequisites": ["web-deploy deployment exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Update deployment image:",
+            "   kubectl set image deployment/web-deploy nginx=nginx:1.21-alpine",
+            "2. Check rollout status:",
+            "   kubectl rollout status deployment/web-deploy",
+            "3. Verify new image:",
+            "   kubectl describe deployment web-deploy"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get deployment web-deploy -o jsonpath='{.spec.template.spec.containers[0].image}'",
+            "expected": "nginx:1.21-alpine",
+            "points": 3,
+            "description": "Deployment should use nginx:1.21-alpine image"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-019",
+        "title": "Create Pod with InitContainer",
+        "description": "Create a Pod named init-pod with an init container that runs busybox:1.31.0 with command 'echo Init complete' and a main container running nginx:1.20-alpine.",
+        "points": 6,
+        "timeLimit": 15,
+        "category": "Pod Design",
+        "tags": ["initcontainers", "pods", "initialization"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run init-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > init-pod.yaml",
+            "2. Add initContainers section:",
+            "   initContainers:",
+            "   - name: init-container",
+            "     image: busybox:1.31.0",
+            "     command: ['echo', 'Init complete']",
+            "3. Apply pod:",
+            "   kubectl apply -f init-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod init-pod -o jsonpath='{.spec.initContainers[0].name}'",
+            "expected": "init-container",
+            "points": 6,
+            "description": "Pod should have init container"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-020",
+        "title": "Create Pod with Secret as Volume",
+        "description": "Create a Pod named secret-vol-pod using image nginx:1.20-alpine that mounts the db-secret as a volume at /etc/secrets.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Configuration",
+        "tags": ["secrets", "volumes", "mounts"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods", "secrets"],
+          "prerequisites": ["db-secret exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run secret-vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > secret-vol-pod.yaml",
+            "2. Add volumes section:",
+            "   volumes:",
+            "   - name: secret-vol",
+            "     secret:",
+            "       secretName: db-secret",
+            "3. Add volumeMounts:",
+            "   volumeMounts:",
+            "   - name: secret-vol",
+            "     mountPath: /etc/secrets",
+            "4. Apply pod:",
+            "   kubectl apply -f secret-vol-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl exec secret-vol-pod -- ls /etc/secrets/username",
+            "expected": "/etc/secrets/username",
+            "points": 5,
+            "description": "Secret should be mounted as files"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-021",
+        "title": "Get Pod Logs",
+        "description": "Get the logs from the liveness-pod and save them to /opt/course/21/pod.log.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Troubleshooting",
+        "tags": ["logs", "debugging", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["liveness-pod exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Get pod logs:",
+            "   kubectl logs liveness-pod",
+            "2. Save logs to file:",
+            "   kubectl logs liveness-pod > /opt/course/21/pod.log",
+            "3. Verify file:",
+            "   cat /opt/course/21/pod.log"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/21/pod.log",
+            "expected": "true",
+            "points": 2,
+            "description": "Log file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-022",
+        "title": "Describe a Pod",
+        "description": "Get detailed information about the multi-pod and save the output to /opt/course/22/pod-describe.txt.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Troubleshooting",
+        "tags": ["describe", "debugging", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["multi-pod exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Describe pod:",
+            "   kubectl describe pod multi-pod",
+            "2. Save output to file:",
+            "   kubectl describe pod multi-pod > /opt/course/22/pod-describe.txt",
+            "3. Verify file:",
+            "   head /opt/course/22/pod-describe.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/22/pod-describe.txt",
+            "expected": "true",
+            "points": 2,
+            "description": "Describe file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-023",
+        "title": "Execute Command in Pod",
+        "description": "Execute the command 'whoami' in the env-pod container and save the output to /opt/course/23/whoami.txt.",
+        "points": 3,
+        "timeLimit": 6,
+        "category": "Core Concepts",
+        "tags": ["exec", "commands", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["env-pod exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Execute command in pod:",
+            "   kubectl exec env-pod -- whoami",
+            "2. Save output to file:",
+            "   kubectl exec env-pod -- whoami > /opt/course/23/whoami.txt",
+            "3. Verify output:",
+            "   cat /opt/course/23/whoami.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/23/whoami.txt",
+            "expected": "true",
+            "points": 3,
+            "description": "Output file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-024",
+        "title": "Create a Service Account",
+        "description": "Create a ServiceAccount named app-sa in the default namespace.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Security",
+        "tags": ["serviceaccount", "rbac", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["serviceaccounts"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create ServiceAccount:",
+            "   kubectl create serviceaccount app-sa",
+            "2. Verify ServiceAccount:",
+            "   kubectl get serviceaccount app-sa",
+            "3. Check details:",
+            "   kubectl describe serviceaccount app-sa"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get serviceaccount app-sa -o jsonpath='{.metadata.name}'",
+            "expected": "app-sa",
+            "points": 2,
+            "description": "ServiceAccount should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-025",
+        "title": "Create Pod with ServiceAccount",
+        "description": "Create a Pod named sa-pod using image nginx:1.20-alpine that uses the app-sa ServiceAccount.",
+        "points": 4,
+        "timeLimit": 8,
+        "category": "Security",
+        "tags": ["serviceaccount", "pods", "security"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods", "serviceaccounts"],
+          "prerequisites": ["app-sa ServiceAccount exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run sa-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > sa-pod.yaml",
+            "2. Add serviceAccountName:",
+            "   serviceAccountName: app-sa",
+            "3. Apply pod:",
+            "   kubectl apply -f sa-pod.yaml",
+            "4. Verify:",
+            "   kubectl get pod sa-pod -o yaml | grep serviceAccount"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod sa-pod -o jsonpath='{.spec.serviceAccountName}'",
+            "expected": "app-sa",
+            "points": 4,
+            "description": "Pod should use app-sa ServiceAccount"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-026",
+        "title": "Create Pod in Specific Namespace",
+        "description": "Create a Pod named ns-pod using image busybox:1.31.0 in the kube-system namespace with command 'sleep 3600'.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Core Concepts",
+        "tags": ["namespaces", "pods", "basic"],
+        "infrastructure": {
+          "namespaces": ["kube-system"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod in namespace:",
+            "   kubectl run ns-pod --image=busybox:1.31.0 --namespace=kube-system -- sleep 3600",
+            "2. Verify pod:",
+            "   kubectl get pod ns-pod -n kube-system",
+            "3. Check namespace:",
+            "   kubectl get pod ns-pod -n kube-system -o jsonpath='{.metadata.namespace}'"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod ns-pod -n kube-system -o jsonpath='{.metadata.namespace}'",
+            "expected": "kube-system",
+            "points": 3,
+            "description": "Pod should be in kube-system namespace"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-027",
+        "title": "Get Pods with Specific Label",
+        "description": "List all pods in the default namespace that have the label app=web and save the output to /opt/course/27/labeled-pods.txt.",
+        "points": 3,
+        "timeLimit": 6,
+        "category": "Core Concepts",
+        "tags": ["labels", "selectors", "filtering"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["pods with app=web label exist"]
+        },
+        "solution": {
+          "steps": [
+            "1. List pods with label:",
+            "   kubectl get pods -l app=web",
+            "2. Save to file:",
+            "   kubectl get pods -l app=web > /opt/course/27/labeled-pods.txt",
+            "3. Verify file:",
+            "   cat /opt/course/27/labeled-pods.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/27/labeled-pods.txt",
+            "expected": "true",
+            "points": 3,
+            "description": "Output file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-028",
+        "title": "Create PersistentVolumeClaim",
+        "description": "Create a PersistentVolumeClaim named app-pvc requesting 1Gi of storage with ReadWriteOnce access mode.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Storage",
+        "tags": ["pvc", "storage", "persistence"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["persistentvolumeclaims"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create PVC yaml:",
+            "apiVersion: v1",
+            "kind: PersistentVolumeClaim",
+            "metadata:",
+            "  name: app-pvc",
+            "spec:",
+            "  accessModes:",
+            "  - ReadWriteOnce",
+            "  resources:",
+            "    requests:",
+            "      storage: 1Gi",
+            "2. Apply PVC:",
+            "   kubectl apply -f pvc.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pvc app-pvc -o jsonpath='{.spec.resources.requests.storage}'",
+            "expected": "1Gi",
+            "points": 4,
+            "description": "PVC should request 1Gi storage"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-029",
+        "title": "Create Pod with PVC Mount",
+        "description": "Create a Pod named pvc-pod using image nginx:1.20-alpine that mounts the app-pvc at /data.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Storage",
+        "tags": ["pvc", "volumes", "mounts"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods", "persistentvolumeclaims"],
+          "prerequisites": ["app-pvc exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run pvc-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > pvc-pod.yaml",
+            "2. Add volumes section:",
+            "   volumes:",
+            "   - name: data-vol",
+            "     persistentVolumeClaim:",
+            "       claimName: app-pvc",
+            "3. Add volumeMounts:",
+            "   volumeMounts:",
+            "   - name: data-vol",
+            "     mountPath: /data",
+            "4. Apply pod:",
+            "   kubectl apply -f pvc-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl exec pvc-pod -- ls -d /data",
+            "expected": "/data",
+            "points": 5,
+            "description": "PVC should be mounted at /data"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-030",
+        "title": "Check Pod Resource Usage",
+        "description": "Get the current CPU and memory usage of all pods in the default namespace and save to /opt/course/30/pod-usage.txt.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Monitoring",
+        "tags": ["metrics", "resources", "monitoring"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["metrics-server running"]
+        },
+        "solution": {
+          "steps": [
+            "1. Get pod resource usage:",
+            "   kubectl top pods",
+            "2. Save to file:",
+            "   kubectl top pods > /opt/course/30/pod-usage.txt",
+            "3. Verify file:",
+            "   cat /opt/course/30/pod-usage.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/30/pod-usage.txt",
+            "expected": "true",
+            "points": 3,
+            "description": "Usage file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-031",
+        "title": "Create Pod with Security Context",
+        "description": "Create a Pod named secure-pod using image nginx:1.20-alpine that runs as user ID 1000 and group ID 2000.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Security",
+        "tags": ["securitycontext", "users", "security"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run secure-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > secure-pod.yaml",
+            "2. Add securityContext:",
+            "   securityContext:",
+            "     runAsUser: 1000",
+            "     runAsGroup: 2000",
+            "3. Apply pod:",
+            "   kubectl apply -f secure-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod secure-pod -o jsonpath='{.spec.securityContext.runAsUser}'",
+            "expected": "1000",
+            "points": 4,
+            "description": "Pod should run as user 1000"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-032",
+        "title": "Create Pod with Annotations",
+        "description": "Create a Pod named annotated-pod using image nginx:1.20-alpine with annotation description='This is a test pod'.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Core Concepts",
+        "tags": ["annotations", "metadata", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run annotated-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > annotated-pod.yaml",
+            "2. Add annotations:",
+            "   annotations:",
+            "     description: 'This is a test pod'",
+            "3. Apply pod:",
+            "   kubectl apply -f annotated-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod annotated-pod -o jsonpath='{.metadata.annotations.description}'",
+            "expected": "This is a test pod",
+            "points": 3,
+            "description": "Pod should have correct annotation"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-033",
+        "title": "Rollback a Deployment",
+        "description": "Rollback the web-deploy Deployment to the previous revision.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Workloads",
+        "tags": ["rollback", "deployments", "history"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["deployments"],
+          "prerequisites": ["web-deploy deployment with multiple revisions"]
+        },
+        "solution": {
+          "steps": [
+            "1. Check rollout history:",
+            "   kubectl rollout history deployment/web-deploy",
+            "2. Rollback to previous revision:",
+            "   kubectl rollout undo deployment/web-deploy",
+            "3. Check rollout status:",
+            "   kubectl rollout status deployment/web-deploy"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl rollout history deployment/web-deploy | tail -1 | awk '{print $1}'",
+            "expected": "3",
+            "points": 3,
+            "description": "Deployment should have new revision after rollback"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-034",
+        "title": "Create Pod with Port Specification",
+        "description": "Create a Pod named port-pod using image nginx:1.20-alpine that exposes container port 80.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Core Concepts",
+        "tags": ["ports", "containers", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run port-pod --image=nginx:1.20-alpine --port=80 --dry-run=client -o yaml > port-pod.yaml",
+            "2. Verify ports section is present",
+            "3. Apply pod:",
+            "   kubectl apply -f port-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod port-pod -o jsonpath='{.spec.containers[0].ports[0].containerPort}'",
+            "expected": "80",
+            "points": 3,
+            "description": "Pod should expose port 80"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-035",
+        "title": "Create ConfigMap from File",
+        "description": "Create a file /tmp/app.conf with content 'server.port=8080' and create a ConfigMap named file-config from this file.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Configuration",
+        "tags": ["configmap", "files", "configuration"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["configmaps"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create file:",
+            "   echo 'server.port=8080' > /tmp/app.conf",
+            "2. Create ConfigMap from file:",
+            "   kubectl create configmap file-config --from-file=/tmp/app.conf",
+            "3. Verify ConfigMap:",
+            "   kubectl get configmap file-config -o yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get configmap file-config -o jsonpath='{.data.app\\.conf}'",
+            "expected": "server.port=8080",
+            "points": 4,
+            "description": "ConfigMap should contain file content"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-036",
+        "title": "Create Pod with ConfigMap Volume",
+        "description": "Create a Pod named config-vol-pod using image nginx:1.20-alpine that mounts the file-config ConfigMap as a volume at /etc/config.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Configuration",
+        "tags": ["configmap", "volumes", "mounts"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods", "configmaps"],
+          "prerequisites": ["file-config ConfigMap exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run config-vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > config-vol-pod.yaml",
+            "2. Add volumes section:",
+            "   volumes:",
+            "   - name: config-vol",
+            "     configMap:",
+            "       name: file-config",
+            "3. Add volumeMounts:",
+            "   volumeMounts:",
+            "   - name: config-vol",
+            "     mountPath: /etc/config",
+            "4. Apply pod:",
+            "   kubectl apply -f config-vol-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl exec config-vol-pod -- ls /etc/config/app.conf",
+            "expected": "/etc/config/app.conf",
+            "points": 5,
+            "description": "ConfigMap should be mounted as file"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-037",
+        "title": "Get All Resources in Namespace",
+        "description": "List all resources in the default namespace and save the output to /opt/course/37/all-resources.txt.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Core Concepts",
+        "tags": ["resources", "listing", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["all"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. List all resources:",
+            "   kubectl get all",
+            "2. Save to file:",
+            "   kubectl get all > /opt/course/37/all-resources.txt",
+            "3. Verify file:",
+            "   cat /opt/course/37/all-resources.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/37/all-resources.txt",
+            "expected": "true",
+            "points": 2,
+            "description": "Resources file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-038",
+        "title": "Create Pod with Multiple Environment Variables",
+        "description": "Create a Pod named multi-env-pod using image busybox:1.31.0 with environment variables ENV1=value1, ENV2=value2, and command 'sleep 3600'.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Configuration",
+        "tags": ["environment", "variables", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod with env vars:",
+            "   kubectl run multi-env-pod --image=busybox:1.31.0 --env=ENV1=value1 --env=ENV2=value2 -- sleep 3600",
+            "2. Verify environment variables:",
+            "   kubectl exec multi-env-pod -- env | grep ENV"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl exec multi-env-pod -- env | grep ENV1=value1",
+            "expected": "ENV1=value1",
+            "points": 4,
+            "description": "Pod should have correct environment variables"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-039",
+        "title": "Create Pod with Restart Policy",
+        "description": "Create a Pod named restart-pod using image busybox:1.31.0 with restart policy Never and command 'echo hello && exit 1'.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Pod Design",
+        "tags": ["restart", "policy", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run restart-pod --image=busybox:1.31.0 --restart=Never --dry-run=client -o yaml > restart-pod.yaml",
+            "2. Add command:",
+            "   command: ['sh', '-c', 'echo hello && exit 1']",
+            "3. Apply pod:",
+            "   kubectl apply -f restart-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod restart-pod -o jsonpath='{.spec.restartPolicy}'",
+            "expected": "Never",
+            "points": 4,
+            "description": "Pod should have Never restart policy"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-040",
+        "title": "Create Pod with TTL",
+        "description": "Create a Pod named ttl-pod using image busybox:1.31.0 with activeDeadlineSeconds set to 60 and command 'sleep 3600'.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Pod Design",
+        "tags": ["ttl", "deadline", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run ttl-pod --image=busybox:1.31.0 --dry-run=client -o yaml > ttl-pod.yaml",
+            "2. Add activeDeadlineSeconds:",
+            "   activeDeadlineSeconds: 60",
+            "3. Add command:",
+            "   command: ['sleep', '3600']",
+            "4. Apply pod:",
+            "   kubectl apply -f ttl-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod ttl-pod -o jsonpath='{.spec.activeDeadlineSeconds}'",
+            "expected": "60",
+            "points": 4,
+            "description": "Pod should have 60 second deadline"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-041",
+        "title": "Create Service with Session Affinity",
+        "description": "Create a Service named sticky-svc that exposes the web-deploy Deployment with session affinity set to ClientIP.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Services",
+        "tags": ["services", "affinity", "sessions"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["services", "deployments"],
+          "prerequisites": ["web-deploy deployment exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create service yaml:",
+            "   kubectl expose deployment web-deploy --name=sticky-svc --port=80 --dry-run=client -o yaml > sticky-svc.yaml",
+            "2. Add sessionAffinity:",
+            "   sessionAffinity: ClientIP",
+            "3. Apply service:",
+            "   kubectl apply -f sticky-svc.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get service sticky-svc -o jsonpath='{.spec.sessionAffinity}'",
+            "expected": "ClientIP",
+            "points": 4,
+            "description": "Service should have ClientIP session affinity"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-042",
+        "title": "Create Pod with DNS Policy",
+        "description": "Create a Pod named dns-pod using image nginx:1.20-alpine with dnsPolicy set to None and custom DNS server 8.8.8.8.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Networking",
+        "tags": ["dns", "networking", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run dns-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > dns-pod.yaml",
+            "2. Add dnsPolicy and dnsConfig:",
+            "   dnsPolicy: None",
+            "   dnsConfig:",
+            "     nameservers:",
+            "     - 8.8.8.8",
+            "3. Apply pod:",
+            "   kubectl apply -f dns-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod dns-pod -o jsonpath='{.spec.dnsPolicy}'",
+            "expected": "None",
+            "points": 5,
+            "description": "Pod should have None DNS policy"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-043",
+        "title": "Create Pod with Host Network",
+        "description": "Create a Pod named host-network-pod using image nginx:1.20-alpine that uses the host network.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Networking",
+        "tags": ["hostnetwork", "networking", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run host-network-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > host-network-pod.yaml",
+            "2. Add hostNetwork:",
+            "   hostNetwork: true",
+            "3. Apply pod:",
+            "   kubectl apply -f host-network-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod host-network-pod -o jsonpath='{.spec.hostNetwork}'",
+            "expected": "true",
+            "points": 3,
+            "description": "Pod should use host network"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-044",
+        "title": "Get Events in Namespace",
+        "description": "Get all events in the default namespace and save them to /opt/course/44/events.txt.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Troubleshooting",
+        "tags": ["events", "debugging", "monitoring"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["events"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Get events:",
+            "   kubectl get events",
+            "2. Save to file:",
+            "   kubectl get events > /opt/course/44/events.txt",
+            "3. Verify file:",
+            "   cat /opt/course/44/events.txt"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/44/events.txt",
+            "expected": "true",
+            "points": 2,
+            "description": "Events file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-045",
+        "title": "Create Pod with Node Selector",
+        "description": "Create a Pod named node-selector-pod using image nginx:1.20-alpine with nodeSelector for nodes labeled with disktype=ssd.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Pod Design",
+        "tags": ["nodeselector", "scheduling", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["node with disktype=ssd label"]
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run node-selector-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > node-selector-pod.yaml",
+            "2. Add nodeSelector:",
+            "   nodeSelector:",
+            "     disktype: ssd",
+            "3. Apply pod:",
+            "   kubectl apply -f node-selector-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod node-selector-pod -o jsonpath='{.spec.nodeSelector.disktype}'",
+            "expected": "ssd",
+            "points": 4,
+            "description": "Pod should have nodeSelector for disktype=ssd"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-046",
+        "title": "Create Pod with Tolerations",
+        "description": "Create a Pod named toleration-pod using image nginx:1.20-alpine that tolerates taint key=value with NoSchedule effect.",
+        "points": 5,
+        "timeLimit": 12,
+        "category": "Pod Design",
+        "tags": ["tolerations", "taints", "scheduling"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run toleration-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > toleration-pod.yaml",
+            "2. Add tolerations:",
+            "   tolerations:",
+            "   - key: key",
+            "     operator: Equal",
+            "     value: value",
+            "     effect: NoSchedule",
+            "3. Apply pod:",
+            "   kubectl apply -f toleration-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod toleration-pod -o jsonpath='{.spec.tolerations[0].key}'",
+            "expected": "key",
+            "points": 5,
+            "description": "Pod should have toleration for key=value"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-047",
+        "title": "Create ReplicaSet",
+        "description": "Create a ReplicaSet named rs-test with 3 replicas using image nginx:1.20-alpine and labels app=rs-test.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Workloads",
+        "tags": ["replicaset", "scaling", "basic"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["replicasets"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create ReplicaSet yaml:",
+            "apiVersion: apps/v1",
+            "kind: ReplicaSet",
+            "metadata:",
+            "  name: rs-test",
+            "spec:",
+            "  replicas: 3",
+            "  selector:",
+            "    matchLabels:",
+            "      app: rs-test",
+            "  template:",
+            "    metadata:",
+            "      labels:",
+            "        app: rs-test",
+            "    spec:",
+            "      containers:",
+            "      - name: nginx",
+            "        image: nginx:1.20-alpine",
+            "2. Apply ReplicaSet:",
+            "   kubectl apply -f rs.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get replicaset rs-test -o jsonpath='{.spec.replicas}'",
+            "expected": "3",
+            "points": 4,
+            "description": "ReplicaSet should have 3 replicas"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-048",
+        "title": "Create Pod with Image Pull Policy",
+        "description": "Create a Pod named pull-policy-pod using image nginx:1.20-alpine with imagePullPolicy set to Always.",
+        "points": 3,
+        "timeLimit": 8,
+        "category": "Core Concepts",
+        "tags": ["images", "pullpolicy", "pods"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create pod yaml:",
+            "   kubectl run pull-policy-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > pull-policy-pod.yaml",
+            "2. Add imagePullPolicy:",
+            "   imagePullPolicy: Always",
+            "3. Apply pod:",
+            "   kubectl apply -f pull-policy-pod.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod pull-policy-pod -o jsonpath='{.spec.containers[0].imagePullPolicy}'",
+            "expected": "Always",
+            "points": 3,
+            "description": "Pod should have Always image pull policy"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-049",
+        "title": "Export Pod YAML",
+        "description": "Export the configuration of the labeled-pod to a file /opt/course/49/labeled-pod-export.yaml.",
+        "points": 2,
+        "timeLimit": 5,
+        "category": "Core Concepts",
+        "tags": ["export", "yaml", "configuration"],
+        "infrastructure": {
+          "namespaces": ["default"],
+          "resources": ["pods"],
+          "prerequisites": ["labeled-pod exists"]
+        },
+        "solution": {
+          "steps": [
+            "1. Export pod yaml:",
+            "   kubectl get pod labeled-pod -o yaml",
+            "2. Save to file:",
+            "   kubectl get pod labeled-pod -o yaml > /opt/course/49/labeled-pod-export.yaml",
+            "3. Verify file:",
+            "   head /opt/course/49/labeled-pod-export.yaml"
+          ]
+        },
+        "validations": [
+          {
+            "command": "test -f /opt/course/49/labeled-pod-export.yaml",
+            "expected": "true",
+            "points": 2,
+            "description": "Export file should exist"
+          }
+        ]
+      },
+      {
+        "id": "ckad-e-050",
+        "title": "Create Namespace and Pod",
+        "description": "Create a new namespace named test-ns and create a Pod named final-pod using image nginx:1.20-alpine in this namespace.",
+        "points": 4,
+        "timeLimit": 10,
+        "category": "Core Concepts",
+        "tags": ["namespaces", "pods", "creation"],
+        "infrastructure": {
+          "namespaces": ["test-ns"],
+          "resources": ["namespaces", "pods"],
+          "prerequisites": []
+        },
+        "solution": {
+          "steps": [
+            "1. Create namespace:",
+            "   kubectl create namespace test-ns",
+            "2. Create pod in namespace:",
+            "   kubectl run final-pod --image=nginx:1.20-alpine --namespace=test-ns",
+            "3. Verify pod:",
+            "   kubectl get pod final-pod -n test-ns"
+          ]
+        },
+        "validations": [
+          {
+            "command": "kubectl get pod final-pod -n test-ns -o jsonpath='{.metadata.namespace}'",
+            "expected": "test-ns",
+            "points": 4,
+            "description": "Pod should be in test-ns namespace"
+          }
+        ]
+      }
+    ]
+  }
+}

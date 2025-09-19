@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-008",
+  "title": "Create a Secret",
+  "description": "Create a Secret named db-secret with username 'admin' and password 'secret123'.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Configuration",
+  "tags": [
+    "secrets",
+    "credentials",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Secret:",
+      "   kubectl create secret generic db-secret --from-literal=username=admin --from-literal=password=secret123",
+      "2. Verify Secret:",
+      "   kubectl get secret db-secret",
+      "3. Check data (base64 encoded):",
+      "   kubectl get secret db-secret -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get secret db-secret -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "admin",
+      "points": 3,
+      "description": "Secret should contain correct username"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-013",
+  "title": "Create a NodePort Service",
+  "description": "Create a NodePort Service named web-nodeport that exposes the web-deploy Deployment on port 80 with nodePort 30080.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Services",
+  "tags": [
+    "services",
+    "nodeport",
+    "expose"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "services",
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create NodePort service:",
+      "   kubectl expose deployment web-deploy --name=web-nodeport --type=NodePort --port=80 --target-port=80",
+      "2. Edit service to set nodePort:",
+      "   kubectl edit service web-nodeport",
+      "   # Add nodePort: 30080 under ports",
+      "3. Verify service:",
+      "   kubectl get service web-nodeport"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service web-nodeport -o jsonpath='{.spec.ports[0].nodePort}'",
+      "expected": "30080",
+      "points": 4,
+      "description": "Service should have nodePort 30080"
+    }
+  ]
+}

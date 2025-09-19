@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-040",
+  "title": "Create Pod with TTL",
+  "description": "Create a Pod named ttl-pod using image busybox:1.31.0 with activeDeadlineSeconds set to 60 and command 'sleep 3600'.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Pod Design",
+  "tags": [
+    "ttl",
+    "deadline",
+    "pods"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run ttl-pod --image=busybox:1.31.0 --dry-run=client -o yaml > ttl-pod.yaml",
+      "2. Add activeDeadlineSeconds:",
+      "   activeDeadlineSeconds: 60",
+      "3. Add command:",
+      "   command: ['sleep', '3600']",
+      "4. Apply pod:",
+      "   kubectl apply -f ttl-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod ttl-pod -o jsonpath='{.spec.activeDeadlineSeconds}'",
+      "expected": "60",
+      "points": 4,
+      "description": "Pod should have 60 second deadline"
+    }
+  ]
+}

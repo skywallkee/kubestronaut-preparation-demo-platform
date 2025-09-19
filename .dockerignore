@@ -1,21 +1,47 @@
+# Dependencies
 node_modules
+*/node_modules
 npm-debug.log
+*/npm-debug.log
+
+# Development files
 .git
 .gitignore
-README.md
 .env
-.nyc_output
-coverage
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.DS_Store
+
+# Build artifacts (exclude from context but not needed ones)
+app/frontend/build
+.nyc_output
+coverage
+
+# Logs
 *.log
-.venv
-app/generated-charts
-"Screenshot*.png"
-docker-build-guide.md
+logs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation and screenshots
+README.md
 *.md
+!app/frontend/.env
+Screenshot*.png
+docker-build-guide.md
+
+# Development tools
 .claude
 .venv
+
+# Local development scripts (not needed in container)
+local-start.sh

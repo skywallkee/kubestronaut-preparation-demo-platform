@@ -1,0 +1,50 @@
+{
+  "id": "ckad-e-036",
+  "title": "Create Pod with ConfigMap Volume",
+  "description": "Create a Pod named config-vol-pod using image nginx:1.20-alpine that mounts the file-config ConfigMap as a volume at /etc/config.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Configuration",
+  "tags": [
+    "configmap",
+    "volumes",
+    "mounts"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods",
+      "configmaps"
+    ],
+    "prerequisites": [
+      "file-config ConfigMap exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run config-vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > config-vol-pod.yaml",
+      "2. Add volumes section:",
+      "   volumes:",
+      "   - name: config-vol",
+      "     configMap:",
+      "       name: file-config",
+      "3. Add volumeMounts:",
+      "   volumeMounts:",
+      "   - name: config-vol",
+      "     mountPath: /etc/config",
+      "4. Apply pod:",
+      "   kubectl apply -f config-vol-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl exec config-vol-pod -- ls /etc/config/app.conf",
+      "expected": "/etc/config/app.conf",
+      "points": 5,
+      "description": "ConfigMap should be mounted as file"
+    }
+  ]
+}
