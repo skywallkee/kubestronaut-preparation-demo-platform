@@ -1,0 +1,73 @@
+{
+  "id": "ckad-a-065",
+  "title": "Advanced Horizontal Pod Autoscaling (HPA)",
+  "description": "Implement sophisticated ||Horizontal Pod Autoscaling|| with multiple metrics sources and custom scaling behaviors. Create HPA configurations that scale based on ||CPU utilization||, ||memory usage||, ||custom application metrics||, and ||external metrics|| from monitoring systems. Design scaling policies with different behaviors for scale-up and scale-down events, implement scaling stabilization windows, and demonstrate how HPA handles metric spikes, gradual load increases, and sudden traffic drops. Include integration with custom metrics APIs and Prometheus adapters.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Pod Design",
+  "tags": ["hpa", "autoscaling", "custom-metrics", "external-metrics", "scaling-behavior", "advanced"],
+  "infrastructure": {
+    "namespaces": ["autoscaling-demo"],
+    "resources": ["Deployment", "HorizontalPodAutoscaler", "Service", "ServiceMonitor"],
+    "prerequisites": ["Metrics server and custom metrics API"]
+  },
+  "solution": {
+    "steps": [
+      "# Create autoscaling-demo namespace\nkubectl create namespace autoscaling-demo",
+
+      "# Create deployment with resource requests\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: scaling-app\n  namespace: autoscaling-demo\n  labels:\n    app: scaling-app\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: scaling-app\n  template:\n    metadata:\n      labels:\n        app: scaling-app\n    spec:\n      containers:\n      - name: app\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        resources:\n          requests:\n            cpu: 200m\n            memory: 256Mi\n          limits:\n            cpu: 500m\n            memory: 512Mi\n        command:\n        - /bin/sh\n        - -c\n        - |\n          cat > /app/server.py << 'SCRIPT'\n          import http.server\n          import socketserver\n          import json\n          import time\n          import random\n          import threading\n          from datetime import datetime\n          \n          # Metrics tracking\n          request_count = 0\n          start_time = time.time()\n          \n          class MetricsHandler(http.server.BaseHTTPRequestHandler):\n              def do_GET(self):\n                  global request_count\n                  request_count += 1\n                  \n                  if self.path == '/metrics':\n                      current_time = time.time()\n                      uptime = current_time - start_time\n                      rps = request_count / max(uptime, 1)\n                      \n                      # Simulate CPU load for scaling\n                      if random.random() < 0.3:\n                          time.sleep(0.1)  # Simulate processing\n                      \n                      metrics = f'''# HELP http_requests_total Total HTTP requests\n# TYPE http_requests_total counter\nhttp_requests_total {request_count}\n\n# HELP http_requests_per_second Requests per second\n# TYPE http_requests_per_second gauge\nhttp_requests_per_second {rps:.2f}\n'''\n                      \n                      self.send_response(200)\n                      self.send_header('Content-Type', 'text/plain')\n                      self.end_headers()\n                      self.wfile.write(metrics.encode())\n                  elif self.path == '/load':\n                      # Generate CPU load\n                      for _ in range(100000):\n                          pass\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps({'status': 'load generated'}).encode())\n                  else:\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps({'status': 'ok', 'requests': request_count}).encode())\n          \n          with socketserver.TCPServer((\"\", 8080), MetricsHandler) as httpd:\n              print(\"Server running on port 8080\")\n              httpd.serve_forever()\n          SCRIPT\n          \n          cd /app && python3 server.py\nEOF",
+
+      "# Create service for the application\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: scaling-app\n  namespace: autoscaling-demo\n  labels:\n    app: scaling-app\nspec:\n  selector:\n    app: scaling-app\n  ports:\n  - port: 80\n    targetPort: 8080\nEOF",
+
+      "# Create HPA with multiple metrics\nkubectl apply -f - <<EOF\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: scaling-app\n  namespace: autoscaling-demo\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: scaling-app\n  minReplicas: 2\n  maxReplicas: 10\n  metrics:\n  - type: Resource\n    resource:\n      name: cpu\n      target:\n        type: Utilization\n        averageUtilization: 50\n  - type: Resource\n    resource:\n      name: memory\n      target:\n        type: Utilization\n        averageUtilization: 70\n  - type: Pods\n    pods:\n      metric:\n        name: http_requests_per_second\n      target:\n        type: AverageValue\n        averageValue: \"10\"\n  behavior:\n    scaleUp:\n      stabilizationWindowSeconds: 60\n      policies:\n      - type: Percent\n        value: 100\n        periodSeconds: 15\n      - type: Pods\n        value: 2\n        periodSeconds: 60\n      selectPolicy: Max\n    scaleDown:\n      stabilizationWindowSeconds: 300\n      policies:\n      - type: Percent\n        value: 50\n        periodSeconds: 60\n      selectPolicy: Min\nEOF",
+
+      "# Create ServiceMonitor for custom metrics\nkubectl apply -f - <<EOF\napiVersion: monitoring.coreos.com/v1\nkind: ServiceMonitor\nmetadata:\n  name: scaling-app-monitor\n  namespace: autoscaling-demo\nspec:\n  selector:\n    matchLabels:\n      app: scaling-app\n  endpoints:\n  - port: http\n    path: /metrics\n    interval: 30s\nEOF",
+
+      "# Wait for deployment to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/scaling-app -n autoscaling-demo",
+
+      "# Test HPA status\necho \"Checking HPA status...\"\nkubectl get hpa scaling-app -n autoscaling-demo\nkubectl describe hpa scaling-app -n autoscaling-demo",
+
+      "# Generate load to test scaling\necho \"Generating load to test scaling...\"\nkubectl run load-generator --image=busybox --rm -it --restart=Never -n autoscaling-demo -- sh -c 'while true; do wget -qO- http://scaling-app/load; sleep 0.5; done' &\nLOAD_PID=$!\nsleep 60\nkill $LOAD_PID",
+
+      "# Monitor scaling behavior\necho \"Monitoring scaling behavior...\"\nfor i in {1..5}; do\n  echo \"Check $i - $(date)\"\n  kubectl get hpa scaling-app -n autoscaling-demo\n  kubectl get pods -n autoscaling-demo -l app=scaling-app\n  sleep 30\ndone"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get hpa scaling-app -n autoscaling-demo -o jsonpath='{.spec.metrics}' | jq length",
+      "expected": "3",
+      "points": 3,
+      "description": "HPA has multiple metric sources configured"
+    },
+    {
+      "command": "kubectl get hpa scaling-app -n autoscaling-demo -o jsonpath='{.spec.metrics[0].resource.name}'",
+      "expected": "cpu",
+      "points": 2,
+      "description": "HPA includes CPU utilization metric"
+    },
+    {
+      "command": "kubectl get hpa scaling-app -n autoscaling-demo -o jsonpath='{.spec.metrics[1].resource.name}'",
+      "expected": "memory",
+      "points": 2,
+      "description": "HPA includes memory utilization metric"
+    },
+    {
+      "command": "kubectl get hpa scaling-app -n autoscaling-demo -o jsonpath='{.spec.behavior.scaleUp.stabilizationWindowSeconds}'",
+      "expected": "60",
+      "points": 3,
+      "description": "HPA has custom scale-up stabilization window"
+    },
+    {
+      "command": "kubectl get hpa scaling-app -n autoscaling-demo -o jsonpath='{.status.currentReplicas}'",
+      "expected": "3",
+      "points": 2,
+      "description": "HPA is actively managing replica count"
+    },
+    {
+      "command": "kubectl describe hpa scaling-app -n autoscaling-demo | grep -c 'Metrics'",
+      "expected": "3",
+      "points": 2,
+      "description": "HPA status shows all configured metrics"
+    }
+  ]
+}

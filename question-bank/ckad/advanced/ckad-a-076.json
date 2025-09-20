@@ -1,0 +1,79 @@
+{
+  "id": "ckad-a-076",
+  "title": "Advanced Persistent Volume Management",
+  "description": "Implement sophisticated ||persistent volume|| management with dynamic provisioning, storage classes, and volume lifecycle management. Create applications that use multiple storage types (||block storage||, ||file storage||, ||object storage||) with different performance characteristics and access modes. Configure ||storage classes|| with custom parameters, implement ||volume expansion||, ||snapshots||, and ||backup/restore|| operations. Demonstrate advanced PV features like ||volume cloning||, ||data migration||, and ||cross-zone|| replication. Include scenarios with storage monitoring, capacity planning, and disaster recovery.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "State Persistence",
+  "tags": ["persistent-volumes", "storage-classes", "volume-expansion", "snapshots", "cloning", "disaster-recovery", "advanced"],
+  "infrastructure": {
+    "namespaces": ["storage-advanced"],
+    "resources": ["PersistentVolume", "PersistentVolumeClaim", "StorageClass", "VolumeSnapshot"],
+    "prerequisites": ["CSI driver with snapshot support"]
+  },
+  "solution": {
+    "steps": [
+      "# Create storage-advanced namespace\nkubectl create namespace storage-advanced",
+
+      "# Create custom StorageClass with advanced features\nkubectl apply -f - <<EOF\napiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata:\n  name: fast-ssd\nprovisioner: kubernetes.io/csi-driver\nparameters:\n  type: \"ssd\"\n  iops: \"3000\"\n  encrypted: \"true\"\n  fsType: \"ext4\"\nallowVolumeExpansion: true\nvolumeBindingMode: WaitForFirstConsumer\nreclaimPolicy: Retain\nEOF",
+
+      "# Create VolumeSnapshotClass for backup operations\nkubectl apply -f - <<EOF\napiVersion: snapshot.storage.k8s.io/v1\nkind: VolumeSnapshotClass\nmetadata:\n  name: csi-snapshots\ndriver: kubernetes.io/csi-driver\ndeletionPolicy: Retain\nEOF",
+
+      "# Create initial PVC with volume expansion enabled\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: app-data\n  namespace: storage-advanced\nspec:\n  accessModes:\n  - ReadWriteOnce\n  resources:\n    requests:\n      storage: 10Gi\n  storageClassName: fast-ssd\nEOF",
+
+      "# Deploy application using the PVC\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: storage-app\n  namespace: storage-advanced\n  labels:\n    app: storage-app\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: storage-app\n  template:\n    metadata:\n      labels:\n        app: storage-app\n    spec:\n      containers:\n      - name: app\n        image: busybox:1.35\n        command:\n        - /bin/sh\n        - -c\n        - |\n          echo \"Storage app started at $(date)\" > /data/startup.log\n          while true; do\n            echo \"$(date): Writing to persistent storage\" >> /data/activity.log\n            df -h /data\n            sleep 60\n          done\n        volumeMounts:\n        - name: data\n          mountPath: /data\n      volumes:\n      - name: data\n        persistentVolumeClaim:\n          claimName: app-data\nEOF",
+
+      "# Wait for application to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/storage-app -n storage-advanced",
+
+      "# Create volume snapshot for backup\nkubectl apply -f - <<EOF\napiVersion: snapshot.storage.k8s.io/v1\nkind: VolumeSnapshot\nmetadata:\n  name: data-backup\n  namespace: storage-advanced\nspec:\n  volumeSnapshotClassName: csi-snapshots\n  source:\n    persistentVolumeClaimName: app-data\nEOF",
+
+      "# Expand the PVC to larger size\necho \"Expanding PVC from 10Gi to 20Gi...\"\nkubectl patch pvc app-data -n storage-advanced -p '{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"20Gi\"}}}}'\necho \"Waiting for expansion to complete...\"\nsleep 30",
+
+      "# Create cloned PVC from original\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: cloned-data\n  namespace: storage-advanced\nspec:\n  accessModes:\n  - ReadWriteOnce\n  resources:\n    requests:\n      storage: 20Gi\n  storageClassName: fast-ssd\n  dataSource:\n    name: app-data\n    kind: PersistentVolumeClaim\nEOF",
+
+      "# Create PVC from snapshot for disaster recovery testing\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: restored-data\n  namespace: storage-advanced\nspec:\n  accessModes:\n  - ReadWriteOnce\n  resources:\n    requests:\n      storage: 20Gi\n  storageClassName: fast-ssd\n  dataSource:\n    name: data-backup\n    kind: VolumeSnapshot\n    apiGroup: snapshot.storage.k8s.io\nEOF",
+
+      "# Test cloned volume with second application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: cloned-app\n  namespace: storage-advanced\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: cloned-app\n  template:\n    metadata:\n      labels:\n        app: cloned-app\n    spec:\n      containers:\n      - name: app\n        image: busybox:1.35\n        command:\n        - /bin/sh\n        - -c\n        - |\n          echo \"Cloned app started at $(date)\" >> /data/cloned.log\n          cat /data/startup.log 2>/dev/null || echo \"No original startup log found\"\n          while true; do\n            echo \"$(date): Cloned app running\" >> /data/cloned.log\n            sleep 60\n          done\n        volumeMounts:\n        - name: data\n          mountPath: /data\n      volumes:\n      - name: data\n        persistentVolumeClaim:\n          claimName: cloned-data\nEOF",
+
+      "# Verify storage operations\necho \"Verifying storage operations...\"\necho \"Original PVC status:\"\nkubectl get pvc app-data -n storage-advanced\necho\necho \"Snapshot status:\"\nkubectl get volumesnapshot data-backup -n storage-advanced\necho\necho \"Cloned PVC status:\"\nkubectl get pvc cloned-data -n storage-advanced\necho\necho \"Storage verification completed\""
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.provisioner}'",
+      "expected": "kubernetes.io/csi-driver",
+      "points": 2,
+      "description": "Custom StorageClass with CSI provisioner"
+    },
+    {
+      "command": "kubectl get pvc app-data -n storage-advanced -o jsonpath='{.spec.resources.requests.storage}'",
+      "expected": "10Gi",
+      "points": 2,
+      "description": "PVC requests initial storage size"
+    },
+    {
+      "command": "kubectl get pvc app-data -n storage-advanced -o jsonpath='{.status.capacity.storage}'",
+      "expected": "20Gi",
+      "points": 3,
+      "description": "PVC expanded to larger size"
+    },
+    {
+      "command": "kubectl get volumesnapshot data-backup -n storage-advanced -o jsonpath='{.status.readyToUse}'",
+      "expected": "true",
+      "points": 3,
+      "description": "Volume snapshot is ready for use"
+    },
+    {
+      "command": "kubectl get pvc cloned-data -n storage-advanced -o jsonpath='{.spec.dataSource.name}'",
+      "expected": "app-data",
+      "points": 3,
+      "description": "PVC cloned from existing volume"
+    },
+    {
+      "command": "kubectl exec -n storage-advanced deploy/storage-app -- df -h /data | grep -c '20G'",
+      "expected": "1",
+      "points": 2,
+      "description": "Application sees expanded volume size"
+    }
+  ]
+}

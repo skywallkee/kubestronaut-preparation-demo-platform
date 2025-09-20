@@ -1,0 +1,75 @@
+{
+  "id": "ckad-a-068",
+  "title": "Pod Templates and Workload Controllers",
+  "description": "Design advanced ||pod template|| strategies and demonstrate mastery of different ||workload controllers|| (Deployment, StatefulSet, DaemonSet, ReplicaSet). Create applications that require specific controller types based on their operational characteristics: stateful applications, node-level services, and scalable stateless services. Implement pod template inheritance, controller-specific configurations, and demonstrate how different controllers handle pod lifecycle, updates, and failure scenarios. Include cross-controller coordination and workload migration strategies.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Pod Design",
+  "tags": ["pod-templates", "workload-controllers", "deployment", "statefulset", "daemonset", "replicaset", "advanced"],
+  "infrastructure": {
+    "namespaces": ["workload-controllers"],
+    "resources": ["Deployment", "StatefulSet", "DaemonSet", "Service", "PersistentVolumeClaim"],
+    "prerequisites": ["Understanding of controller differences and use cases"]
+  },
+  "solution": {
+    "steps": [
+      "# Create workload-controllers namespace\nkubectl create namespace workload-controllers",
+
+      "# Create Deployment for stateless web application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webapp\n  namespace: workload-controllers\n  labels:\n    app: webapp\n    type: stateless\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxUnavailable: 1\n      maxSurge: 1\n  selector:\n    matchLabels:\n      app: webapp\n  template:\n    metadata:\n      labels:\n        app: webapp\n        type: stateless\n    spec:\n      containers:\n      - name: webapp\n        image: nginx:1.20\n        ports:\n        - containerPort: 80\n        livenessProbe:\n          httpGet:\n            path: /\n            port: 80\n          initialDelaySeconds: 10\n          periodSeconds: 10\n        readinessProbe:\n          httpGet:\n            path: /\n            port: 80\n          initialDelaySeconds: 5\n          periodSeconds: 5\nEOF",
+
+      "# Create StatefulSet for database with persistent storage\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: database\n  namespace: workload-controllers\n  labels:\n    app: database\n    type: stateful\nspec:\n  serviceName: database-headless\n  replicas: 3\n  updateStrategy:\n    type: RollingUpdate\n    rollingUpdate:\n      partition: 0\n  selector:\n    matchLabels:\n      app: database\n  template:\n    metadata:\n      labels:\n        app: database\n        type: stateful\n    spec:\n      containers:\n      - name: database\n        image: postgres:13\n        ports:\n        - containerPort: 5432\n        env:\n        - name: POSTGRES_DB\n          value: appdb\n        - name: POSTGRES_USER\n          value: dbuser\n        - name: POSTGRES_PASSWORD\n          value: dbpass\n        - name: PGDATA\n          value: /var/lib/postgresql/data/pgdata\n        volumeMounts:\n        - name: data\n          mountPath: /var/lib/postgresql/data\n  volumeClaimTemplates:\n  - metadata:\n      name: data\n    spec:\n      accessModes: [\"ReadWriteOnce\"]\n      resources:\n        requests:\n          storage: 1Gi\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: database-headless\n  namespace: workload-controllers\nspec:\n  clusterIP: None\n  selector:\n    app: database\n  ports:\n  - port: 5432\nEOF",
+
+      "# Create DaemonSet for node monitoring agent\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: node-monitor\n  namespace: workload-controllers\n  labels:\n    app: node-monitor\n    type: daemon\nspec:\n  selector:\n    matchLabels:\n      app: node-monitor\n  updateStrategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxUnavailable: 1\n  template:\n    metadata:\n      labels:\n        app: node-monitor\n        type: daemon\n    spec:\n      hostNetwork: true\n      hostPID: true\n      tolerations:\n      - key: node-role.kubernetes.io/master\n        effect: NoSchedule\n      - key: node-role.kubernetes.io/control-plane\n        effect: NoSchedule\n      containers:\n      - name: monitor\n        image: busybox:1.35\n        securityContext:\n          privileged: true\n        command:\n        - /bin/sh\n        - -c\n        - |\n          while true; do\n            echo \"$(date): Monitoring node $(hostname)\"\n            echo \"CPU info: $(cat /proc/cpuinfo | grep 'model name' | head -1)\"\n            echo \"Memory info: $(cat /proc/meminfo | grep MemTotal)\"\n            echo \"Disk usage: $(df -h / | tail -1)\"\n            echo \"---\"\n            sleep 60\n          done\n        volumeMounts:\n        - name: proc\n          mountPath: /host/proc\n          readOnly: true\n        - name: sys\n          mountPath: /host/sys\n          readOnly: true\n      volumes:\n      - name: proc\n        hostPath:\n          path: /proc\n      - name: sys\n        hostPath:\n          path: /sys\nEOF",
+
+      "# Create additional ReplicaSet for demonstration\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: ReplicaSet\nmetadata:\n  name: legacy-app\n  namespace: workload-controllers\n  labels:\n    app: legacy-app\n    type: replicaset\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: legacy-app\n  template:\n    metadata:\n      labels:\n        app: legacy-app\n        type: replicaset\n    spec:\n      containers:\n      - name: legacy\n        image: httpd:2.4\n        ports:\n        - containerPort: 80\nEOF",
+
+      "# Create services for workloads\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: webapp-service\n  namespace: workload-controllers\nspec:\n  selector:\n    app: webapp\n  ports:\n  - port: 80\n    targetPort: 80\n  type: ClusterIP\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: database-service\n  namespace: workload-controllers\nspec:\n  selector:\n    app: database\n  ports:\n  - port: 5432\n    targetPort: 5432\n  type: ClusterIP\nEOF",
+
+      "# Wait for all workloads to be ready\necho \"Waiting for workloads to be ready...\"\nkubectl wait --for=condition=available --timeout=300s deployment/webapp -n workload-controllers\nkubectl wait --for=condition=ready --timeout=300s pod -l app=database -n workload-controllers\necho \"Waiting for DaemonSet pods...\"\nsleep 30",
+
+      "# Test workload behaviors\necho \"Testing workload behaviors...\"\necho \"Deployment pods (should restart immediately):\"\nkubectl get pods -n workload-controllers -l app=webapp\necho\necho \"StatefulSet pods (should have ordinal names):\"\nkubectl get pods -n workload-controllers -l app=database\necho\necho \"DaemonSet pods (should be on each node):\"\nkubectl get pods -n workload-controllers -l app=node-monitor -o wide\necho",
+
+      "# Test scaling behaviors\necho \"Testing scaling behaviors...\"\necho \"Scaling Deployment:\"\nkubectl scale deployment webapp --replicas=5 -n workload-controllers\necho \"Scaling StatefulSet:\"\nkubectl scale statefulset database --replicas=2 -n workload-controllers\necho \"Note: DaemonSet cannot be scaled (runs on all nodes)\"\necho\nsleep 30\nkubectl get pods -n workload-controllers",
+
+      "# Test update strategies\necho \"Testing update strategies...\"\necho \"Updating Deployment image:\"\nkubectl set image deployment/webapp webapp=nginx:1.21 -n workload-controllers\necho \"Updating StatefulSet image (will update pods in reverse order):\"\nkubectl set image statefulset/database database=postgres:14 -n workload-controllers\necho \"Updates initiated, monitoring progress...\""
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment webapp -n workload-controllers -o jsonpath='{.spec.strategy.type}'",
+      "expected": "RollingUpdate",
+      "points": 2,
+      "description": "Deployment uses RollingUpdate strategy"
+    },
+    {
+      "command": "kubectl get statefulset database -n workload-controllers -o jsonpath='{.spec.updateStrategy.type}'",
+      "expected": "RollingUpdate",
+      "points": 2,
+      "description": "StatefulSet uses RollingUpdate strategy"
+    },
+    {
+      "command": "kubectl get daemonset node-monitor -n workload-controllers -o jsonpath='{.status.desiredNumberScheduled}'",
+      "expected": "node-count",
+      "points": 3,
+      "description": "DaemonSet scheduled on all nodes"
+    },
+    {
+      "command": "kubectl get pods -n workload-controllers -l app=database -o jsonpath='{.items[0].metadata.name}'",
+      "expected": "database-0",
+      "points": 2,
+      "description": "StatefulSet pods have ordinal naming"
+    },
+    {
+      "command": "kubectl get pvc -n workload-controllers | grep database | wc -l",
+      "expected": "3",
+      "points": 3,
+      "description": "StatefulSet creates persistent volume claims"
+    },
+    {
+      "command": "kubectl get pods -n workload-controllers --field-selector=status.phase=Running | wc -l",
+      "expected": "8",
+      "points": 2,
+      "description": "All workload pods are running successfully"
+    }
+  ]
+}

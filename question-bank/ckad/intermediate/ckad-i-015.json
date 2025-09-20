@@ -1,0 +1,88 @@
+{
+  "id": "ckad-i-015",
+  "title": "Pod Debugging and Troubleshooting",
+  "description": "Debug and fix a problematic application deployment in namespace ||venus||:\n\n1. A Deployment named ||broken-app|| has been created but the pods are failing to start. Investigate and fix the following issues:\n   - Image pull errors\n   - Resource constraints\n   - Configuration problems\n\n2. The deployment should run:\n   - Image: ||nginx:1.21|| (fix any incorrect image references)\n   - 2 replicas\n   - Port ||80|| exposed\n   - Resource requests: CPU ||50m||, Memory ||64Mi||\n\n3. Create the initial broken deployment for debugging:\n   - Use incorrect image ||nginx:invalid-tag||\n   - Set memory request higher than limit\n   - Missing port configuration\n\n4. Debug using kubectl commands and fix all issues\n\n5. Verify the application is healthy and accessible",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "Troubleshooting",
+  "tags": [
+    "debugging-troubleshooting",
+    "pod-troubleshooting",
+    "deployment",
+    "resource-management",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create broken deployment for debugging:",
+      "   kubectl create deployment broken-app --image=nginx:invalid-tag --replicas=2 -n venus",
+      "2. Add problematic resource configuration:",
+      "   kubectl patch deployment broken-app -n venus -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"resources\":{\"requests\":{\"memory\":\"128Mi\"},\"limits\":{\"memory\":\"64Mi\"}}}]}}}}'",
+      "3. Check pod status and identify issues:",
+      "   kubectl get pods -n venus -l app=broken-app",
+      "4. Describe pods to see detailed error messages:",
+      "   kubectl describe pods -n venus -l app=broken-app",
+      "5. Check deployment events:",
+      "   kubectl describe deployment broken-app -n venus",
+      "6. Fix image reference:",
+      "   kubectl set image deployment/broken-app nginx=nginx:1.21 -n venus",
+      "7. Fix resource configuration:",
+      "   kubectl patch deployment broken-app -n venus -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"resources\":{\"requests\":{\"cpu\":\"50m\",\"memory\":\"64Mi\"},\"limits\":{\"memory\":\"128Mi\"}}}]}}}}'",
+      "8. Add port configuration:",
+      "   kubectl patch deployment broken-app -n venus -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"ports\":[{\"containerPort\":80}]}]}}}}'",
+      "9. Verify pods are running:",
+      "   kubectl get pods -n venus -l app=broken-app",
+      "10. Test application health:",
+      "    kubectl port-forward deployment/broken-app 8080:80 -n venus &",
+      "    curl localhost:8080"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment broken-app -n venus -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21",
+      "points": 2,
+      "description": "Deployment should use correct nginx:1.21 image"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 replicas"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "50m",
+      "points": 1,
+      "description": "Container should have CPU request of 50m"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}'",
+      "expected": "64Mi",
+      "points": 1,
+      "description": "Container should have memory request of 64Mi"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n venus -o jsonpath='{.spec.template.spec.containers[0].ports[0].containerPort}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Container should expose port 80"
+    },
+    {
+      "command": "kubectl get pods -n venus -l app=broken-app --field-selector=status.phase=Running --no-headers | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Both pods should be in Running state"
+    }
+  ]
+}

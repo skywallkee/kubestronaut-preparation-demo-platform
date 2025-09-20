@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-059",
+  "title": "Ingress with Network Policies and Application Scaling",
+  "description": "Deploy a scalable e-commerce application in the venus namespace with multiple tiers (frontend, API, database). Configure Ingress for external access, implement network policies for security, and set up horizontal pod autoscaling based on request rate metrics.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["ingress", "network-policies", "application-scaling", "services"],
+  "points": 12,
+  "timeMinutes": 25,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy frontend deployment with ||2|| initial replicas and label ||tier=frontend||"
+    },
+    {
+      "step": 2,
+      "description": "Deploy API deployment with ||3|| initial replicas and label ||tier=api||"
+    },
+    {
+      "step": 3,
+      "description": "Deploy database deployment with ||1|| replica and label ||tier=database||"
+    },
+    {
+      "step": 4,
+      "description": "Create NetworkPolicy allowing internet to frontend, frontend to API, and API to database"
+    },
+    {
+      "step": 5,
+      "description": "Configure Ingress with host ||ecommerce.local|| and paths ||/||, ||/api||, ||/admin||"
+    },
+    {
+      "step": 6,
+      "description": "Create HPA for frontend and API tiers with ||requests_per_second|| > ||50||"
+    },
+    {
+      "step": 7,
+      "description": "Verify traffic flow, network isolation, and autoscaling functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.metadata.labels.tier}'",
+      "expectedOutput": "frontend",
+      "description": "Verify frontend tier label",
+      "points": 1
+    },
+    {
+      "command": "kubectl get networkpolicy frontend-ingress -n venus -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expectedOutput": "frontend",
+      "description": "Verify NetworkPolicy for frontend ingress",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy api-access -n venus -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expectedOutput": "frontend",
+      "description": "Verify NetworkPolicy allows frontend to API",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress ecommerce-ingress -n venus -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "ecommerce.local",
+      "description": "Verify Ingress host configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get ingress ecommerce-ingress -n venus -o jsonpath='{.spec.rules[0].http.paths[1].path}'",
+      "expectedOutput": "/api",
+      "description": "Verify Ingress API path configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa frontend-hpa -n venus -o jsonpath='{.spec.metrics[0].pods.metric.name}'",
+      "expectedOutput": "requests_per_second",
+      "description": "Verify HPA uses custom metric",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa api-hpa -n venus -o jsonpath='{.spec.metrics[0].pods.metric.name}'",
+      "expectedOutput": "requests_per_second",
+      "description": "Verify API HPA uses custom metric",
+      "points": 2
+    }
+  ]
+}

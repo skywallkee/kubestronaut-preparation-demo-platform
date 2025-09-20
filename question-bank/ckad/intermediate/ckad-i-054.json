@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-054",
+  "title": "Job Processing with Volume Types and Debugging Tools",
+  "description": "Create a data processing pipeline in the saturn namespace using Jobs for batch processing. Configure different volume types for input, processing, and output stages. Implement debugging containers and monitoring tools to track job progress and troubleshoot failures.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "volume-types", "debugging-troubleshooting", "logging-monitoring"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create Job ||data-processor|| with ||parallelism: 3|| and ||completions: 6||"
+    },
+    {
+      "step": 2,
+      "description": "Configure hostPath volume ||/data/input|| for input data access"
+    },
+    {
+      "step": 3,
+      "description": "Configure emptyDir volume ||processing-temp|| for temporary processing data"
+    },
+    {
+      "step": 4,
+      "description": "Configure PVC ||output-storage|| with ||2Gi|| for processed output"
+    },
+    {
+      "step": 5,
+      "description": "Deploy sidecar debug container with tools like ||busybox|| for monitoring"
+    },
+    {
+      "step": 6,
+      "description": "Configure shared volume between main and debug containers for log sharing"
+    },
+    {
+      "step": 7,
+      "description": "Set up monitoring to track job completion and debug any failures"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get job data-processor -n saturn -o jsonpath='{.spec.parallelism}'",
+      "expectedOutput": "3",
+      "description": "Verify job parallelism setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get job data-processor -n saturn -o jsonpath='{.spec.completions}'",
+      "expectedOutput": "6",
+      "description": "Verify job completions setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get job data-processor -n saturn -o jsonpath='{.spec.template.spec.volumes[0].hostPath.path}'",
+      "expectedOutput": "/data/input",
+      "description": "Verify hostPath volume for input data",
+      "points": 2
+    },
+    {
+      "command": "kubectl get job data-processor -n saturn -o jsonpath='{.spec.template.spec.volumes[1].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify emptyDir volume for processing",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc output-storage -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify output PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get job data-processor -n saturn -o jsonpath='{.spec.template.spec.containers[1].image}' | grep busybox",
+      "expectedOutput": "busybox",
+      "description": "Verify debug container with busybox image",
+      "points": 2
+    },
+    {
+      "command": "kubectl get job data-processor -n saturn -o jsonpath='{.spec.template.spec.containers[*].volumeMounts[*].name}' | grep shared-logs",
+      "expectedOutput": "shared-logs",
+      "description": "Verify shared volume for logging",
+      "points": 1
+    }
+  ]
+}

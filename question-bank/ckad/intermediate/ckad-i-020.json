@@ -1,0 +1,150 @@
+{
+  "id": "ckad-i-020",
+  "title": "Jobs and CronJobs with Volume Mounts",
+  "description": "Create a scheduled backup system in namespace ||venus|| using Jobs and CronJobs:\n\n**ConfigMap:**\n- Name: ||backup-config||\n- Data key ||backup-script||: ||#!/bin/bash\\necho \"Starting backup at $(date)\" > /backup/backup.log\\necho \"Backup completed at $(date)\" >> /backup/backup.log||\n\n**Job Template:**\n- Name: ||backup-job||\n- Image: ||busybox:1.35||\n- Command: Execute the backup script from ConfigMap\n- Mount script as executable file at ||/usr/local/bin/backup.sh||\n- Mount emptyDir volume at ||/backup|| for logs\n- Restart policy: ||Never||\n- Backoff limit: ||3||\n\n**CronJob:**\n- Name: ||daily-backup||\n- Schedule: ||0 2 * * *|| (daily at 2 AM)\n- Use the backup job template\n- Success/failure history limits: ||3|| each\n\nTest by creating a manual job and verify the backup process works.",
+  "points": 8,
+  "timeLimit": 12,
+  "category": "Application Design",
+  "tags": [
+    "jobs-cronjobs",
+    "configmaps-secrets",
+    "volume-types",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "configmaps",
+      "jobs",
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMap with backup script:",
+      "   kubectl create configmap backup-config -n venus \\",
+      "     --from-literal=backup-script='#!/bin/bash",
+      "echo \"Starting backup at $(date)\" > /backup/backup.log",
+      "echo \"Backup completed at $(date)\" >> /backup/backup.log'",
+      "2. Create Job YAML:",
+      "   cat <<EOF > backup-job.yaml",
+      "   apiVersion: batch/v1",
+      "   kind: Job",
+      "   metadata:",
+      "     name: backup-job",
+      "     namespace: venus",
+      "   spec:",
+      "     backoffLimit: 3",
+      "     template:",
+      "       spec:",
+      "         restartPolicy: Never",
+      "         containers:",
+      "         - name: backup",
+      "           image: busybox:1.35",
+      "           command: [\"/bin/sh\", \"/usr/local/bin/backup.sh\"]",
+      "           volumeMounts:",
+      "           - name: backup-script",
+      "             mountPath: /usr/local/bin/backup.sh",
+      "             subPath: backup-script",
+      "           - name: backup-logs",
+      "             mountPath: /backup",
+      "         volumes:",
+      "         - name: backup-script",
+      "           configMap:",
+      "             name: backup-config",
+      "             defaultMode: 0755",
+      "         - name: backup-logs",
+      "           emptyDir: {}",
+      "   EOF",
+      "3. Create CronJob YAML:",
+      "   cat <<EOF > daily-backup-cronjob.yaml",
+      "   apiVersion: batch/v1",
+      "   kind: CronJob",
+      "   metadata:",
+      "     name: daily-backup",
+      "     namespace: venus",
+      "   spec:",
+      "     schedule: \"0 2 * * *\"",
+      "     successfulJobsHistoryLimit: 3",
+      "     failedJobsHistoryLimit: 3",
+      "     jobTemplate:",
+      "       spec:",
+      "         backoffLimit: 3",
+      "         template:",
+      "           spec:",
+      "             restartPolicy: Never",
+      "             containers:",
+      "             - name: backup",
+      "               image: busybox:1.35",
+      "               command: [\"/bin/sh\", \"/usr/local/bin/backup.sh\"]",
+      "               volumeMounts:",
+      "               - name: backup-script",
+      "                 mountPath: /usr/local/bin/backup.sh",
+      "                 subPath: backup-script",
+      "               - name: backup-logs",
+      "                 mountPath: /backup",
+      "             volumes:",
+      "             - name: backup-script",
+      "               configMap:",
+      "                 name: backup-config",
+      "                 defaultMode: 0755",
+      "             - name: backup-logs",
+      "               emptyDir: {}",
+      "   EOF",
+      "4. Apply resources:",
+      "   kubectl apply -f backup-job.yaml",
+      "   kubectl apply -f daily-backup-cronjob.yaml",
+      "5. Test job execution:",
+      "   kubectl wait --for=condition=complete job/backup-job -n venus --timeout=60s",
+      "6. Check backup logs:",
+      "   kubectl logs job/backup-job -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap backup-config -n venus -o jsonpath='{.data}' | grep -c 'backup-script'",
+      "expected": "1",
+      "points": 1,
+      "description": "ConfigMap should contain the backup script"
+    },
+    {
+      "command": "kubectl get job backup-job -n venus -o jsonpath='{.spec.backoffLimit}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Job should have correct backoff limit"
+    },
+    {
+      "command": "kubectl get job backup-job -n venus -o jsonpath='{.spec.template.spec.restartPolicy}'",
+      "expected": "Never",
+      "points": 1,
+      "description": "Job should have Never restart policy"
+    },
+    {
+      "command": "kubectl get cronjob daily-backup -n venus -o jsonpath='{.spec.schedule}'",
+      "expected": "0 2 * * *",
+      "points": 1,
+      "description": "CronJob should have correct schedule"
+    },
+    {
+      "command": "kubectl get cronjob daily-backup -n venus -o jsonpath='{.spec.successfulJobsHistoryLimit}'",
+      "expected": "3",
+      "points": 1,
+      "description": "CronJob should have correct success history limit"
+    },
+    {
+      "command": "kubectl get job backup-job -n venus -o jsonpath='{.status.conditions[0].type}'",
+      "expected": "Complete",
+      "points": 2,
+      "description": "Job should complete successfully"
+    },
+    {
+      "command": "kubectl logs job/backup-job -n venus | grep -c 'backup completed'",
+      "expected": "1",
+      "points": 1,
+      "description": "Backup script should execute and produce logs"
+    }
+  ]
+}

@@ -5,11 +5,11 @@ const HelmService = require('../services/helm-generator/helm-service');
 // Generate Helm chart for exam
 router.post('/generate', async (req, res) => {
   try {
-    const { type, difficulty } = req.body;
-    
+    const { type, difficulty, practiceMode } = req.body;
+
     if (!type || !difficulty) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: type and difficulty' 
+      return res.status(400).json({
+        error: 'Missing required fields: type and difficulty'
       });
     }
 
@@ -24,19 +24,19 @@ router.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'Invalid difficulty level' });
     }
 
-    const chartPath = await HelmService.generateChart(type, difficulty);
-    
+    const chartPath = await HelmService.generateChart(type, difficulty, practiceMode);
+
     res.json({
       success: true,
-      message: 'Helm chart generated successfully',
+      message: `Helm chart generated successfully${practiceMode ? ' (Practice Mode)' : ''}`,
       chartPath,
-      downloadUrl: `/api/helm/download?type=${type}&difficulty=${difficulty}`
+      downloadUrl: `/api/helm/download?type=${type}&difficulty=${difficulty}&practiceMode=${practiceMode || false}`
     });
   } catch (error) {
     console.error('Error generating Helm chart:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to generate Helm chart',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -44,7 +44,7 @@ router.post('/generate', async (req, res) => {
 // Download generated Helm chart
 router.get('/download', async (req, res) => {
   try {
-    let { type, difficulty } = req.query;
+    let { type, difficulty, practiceMode } = req.query;
     
     // If not provided in query, try to get from current exam session
     if (!type || !difficulty) {
@@ -54,7 +54,8 @@ router.get('/download', async (req, res) => {
       if (currentExam) {
         type = type || currentExam.type;
         difficulty = difficulty || currentExam.difficulty;
-        console.log(`Using current exam parameters: ${type}-${difficulty}`);
+        practiceMode = practiceMode || currentExam.practiceMode;
+        console.log(`Using current exam parameters: ${type}-${difficulty}${practiceMode ? ' (Practice Mode)' : ''}`);
       }
     }
     
@@ -64,15 +65,15 @@ router.get('/download', async (req, res) => {
       });
     }
 
-    const chartBuffer = await HelmService.getChartArchive(type, difficulty);
-    
+    const chartBuffer = await HelmService.getChartArchive(type, difficulty, practiceMode);
+
     if (!chartBuffer) {
-      return res.status(404).json({ 
-        error: 'Chart not found. Please generate it first.' 
+      return res.status(404).json({
+        error: 'Chart not found. Please generate it first.'
       });
     }
 
-    const filename = `k8s-exam-${type}-${difficulty}.tgz`;
+    const filename = `k8s-exam-${type}-${difficulty}${practiceMode ? '-practice' : ''}.tgz`;
     
     res.set({
       'Content-Type': 'application/gzip',
@@ -86,6 +87,99 @@ router.get('/download', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to download Helm chart',
       message: error.message 
+    });
+  }
+});
+
+// Apply Helm chart to cluster with streaming output (supports both POST and GET)
+const handleStreamingApply = (req, res) => {
+  let { type, difficulty, practiceMode } = req.method === 'POST' ? req.body : req.query;
+
+  if (!type || !difficulty) {
+    return res.status(400).json({
+      error: 'Missing required fields: type and difficulty'
+    });
+  }
+
+  // Set headers for Server-Sent Events
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+
+  // Function to send SSE message
+  const sendSSE = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Start the streaming apply process
+  HelmService.applyChartWithStreaming(type, difficulty, sendSSE, practiceMode)
+    .then((result) => {
+      sendSSE('complete', result);
+      res.end();
+    })
+    .catch((error) => {
+      sendSSE('error', {
+        success: false,
+        error: error.message,
+        output: error.stdout || '',
+        stderr: error.stderr || ''
+      });
+      res.end();
+    });
+
+  // Handle client disconnect
+  req.on('close', () => {
+    console.log('Client disconnected from apply stream');
+  });
+};
+
+// Support both POST and GET for streaming
+router.post('/apply-stream', handleStreamingApply);
+router.get('/apply-stream', handleStreamingApply);
+
+// Apply Helm chart to cluster (legacy endpoint)
+router.post('/apply', async (req, res) => {
+  try {
+    const { type, difficulty } = req.body;
+
+    if (!type || !difficulty) {
+      return res.status(400).json({
+        error: 'Missing required fields: type and difficulty'
+      });
+    }
+
+    // First ensure the chart is generated
+    const chartPath = await HelmService.generateChart(type, difficulty);
+
+    // Apply the chart to the cluster
+    const result = await HelmService.applyChart(type, difficulty);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Helm chart applied successfully to cluster',
+        releaseName: result.releaseName,
+        namespace: result.namespace,
+        output: result.output
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to apply Helm chart',
+        output: result.output
+      });
+    }
+  } catch (error) {
+    console.error('Error applying Helm chart:', error);
+    res.status(500).json({
+      error: 'Failed to apply Helm chart to cluster',
+      message: error.message,
+      details: error.stderr || error.output
     });
   }
 });

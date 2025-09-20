@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-037",
+  "title": "Get All Resources in Namespace",
+  "description": "List all resources in the ||jupiter|| namespace and save the output to ||/opt/course/037/all-resources.txt||.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "debugging-troubleshooting",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "all"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. List all resources:",
+      "   kubectl get all -n jupiter",
+      "2. Save to file:",
+      "   kubectl get all -n jupiter > /opt/course/037/all-resources.txt",
+      "3. Verify file:",
+      "   cat /opt/course/037/all-resources.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/037/all-resources.txt",
+      "expected": "0",
+      "points": 2,
+      "description": "Resources file should exist"
+    }
+  ]
+}

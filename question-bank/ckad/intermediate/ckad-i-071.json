@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-071",
+  "title": "Persistent Storage with Network Policies and Resource Quotas",
+  "description": "Deploy a distributed database cluster in the venus namespace with persistent storage for each node. Implement strict network policies for database security and configure resource quotas to ensure fair resource distribution across the cluster nodes.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["persistent-volumes-claims", "network-policies", "resource-management", "deployments-rolling-updates"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ResourceQuota ||db-quota|| limiting CPU to ||4|| cores, memory to ||8Gi||, storage to ||30Gi||"
+    },
+    {
+      "step": 2,
+      "description": "Deploy database cluster with ||3|| nodes using StatefulSet"
+    },
+    {
+      "step": 3,
+      "description": "Create PVC template with ||10Gi|| storage per database node"
+    },
+    {
+      "step": 4,
+      "description": "Configure NetworkPolicy allowing database communication on port ||5432|| only between cluster nodes"
+    },
+    {
+      "step": 5,
+      "description": "Create NetworkPolicy allowing external application access from pods with label ||database-client=true||"
+    },
+    {
+      "step": 6,
+      "description": "Set resource requests and limits per node within quota boundaries"
+    },
+    {
+      "step": 7,
+      "description": "Verify cluster formation, persistent storage, and network isolation"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get resourcequota db-quota -n venus -o jsonpath='{.spec.hard.\"requests.cpu\"}'",
+      "expectedOutput": "4",
+      "description": "Verify ResourceQuota CPU limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get statefulset database-cluster -n venus -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "3",
+      "description": "Verify database cluster has 3 nodes",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc database-data-database-cluster-0 -n venus -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "10Gi",
+      "description": "Verify PVC storage size per node",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy db-internal -n venus -o jsonpath='{.spec.ingress[0].ports[0].port}'",
+      "expectedOutput": "5432",
+      "description": "Verify NetworkPolicy allows database port",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy db-external -n venus -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.\"database-client\"}'",
+      "expectedOutput": "true",
+      "description": "Verify NetworkPolicy allows client access",
+      "points": 2
+    },
+    {
+      "command": "kubectl get statefulset database-cluster -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expectedOutput": "1",
+      "description": "Verify CPU resource requests per node",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc -n venus -l app=database-cluster | wc -l",
+      "expectedOutput": "4",
+      "description": "Verify PVCs exist for all cluster nodes (including header)",
+      "points": 1
+    }
+  ]
+}

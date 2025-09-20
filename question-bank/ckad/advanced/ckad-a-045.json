@@ -1,0 +1,104 @@
+{
+  "id": "ckad-a-045",
+  "title": "Environment Variable Precedence and Substitution",
+  "description": "Design a complex environment variable management system that demonstrates ||variable precedence||, ||substitution||, and ||inheritance|| in Kubernetes. Create multiple layers of environment variables from different sources (pod spec, ConfigMaps, Secrets, downward API) and show how Kubernetes resolves conflicts and precedence. Implement variable substitution within ConfigMaps and demonstrate how environment variables can reference other variables. Include scenarios with variable overrides, default values, and complex substitution patterns.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Configuration",
+  "tags": ["environment-variables", "precedence", "substitution", "configmap", "secrets", "advanced"],
+  "infrastructure": {
+    "namespaces": ["env-demo"],
+    "resources": ["ConfigMap", "Secret", "Pod"],
+    "prerequisites": ["Understanding of environment variable resolution"]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and configuration resources:",
+      "   kubectl create namespace env-demo",
+      "   kubectl create configmap base-config -n env-demo --from-literal=APP_ENV=development --from-literal=DATABASE_HOST=db --from-literal=DATABASE_PORT=5432 --from-literal=OVERRIDE_VAR=configmap-value",
+      "   kubectl create secret generic app-secrets -n env-demo --from-literal=DATABASE_USER=user --from-literal=DATABASE_PASSWORD=secret",
+      "2. Create additional ConfigMaps for envFrom testing:",
+      "   kubectl create configmap config-vars -n env-demo --from-literal=CONFIG_VAR1=value1 --from-literal=CONFIG_VAR2=value2 --from-literal=CONFIG_VAR3=value3",
+      "3. Create pod with complex environment variable configuration:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: env-test",
+      "     namespace: env-demo",
+      "   spec:",
+      "     containers:",
+      "     - name: app",
+      "       image: busybox:latest",
+      "       command: ['/bin/sh', '-c']",
+      "       args:",
+      "       - |",
+      "         while true; do",
+      "           echo \"Environment variables:\"",
+      "           env | sort",
+      "           sleep 60",
+      "         done",
+      "       envFrom:",
+      "       - configMapRef:",
+      "           name: config-vars",
+      "       - secretRef:",
+      "           name: app-secrets",
+      "       env:",
+      "       - name: APP_ENV",
+      "         value: \"production\"",
+      "       - name: POD_NAME",
+      "         valueFrom:",
+      "           fieldRef:",
+      "             fieldPath: metadata.name",
+      "       - name: POD_NAMESPACE",
+      "         valueFrom:",
+      "           fieldRef:",
+      "             fieldPath: metadata.namespace",
+      "       - name: DATABASE_URL",
+      "         value: \"postgres://$(DATABASE_USER):$(DATABASE_PASSWORD)@db:5432/app\"",
+      "       - name: OVERRIDE_VAR",
+      "         value: \"pod-spec-value\"",
+      "       - name: COMPOSED_VAR",
+      "         valueFrom:",
+      "           configMapKeyRef:",
+      "             name: base-config",
+      "             key: DATABASE_HOST",
+      "   EOF",
+      "4. Verify environment variable precedence and substitution:",
+      "   kubectl exec env-test -n env-demo -- env | grep -E '^(APP_ENV|DATABASE_URL|POD_NAME|OVERRIDE_VAR|CONFIG_)' | sort",
+      "   kubectl logs env-test -n env-demo --tail=20"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl exec env-test -n env-demo -- env | grep '^APP_ENV=' | cut -d'=' -f2",
+      "expected": "production",
+      "points": 2,
+      "description": "APP_ENV variable has correct value"
+    },
+    {
+      "command": "kubectl exec env-test -n env-demo -- env | grep '^DATABASE_URL=' | cut -d'=' -f2",
+      "expected": "postgres://user:secret@db:5432/app",
+      "points": 3,
+      "description": "DATABASE_URL shows variable substitution"
+    },
+    {
+      "command": "kubectl exec env-test -n env-demo -- env | grep '^POD_NAME=' | cut -d'=' -f2",
+      "expected": "env-test",
+      "points": 2,
+      "description": "POD_NAME from downward API is set"
+    },
+    {
+      "command": "kubectl exec env-test -n env-demo -- env | grep '^OVERRIDE_VAR=' | cut -d'=' -f2",
+      "expected": "pod-spec-value",
+      "points": 3,
+      "description": "Pod spec variable overrides ConfigMap value"
+    },
+    {
+      "command": "kubectl exec env-test -n env-demo -- env | grep -c '^CONFIG_'",
+      "expected": "3",
+      "points": 2,
+      "description": "Multiple CONFIG_ variables imported from ConfigMap"
+    }
+  ]
+}

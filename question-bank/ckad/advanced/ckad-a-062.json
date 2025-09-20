@@ -1,0 +1,81 @@
+{
+  "id": "ckad-a-062",
+  "title": "Advanced Deployment Strategies and Blue-Green Deployments",
+  "description": "Implement sophisticated ||deployment strategies|| including ||blue-green deployments||, ||canary releases||, and ||rolling updates|| with advanced configuration. Create a deployment pipeline that supports zero-downtime deployments, automated rollback mechanisms, and traffic splitting between versions. Implement health checks that validate deployments before traffic switching, configure deployment gates, and demonstrate how different deployment strategies handle various failure scenarios. Include scenarios with database migration coordination and service mesh integration.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "Pod Design",
+  "tags": ["deployment-strategies", "blue-green", "canary", "rolling-updates", "zero-downtime", "advanced"],
+  "infrastructure": {
+    "namespaces": ["deployment-strategies"],
+    "resources": ["Deployment", "Service", "Ingress", "ConfigMap"],
+    "prerequisites": ["Load balancer or ingress controller"]
+  },
+  "solution": {
+    "steps": [
+      "# Create deployment-strategies namespace\nkubectl create namespace deployment-strategies",
+
+      "# Create blue deployment (version 1.0)\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: blue-app\n  namespace: deployment-strategies\n  labels:\n    app: myapp\n    version: \"1.0\"\n    deployment: blue\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: myapp\n      version: \"1.0\"\n  template:\n    metadata:\n      labels:\n        app: myapp\n        version: \"1.0\"\n        deployment: blue\n    spec:\n      containers:\n      - name: app\n        image: nginx:1.20\n        ports:\n        - containerPort: 8080\n        env:\n        - name: VERSION\n          value: \"1.0\"\n        - name: DEPLOYMENT\n          value: \"blue\"\n        livenessProbe:\n          httpGet:\n            path: /version\n            port: 8080\n          initialDelaySeconds: 10\n          periodSeconds: 10\n        readinessProbe:\n          httpGet:\n            path: /health\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 5\n        command:\n        - /bin/sh\n        - -c\n        - |\n          cat > /usr/share/nginx/html/version << EOF\n          {\"version\": \"1.0\", \"deployment\": \"blue\", \"timestamp\": \"$(date)\"}\n          EOF\n          \n          cat > /usr/share/nginx/html/health << EOF\n          {\"status\": \"healthy\", \"version\": \"1.0\"}\n          EOF\n          \n          # Create a simple server on port 8080\n          cat > /tmp/server.py << 'SCRIPT'\n          #!/usr/bin/env python3\n          import http.server\n          import socketserver\n          import json\n          import os\n          from datetime import datetime\n          \n          class VersionHandler(http.server.BaseHTTPRequestHandler):\n              def do_GET(self):\n                  if self.path == '/version':\n                      response = {\n                          'version': os.getenv('VERSION', '1.0'),\n                          'deployment': os.getenv('DEPLOYMENT', 'blue'),\n                          'timestamp': datetime.now().isoformat()\n                      }\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps(response).encode())\n                  elif self.path == '/health':\n                      response = {'status': 'healthy', 'version': os.getenv('VERSION', '1.0')}\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps(response).encode())\n                  else:\n                      self.send_response(404)\n                      self.end_headers()\n          \n          with socketserver.TCPServer((\"\", 8080), VersionHandler) as httpd:\n              print(f\"Server running on port 8080 - Version {os.getenv('VERSION')}\")\n              httpd.serve_forever()\n          SCRIPT\n          \n          python3 /tmp/server.py\nEOF",
+
+      "# Create green deployment (version 2.0)\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: green-app\n  namespace: deployment-strategies\n  labels:\n    app: myapp\n    version: \"2.0\"\n    deployment: green\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: myapp\n      version: \"2.0\"\n  template:\n    metadata:\n      labels:\n        app: myapp\n        version: \"2.0\"\n        deployment: green\n    spec:\n      containers:\n      - name: app\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        env:\n        - name: VERSION\n          value: \"2.0\"\n        - name: DEPLOYMENT\n          value: \"green\"\n        livenessProbe:\n          httpGet:\n            path: /version\n            port: 8080\n          initialDelaySeconds: 10\n          periodSeconds: 10\n        readinessProbe:\n          httpGet:\n            path: /health\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 5\n        command:\n        - /bin/sh\n        - -c\n        - |\n          cat > /tmp/server.py << 'SCRIPT'\n          #!/usr/bin/env python3\n          import http.server\n          import socketserver\n          import json\n          import os\n          from datetime import datetime\n          \n          class VersionHandler(http.server.BaseHTTPRequestHandler):\n              def do_GET(self):\n                  if self.path == '/version':\n                      response = {\n                          'version': os.getenv('VERSION', '2.0'),\n                          'deployment': os.getenv('DEPLOYMENT', 'green'),\n                          'timestamp': datetime.now().isoformat(),\n                          'features': ['new-ui', 'enhanced-performance']\n                      }\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps(response).encode())\n                  elif self.path == '/health':\n                      response = {\n                          'status': 'healthy',\n                          'version': os.getenv('VERSION', '2.0'),\n                          'deployment': os.getenv('DEPLOYMENT', 'green')\n                      }\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps(response).encode())\n                  else:\n                      self.send_response(404)\n                      self.end_headers()\n          \n          with socketserver.TCPServer((\"\", 8080), VersionHandler) as httpd:\n              print(f\"Server running on port 8080 - Version {os.getenv('VERSION')}\")\n              httpd.serve_forever()\n          SCRIPT\n          \n          python3 /tmp/server.py\nEOF",
+
+      "# Create service initially pointing to blue deployment\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-service\n  namespace: deployment-strategies\n  labels:\n    app: myapp\nspec:\n  selector:\n    app: myapp\n    version: \"1.0\"  # Initially pointing to blue\n  ports:\n  - port: 80\n    targetPort: 8080\n    protocol: TCP\n  type: ClusterIP\nEOF",
+
+      "# Wait for deployments to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/blue-app -n deployment-strategies\nkubectl wait --for=condition=available --timeout=300s deployment/green-app -n deployment-strategies",
+
+      "# Verify green deployment health before switching\necho \"Checking green deployment health...\"\nkubectl exec -n deployment-strategies deploy/green-app -- curl -s localhost:8080/health\necho \"Green deployment health check complete\"",
+
+      "# Switch traffic from blue to green (Blue-Green deployment)\necho \"Switching traffic from blue to green deployment...\"\nkubectl patch service app-service -n deployment-strategies -p '{\"spec\":{\"selector\":{\"version\":\"2.0\"}}}'\necho \"Traffic switched to green deployment\"",
+
+      "# Verify the switch worked\necho \"Verifying green deployment is serving traffic...\"\nkubectl run test-client --image=busybox --rm -it --restart=Never -n deployment-strategies -- sh -c 'wget -qO- http://app-service/version'\necho\necho \"Traffic switch verification complete\"",
+
+      "# Scale down blue deployment after successful switch\necho \"Scaling down blue deployment...\"\nkubectl scale deployment blue-app --replicas=0 -n deployment-strategies\necho \"Blue deployment scaled down\"",
+
+      "# Create rollback script for emergency scenarios\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: rollback-script\n  namespace: deployment-strategies\ndata:\n  rollback.sh: |\n    #!/bin/bash\n    echo \"Emergency rollback to blue deployment\"\n    kubectl scale deployment blue-app --replicas=3 -n deployment-strategies\n    kubectl wait --for=condition=available --timeout=120s deployment/blue-app -n deployment-strategies\n    kubectl patch service app-service -n deployment-strategies -p '{\"spec\":{\"selector\":{\"version\":\"1.0\"}}}'\n    echo \"Rollback completed - traffic restored to blue deployment\"\nEOF",
+
+      "# Test canary deployment pattern (demonstration)\necho \"Demonstrating canary deployment pattern...\"\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: canary-service\n  namespace: deployment-strategies\n  labels:\n    app: myapp\n    deployment-strategy: canary\nspec:\n  selector:\n    app: myapp\n    # No version selector - will route to both versions\n  ports:\n  - port: 80\n    targetPort: 8080\n    protocol: TCP\n  type: ClusterIP\nEOF",
+
+      "# Scale blue back up for canary demonstration\nkubectl scale deployment blue-app --replicas=1 -n deployment-strategies\nkubectl wait --for=condition=available --timeout=120s deployment/blue-app -n deployment-strategies",
+
+      "# Test traffic distribution in canary setup\necho \"Testing canary traffic distribution...\"\nfor i in {1..10}; do\n  kubectl run test-canary-$i --image=busybox --rm --restart=Never -n deployment-strategies -- sh -c 'wget -qO- http://canary-service/version | head -1'\ndone"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment blue-app -n deployment-strategies -o jsonpath='{.metadata.labels.version}'",
+      "expected": "1.0",
+      "points": 2,
+      "description": "Blue deployment has version 1.0 label"
+    },
+    {
+      "command": "kubectl get deployment green-app -n deployment-strategies -o jsonpath='{.metadata.labels.version}'",
+      "expected": "2.0",
+      "points": 2,
+      "description": "Green deployment has version 2.0 label"
+    },
+    {
+      "command": "kubectl get service app-service -n deployment-strategies -o jsonpath='{.spec.selector.version}'",
+      "expected": "2.0",
+      "points": 3,
+      "description": "Service routes traffic to green deployment"
+    },
+    {
+      "command": "kubectl get deployment green-app -n deployment-strategies -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 3,
+      "description": "Green deployment has all replicas ready"
+    },
+    {
+      "command": "kubectl exec -n deployment-strategies deploy/green-app -- curl -s localhost:8080/version | jq .version",
+      "expected": "2.0",
+      "points": 3,
+      "description": "Green deployment serves version 2.0"
+    },
+    {
+      "command": "kubectl get deployment blue-app -n deployment-strategies -o jsonpath='{.spec.replicas}'",
+      "expected": "0",
+      "points": 2,
+      "description": "Blue deployment scaled down after successful switch"
+    }
+  ]
+}

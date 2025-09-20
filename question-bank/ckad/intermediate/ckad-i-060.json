@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-060",
+  "title": "Storage Classes with Multi-Container Debugging and Health Probes",
+  "description": "Deploy a complex storage-intensive application in the pluto namespace that uses multiple storage classes for different data types. Include debugging containers for troubleshooting storage issues and implement comprehensive health checks for storage connectivity and performance.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["storage-classes", "multi-container-pods", "debugging-troubleshooting", "health-probes"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create StorageClasses: ||ssd-fast|| for hot data and ||hdd-slow|| for cold data"
+    },
+    {
+      "step": 2,
+      "description": "Create multi-container pod with ||app||, ||storage-monitor||, and ||debug|| containers"
+    },
+    {
+      "step": 3,
+      "description": "Configure PVCs: ||hot-data-pvc|| (ssd-fast, 1Gi) and ||cold-data-pvc|| (hdd-slow, 5Gi)"
+    },
+    {
+      "step": 4,
+      "description": "Mount different storage volumes to appropriate containers"
+    },
+    {
+      "step": 5,
+      "description": "Configure health probes: liveness on ||/health||, readiness on ||/ready||, startup on ||/startup||"
+    },
+    {
+      "step": 6,
+      "description": "Add debug container with storage tools like ||iostat||, ||df||, and ||lsblk||"
+    },
+    {
+      "step": 7,
+      "description": "Verify storage performance and health monitoring functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get storageclass ssd-fast -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "ssd-fast",
+      "description": "Verify ssd-fast StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass hdd-slow -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "hdd-slow",
+      "description": "Verify hdd-slow StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod storage-app -n pluto -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "3",
+      "description": "Verify pod has 3 containers",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc hot-data-pvc -n pluto -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "ssd-fast",
+      "description": "Verify hot data uses SSD storage",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc cold-data-pvc -n pluto -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "hdd-slow",
+      "description": "Verify cold data uses HDD storage",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod storage-app -n pluto -o jsonpath='{.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify liveness probe configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod storage-app -n pluto -o jsonpath='{.spec.containers[0].startupProbe.httpGet.path}'",
+      "expectedOutput": "/startup",
+      "description": "Verify startup probe configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl exec storage-app -n pluto -c debug -- which iostat",
+      "expectedOutput": "/usr/bin/iostat",
+      "description": "Verify debug container has storage monitoring tools",
+      "points": 1
+    }
+  ]
+}

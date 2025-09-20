@@ -1,0 +1,76 @@
+{
+  "id": "ckad-i-003",
+  "title": "Resource Limits and Requests",
+  "description": "Create a Deployment named ||resource-demo|| in namespace ||pluto|| with the following specifications:\n\n- Image: ||nginx:1.21||\n- 1 replica\n- CPU request: ||100m||\n- CPU limit: ||200m||\n- Memory request: ||64Mi||\n- Memory limit: ||128Mi||\n\nCreate a Pod named ||stress-test|| in the same namespace that attempts to use more resources than available and observe the behavior.",
+  "points": 7,
+  "timeLimit": 10,
+  "category": "Resource Management",
+  "tags": [
+    "resources",
+    "limits",
+    "requests",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment with resource constraints:",
+      "   kubectl create deployment resource-demo --image=nginx:1.21 --dry-run=client -o yaml > resource-demo.yaml",
+      "2. Edit YAML to add resource requests and limits",
+      "3. Apply the deployment:",
+      "   kubectl apply -f resource-demo.yaml -n pluto",
+      "4. Create stress test pod:",
+      "   kubectl run stress-test --image=progrium/stress --restart=Never -n pluto -- --cpu 4 --timeout 30s",
+      "5. Monitor resource usage:",
+      "   kubectl top pod -n pluto",
+      "   kubectl describe pod stress-test -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment resource-demo -n pluto -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Deployment should have CPU request of 100m"
+    },
+    {
+      "command": "kubectl get deployment resource-demo -n pluto -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}'",
+      "expected": "200m",
+      "points": 1,
+      "description": "Deployment should have CPU limit of 200m"
+    },
+    {
+      "command": "kubectl get deployment resource-demo -n pluto -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}'",
+      "expected": "64Mi",
+      "points": 1,
+      "description": "Deployment should have memory request of 64Mi"
+    },
+    {
+      "command": "kubectl get deployment resource-demo -n pluto -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "128Mi",
+      "points": 1,
+      "description": "Deployment should have memory limit of 128Mi"
+    },
+    {
+      "command": "kubectl get pod stress-test -n pluto -o jsonpath='{.metadata.name}'",
+      "expected": "stress-test",
+      "points": 1,
+      "description": "Stress test pod should exist"
+    },
+    {
+      "command": "kubectl get deployment resource-demo -n pluto -o jsonpath='{.status.readyReplicas}'",
+      "expected": "1",
+      "points": 2,
+      "description": "Resource-demo deployment should be running successfully"
+    }
+  ]
+}

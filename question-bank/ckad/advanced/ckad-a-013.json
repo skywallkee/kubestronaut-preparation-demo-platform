@@ -1,0 +1,109 @@
+{
+  "id": "ckad-a-013",
+  "title": "Complex Ingress Configuration with Multiple Backends and TLS",
+  "description": "Set up a sophisticated Ingress configuration in namespace ||venus|| for a microservices architecture:\n\n1. Deploy three backend services:\n   - **API Service**: Deployment ||api-service|| with 3 replicas running ||nginx:1.21|| on port 8080\n   - **Auth Service**: Deployment ||auth-service|| with 2 replicas running ||httpd:2.4|| on port 80\n   - **Static Assets**: Deployment ||static-service|| with 2 replicas running ||nginx:alpine|| on port 80\n\n2. Create corresponding Services:\n   - ||api-svc|| exposing api-service on port 8080\n   - ||auth-svc|| exposing auth-service on port 8080\n   - ||static-svc|| exposing static-service on port 8080\n\n3. Configure complex Ingress ||microservices-ingress|| with:\n   - **Path-based routing**:\n     - ||/api/*|| routes to api-service\n     - ||/auth/*|| routes to auth-service\n     - ||/static/*|| routes to static-service\n     - ||/*|| (default) routes to static-service\n   - **Host-based routing**:\n     - ||api.venus.local|| routes to api-service\n     - ||auth.venus.local|| routes to auth-service\n     - ||www.venus.local|| routes to static-service\n   - **TLS termination**:\n     - Create TLS secret ||venus-tls|| for all domains\n     - Enable HTTPS redirection\n\n4. Advanced Ingress features:\n   - Add custom annotations for load balancing (round-robin for API, least connections for auth)\n   - Configure request timeouts and body size limits\n   - Add rate limiting annotations\n   - Implement sticky sessions for auth service\n\n5. Create testing resources:\n   - Job ||ingress-tester|| that validates all routes are working\n   - ConfigMap ||test-scripts|| with curl commands for testing\n\n6. Add monitoring and labels:\n   - All resources labeled with ||service||, ||tier||, and ||routing-type||\n   - Ingress should have proper backend health checks\n\nVerify that all routing rules work correctly and TLS is properly configured.",
+  "points": 9,
+  "timeLimit": 22,
+  "category": "Networking",
+  "tags": [
+    "ingress",
+    "tls",
+    "path-based-routing",
+    "host-based-routing",
+    "microservices",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "ingress",
+      "secrets",
+      "configmaps",
+      "jobs"
+    ],
+    "prerequisites": [
+      "ingress-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create backend deployments:",
+      "   kubectl create deployment api-service --image=nginx:1.21 --replicas=3 --port=8080 -n venus",
+      "   kubectl create deployment auth-service --image=httpd:2.4 --replicas=2 --port=80 -n venus",
+      "   kubectl create deployment static-service --image=nginx:alpine --replicas=2 --port=80 -n venus",
+      "2. Expose deployments as services:",
+      "   kubectl expose deployment api-service --port=8080 --target-port=8080 --name=api-svc -n venus",
+      "   kubectl expose deployment auth-service --port=8080 --target-port=80 --name=auth-svc -n venus",
+      "   kubectl expose deployment static-service --port=8080 --target-port=80 --name=static-svc -n venus",
+      "3. Create TLS secret for HTTPS:",
+      "   kubectl create secret tls venus-tls --cert=venus.crt --key=venus.key -n venus",
+      "4. Create Ingress manifest with:",
+      "   - Multiple host rules (api.venus.local, auth.venus.local, www.venus.local)",
+      "   - Path-based routing rules (/api/*, /auth/*, /static/*, /)",
+      "   - TLS configuration for all hosts",
+      "   - Advanced annotations for load balancing and rate limiting",
+      "5. Create test scripts ConfigMap and validation job",
+      "6. Apply all resources and test routing functionality"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get ingress microservices-ingress -n venus -o jsonpath='{.spec.rules[*].host}' | tr ' ' '\\n' | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have 3 host-based routing rules"
+    },
+    {
+      "command": "kubectl get ingress microservices-ingress -n venus -o jsonpath='{.spec.tls[0].secretName}'",
+      "expected": "venus-tls",
+      "points": 1,
+      "description": "Should use venus-tls secret for TLS termination"
+    },
+    {
+      "command": "kubectl get deployment api-service -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "API service should have 3 replicas"
+    },
+    {
+      "command": "kubectl get service api-svc -n venus -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "API service should be exposed on port 8080"
+    },
+    {
+      "command": "kubectl get ingress microservices-ingress -n venus -o jsonpath='{.spec.rules[?(@.host==\"api.venus.local\")].http.paths[0].backend.service.name}'",
+      "expected": "api-svc",
+      "points": 1,
+      "description": "api.venus.local should route to api-svc"
+    },
+    {
+      "command": "kubectl get ingress microservices-ingress -n venus -o jsonpath='{.spec.rules[*].http.paths[?(@.path==\"/auth/*\")].backend.service.name}'",
+      "expected": "auth-svc",
+      "points": 1,
+      "description": "/auth/* path should route to auth-svc"
+    },
+    {
+      "command": "kubectl get secret venus-tls -n venus -o jsonpath='{.type}'",
+      "expected": "kubernetes.io/tls",
+      "points": 1,
+      "description": "venus-tls should be a valid TLS secret"
+    },
+    {
+      "command": "kubectl get job ingress-tester -n venus -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Ingress tester job should complete successfully"
+    },
+    {
+      "command": "kubectl get all -n venus -l tier --no-headers | wc -l",
+      "expected": "9",
+      "points": 1,
+      "description": "All resources should have proper tier labels"
+    }
+  ]
+}

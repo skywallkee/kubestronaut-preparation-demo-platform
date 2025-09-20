@@ -1,0 +1,75 @@
+{
+  "id": "ckad-a-064",
+  "title": "Complex Label and Selector Strategies",
+  "description": "Implement sophisticated ||labeling strategies|| and ||selector patterns|| for complex application architectures. Create a multi-tier application with hierarchical labeling schemes that support different selection criteria for various operational needs: deployment targets, monitoring groups, security policies, and traffic routing. Implement ||set-based selectors||, ||equality-based selectors||, and demonstrate how label strategies enable flexible resource management, automated operations, and dynamic service discovery.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Pod Design",
+  "tags": ["labels", "selectors", "set-based", "equality-based", "resource-management", "advanced"],
+  "infrastructure": {
+    "namespaces": ["labeling-demo"],
+    "resources": ["Deployment", "Service", "NetworkPolicy", "PodDisruptionBudget"],
+    "prerequisites": ["Understanding of selector types and operations"]
+  },
+  "solution": {
+    "steps": [
+      "# Create labeling-demo namespace\nkubectl create namespace labeling-demo",
+
+      "# Create frontend deployment with hierarchical labels\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: frontend\n  namespace: labeling-demo\n  labels:\n    app: ecommerce\n    tier: frontend\n    environment: production\n    team: web\n    version: v1.2.3\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: ecommerce\n      tier: frontend\n  template:\n    metadata:\n      labels:\n        app: ecommerce\n        tier: frontend\n        environment: production\n        team: web\n        version: v1.2.3\n        component: ui\n    spec:\n      containers:\n      - name: frontend\n        image: nginx:1.20\n        ports:\n        - containerPort: 80\nEOF",
+
+      "# Create backend deployment with hierarchical labels\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: backend\n  namespace: labeling-demo\n  labels:\n    app: ecommerce\n    tier: backend\n    environment: production\n    team: api\n    version: v2.1.0\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: ecommerce\n      tier: backend\n  template:\n    metadata:\n      labels:\n        app: ecommerce\n        tier: backend\n        environment: production\n        team: api\n        version: v2.1.0\n        component: service\n    spec:\n      containers:\n      - name: backend\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        command: [\"python\", \"-m\", \"http.server\", \"8080\"]\nEOF",
+
+      "# Create database deployment with hierarchical labels\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: database\n  namespace: labeling-demo\n  labels:\n    app: ecommerce\n    tier: database\n    environment: production\n    team: data\n    version: v3.0.1\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: ecommerce\n      tier: database\n  template:\n    metadata:\n      labels:\n        app: ecommerce\n        tier: database\n        environment: production\n        team: data\n        version: v3.0.1\n        component: storage\n    spec:\n      containers:\n      - name: database\n        image: postgres:13\n        ports:\n        - containerPort: 5432\n        env:\n        - name: POSTGRES_DB\n          value: ecommerce\n        - name: POSTGRES_USER\n          value: admin\n        - name: POSTGRES_PASSWORD\n          value: password\nEOF",
+
+      "# Create service with set-based selectors\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: backend-service\n  namespace: labeling-demo\n  labels:\n    app: ecommerce\nspec:\n  selector:\n    app: ecommerce\n    tier: backend\n    environment: production\n  ports:\n  - port: 80\n    targetPort: 8080\n  type: ClusterIP\nEOF",
+
+      "# Create service with complex set-based selector\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-services\n  namespace: labeling-demo\nspec:\n  selector:\n    app: ecommerce\n    environment: production\n  ports:\n  - port: 80\n    targetPort: 80\n    name: frontend\n  - port: 8080\n    targetPort: 8080\n    name: backend\nEOF",
+
+      "# Create NetworkPolicy using label selectors\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: frontend-policy\n  namespace: labeling-demo\nspec:\n  podSelector:\n    matchLabels:\n      tier: frontend\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector:\n        matchLabels:\n          tier: backend\n    ports:\n    - protocol: TCP\n      port: 80\n  egress:\n  - to:\n    - podSelector:\n        matchExpressions:\n        - key: tier\n          operator: In\n          values: [\"backend\", \"database\"]\n    ports:\n    - protocol: TCP\n      port: 8080\n    - protocol: TCP\n      port: 5432\nEOF",
+
+      "# Create PodDisruptionBudget with complex selectors\nkubectl apply -f - <<EOF\napiVersion: policy/v1\nkind: PodDisruptionBudget\nmetadata:\n  name: production-pdb\n  namespace: labeling-demo\nspec:\n  minAvailable: 1\n  selector:\n    matchLabels:\n      environment: production\n    matchExpressions:\n    - key: tier\n      operator: In\n      values: [\"frontend\", \"backend\"]\nEOF",
+
+      "# Wait for deployments to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/frontend -n labeling-demo\nkubectl wait --for=condition=available --timeout=300s deployment/backend -n labeling-demo\nkubectl wait --for=condition=available --timeout=300s deployment/database -n labeling-demo",
+
+      "# Test set-based selectors\necho \"Testing set-based selectors...\"\necho \"Pods in frontend and backend tiers:\"\nkubectl get pods -n labeling-demo -l 'tier in (frontend,backend)'\necho\necho \"Production pods excluding database:\"\nkubectl get pods -n labeling-demo -l 'environment=production,tier!=database'\necho",
+
+      "# Test equality-based selectors\necho \"Testing equality-based selectors...\"\necho \"Frontend tier pods:\"\nkubectl get pods -n labeling-demo -l tier=frontend\necho\necho \"Production environment pods:\"\nkubectl get pods -n labeling-demo -l environment=production\necho",
+
+      "# Demonstrate dynamic service discovery\necho \"Demonstrating dynamic service discovery...\"\nkubectl get endpoints -n labeling-demo\necho\necho \"Services and their selected pods:\"\nkubectl describe service backend-service -n labeling-demo\necho",
+
+      "# Test label updates and selector behavior\necho \"Testing label updates...\"\nkubectl label pods -n labeling-demo -l tier=frontend monitoring=enabled\necho \"Pods with monitoring enabled:\"\nkubectl get pods -n labeling-demo -l monitoring=enabled\necho\necho \"Testing selector precedence completed\""
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n labeling-demo -o jsonpath='{.metadata.labels}'",
+      "expected": "tier:frontend",
+      "points": 2,
+      "description": "Frontend deployment has proper tier label"
+    },
+    {
+      "command": "kubectl get service backend-service -n labeling-demo -o jsonpath='{.spec.selector}' | jq '.environment'",
+      "expected": "production",
+      "points": 2,
+      "description": "Service uses environment label for selection"
+    },
+    {
+      "command": "kubectl get pods -n labeling-demo -l 'tier in (frontend,backend)' | wc -l",
+      "expected": "7",
+      "points": 3,
+      "description": "Set-based selector matches multiple tiers"
+    },
+    {
+      "command": "kubectl get pods -n labeling-demo -l 'environment=production,tier!=database' | wc -l",
+      "expected": "5",
+      "points": 3,
+      "description": "Complex selector excludes database tier"
+    },
+    {
+      "command": "kubectl get networkpolicy -n labeling-demo frontend-policy -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expected": "frontend",
+      "points": 2,
+      "description": "Network policy uses label selector for pod targeting"
+    }
+  ]
+}

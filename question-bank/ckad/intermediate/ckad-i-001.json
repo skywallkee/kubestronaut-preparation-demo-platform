@@ -1,0 +1,73 @@
+{
+  "id": "ckad-i-001",
+  "title": "ConfigMap and Environment Variables",
+  "description": "Create a ConfigMap named ||app-config|| in namespace ||saturn|| with the following data:\n\n- ||database_host||: ||postgres.internal||\n- ||database_port||: ||5432||\n- ||app_mode||: ||production||\n\nThen create a Deployment named ||web-app|| with:\n- Image: ||nginx:1.21||\n- 2 replicas\n- Environment variables loaded from the ConfigMap\n- Expose container port 80\n\nVerify the pod can access the configuration values.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Configuration",
+  "tags": [
+    "configmap",
+    "deployment",
+    "environment-variables",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "configmaps",
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the ConfigMap:",
+      "   kubectl create configmap app-config \\",
+      "     --from-literal=database_host=postgres.internal \\",
+      "     --from-literal=database_port=5432 \\",
+      "     --from-literal=app_mode=production \\",
+      "     -n saturn",
+      "2. Create deployment YAML:",
+      "   kubectl create deployment web-app --image=nginx:1.21 --replicas=2 --dry-run=client -o yaml > web-app.yaml",
+      "3. Edit YAML to add envFrom referencing the ConfigMap",
+      "4. Apply the deployment:",
+      "   kubectl apply -f web-app.yaml -n saturn",
+      "5. Verify configuration is loaded:",
+      "   kubectl exec -n saturn deployment/web-app -- env | grep database"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -n saturn -o jsonpath='{.data.database_host}'",
+      "expected": "postgres.internal",
+      "points": 1,
+      "description": "ConfigMap should contain database_host"
+    },
+    {
+      "command": "kubectl get deployment web-app -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 replicas"
+    },
+    {
+      "command": "kubectl get deployment web-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].envFrom[0].configMapRef.name}'",
+      "expected": "app-config",
+      "points": 2,
+      "description": "Deployment should reference the ConfigMap"
+    },
+    {
+      "command": "kubectl exec -n saturn deployment/web-app -- sh -c 'echo $database_host'",
+      "expected": "postgres.internal",
+      "points": 1,
+      "description": "Environment variable should be accessible in pod"
+    },
+    {
+      "command": "kubectl exec -n saturn deployment/web-app -- sh -c 'echo $app_mode'",
+      "expected": "production",
+      "points": 1,
+      "description": "All ConfigMap values should be loaded as environment variables"
+    }
+  ]
+}

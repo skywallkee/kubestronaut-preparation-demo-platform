@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-079",
+  "title": "Advanced Troubleshooting with Helm and Storage Management",
+  "description": "Debug and fix a complex failing Helm deployment in the venus namespace. The application uses multiple storage classes, has misconfigured health probes, broken service discovery, and RBAC issues. Identify and resolve all configuration problems to restore full functionality.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["debugging-troubleshooting", "helm-package-manager", "storage-classes", "service-accounts-rbac"],
+  "points": 12,
+  "timeMinutes": 25,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Analyze failing Helm release ||broken-app|| and identify deployment issues"
+    },
+    {
+      "step": 2,
+      "description": "Fix StorageClass references from ||wrong-storage|| to ||correct-storage||"
+    },
+    {
+      "step": 3,
+      "description": "Correct health probe paths from ||/wrong|| to ||/health|| and ||/ready||"
+    },
+    {
+      "step": 4,
+      "description": "Fix ServiceAccount permissions and RoleBinding associations"
+    },
+    {
+      "step": 5,
+      "description": "Resolve service discovery issues with incorrect FQDN patterns"
+    },
+    {
+      "step": 6,
+      "description": "Update Helm values and perform rolling upgrade to fix all issues"
+    },
+    {
+      "step": 7,
+      "description": "Verify all components are healthy and functioning correctly"
+    }
+  ],
+  "validations": [
+    {
+      "command": "helm status broken-app -n venus | grep STATUS | grep deployed",
+      "expectedOutput": "deployed",
+      "description": "Verify Helm release is successfully deployed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc app-storage -n venus -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "correct-storage",
+      "description": "Verify StorageClass is corrected",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment app -n venus -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify liveness probe path is fixed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment app -n venus -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expectedOutput": "/ready",
+      "description": "Verify readiness probe path is fixed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get rolebinding app-binding -n venus -o jsonpath='{.subjects[0].name}'",
+      "expectedOutput": "app-sa",
+      "description": "Verify RoleBinding is correctly configured",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment app -n venus -o jsonpath='{.spec.template.spec.containers[0].env[0].value}' | grep service.venus.svc.cluster.local",
+      "expectedOutput": "service.venus.svc.cluster.local",
+      "description": "Verify service discovery FQDN is corrected",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod -n venus -l app=broken-app -o jsonpath='{.items[0].status.phase}'",
+      "expectedOutput": "Running",
+      "description": "Verify application pods are running",
+      "points": 1
+    }
+  ]
+}

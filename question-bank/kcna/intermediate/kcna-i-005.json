@@ -1,0 +1,120 @@
+{
+  "id": "kcna-i-005",
+  "title": "Storage Concepts and Volumes",
+  "description": "Demonstrate understanding of Kubernetes storage concepts:\n\n1. Create a PersistentVolume named ||local-pv|| with:\n   - Capacity: ||1Gi||\n   - Access mode: ||ReadWriteOnce||\n   - Storage class: ||manual||\n   - Host path: ||/tmp/data||\n\n2. Create a PersistentVolumeClaim named ||data-pvc|| in namespace ||mars|| with:\n   - Request: ||500Mi||\n   - Access mode: ||ReadWriteOnce||\n   - Storage class: ||manual||\n\n3. Create a Pod named ||storage-demo|| that:\n   - Uses image ||busybox:1.35||\n   - Mounts the PVC at ||/data||\n   - Runs command: ||sh -c \"echo 'Hello from persistent storage' > /data/message.txt && sleep 3600\"||\n\n4. Verify the data persistence:\n   - Check the file exists in the pod\n   - Delete the pod and create a new one\n   - Verify the data still exists\n\n5. Also demonstrate an emptyDir volume in a multi-container pod sharing data.",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "Storage",
+  "tags": [
+    "storage",
+    "persistentvolume",
+    "persistentvolumeclaim",
+    "volumes"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create PersistentVolume:",
+      "   cat > pv.yaml << EOF",
+      "   apiVersion: v1",
+      "   kind: PersistentVolume",
+      "   metadata:",
+      "     name: local-pv",
+      "   spec:",
+      "     capacity:",
+      "       storage: 1Gi",
+      "     accessModes:",
+      "     - ReadWriteOnce",
+      "     storageClassName: manual",
+      "     hostPath:",
+      "       path: /tmp/data",
+      "   EOF",
+      "   kubectl apply -f pv.yaml",
+      "2. Create PersistentVolumeClaim:",
+      "   cat > pvc.yaml << EOF",
+      "   apiVersion: v1",
+      "   kind: PersistentVolumeClaim",
+      "   metadata:",
+      "     name: data-pvc",
+      "     namespace: mars",
+      "   spec:",
+      "     accessModes:",
+      "     - ReadWriteOnce",
+      "     resources:",
+      "       requests:",
+      "         storage: 500Mi",
+      "     storageClassName: manual",
+      "   EOF",
+      "   kubectl apply -f pvc.yaml",
+      "3. Create Pod with PVC:",
+      "   cat > storage-pod.yaml << EOF",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: storage-demo",
+      "     namespace: mars",
+      "   spec:",
+      "     containers:",
+      "     - name: busybox",
+      "       image: busybox:1.35",
+      "       command: [\"sh\", \"-c\", \"echo 'Hello from persistent storage' > /data/message.txt && sleep 3600\"]",
+      "       volumeMounts:",
+      "       - name: data-volume",
+      "         mountPath: /data",
+      "     volumes:",
+      "     - name: data-volume",
+      "       persistentVolumeClaim:",
+      "         claimName: data-pvc",
+      "   EOF",
+      "   kubectl apply -f storage-pod.yaml",
+      "4. Verify data exists:",
+      "   kubectl exec storage-demo -n mars -- cat /data/message.txt",
+      "5. Test persistence by recreating pod:",
+      "   kubectl delete pod storage-demo -n mars",
+      "   kubectl apply -f storage-pod.yaml",
+      "   kubectl exec storage-demo -n mars -- cat /data/message.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pv local-pv -o jsonpath='{.spec.capacity.storage}'",
+      "expected": "1Gi",
+      "points": 1,
+      "description": "PersistentVolume should have 1Gi capacity"
+    },
+    {
+      "command": "kubectl get pvc data-pvc -n mars -o jsonpath='{.status.phase}'",
+      "expected": "Bound",
+      "points": 1,
+      "description": "PVC should be bound to PV"
+    },
+    {
+      "command": "kubectl get pod storage-demo -n mars -o jsonpath='{.spec.volumes[0].persistentVolumeClaim.claimName}'",
+      "expected": "data-pvc",
+      "points": 2,
+      "description": "Pod should use the correct PVC"
+    },
+    {
+      "command": "kubectl exec storage-demo -n mars -- cat /data/message.txt",
+      "expected": "Hello from persistent storage",
+      "points": 2,
+      "description": "Data should be written to persistent volume"
+    },
+    {
+      "command": "kubectl get pvc data-pvc -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expected": "500Mi",
+      "points": 1,
+      "description": "PVC should request 500Mi of storage"
+    }
+  ]
+}

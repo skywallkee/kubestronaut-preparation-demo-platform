@@ -1,0 +1,43 @@
+{
+  "id": "ckad-e-070",
+  "title": "Create Network Policy Allow Specific Pod",
+  "description": "Create a NetworkPolicy named ||allow-frontend|| in Namespace ||production|| that allows ingress traffic from pods with label ||app=frontend|| to pods with label ||app=backend|| on port ||8080||.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Services and Networking",
+  "tags": [
+    "network-policies",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "networkpolicies"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create NetworkPolicy YAML with podSelector for app=backend",
+      "2. Add ingress rule allowing from pods with app=frontend on port 8080",
+      "3. Apply the NetworkPolicy:",
+      "   kubectl apply -f allow-frontend.yaml -n production"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get networkpolicy allow-frontend -n production -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+      "expected": "backend",
+      "points": 2,
+      "description": "NetworkPolicy should target backend pods"
+    },
+    {
+      "command": "kubectl get networkpolicy allow-frontend -n production -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.app}'",
+      "expected": "frontend",
+      "points": 2,
+      "description": "NetworkPolicy should allow from frontend pods"
+    }
+  ]
+}

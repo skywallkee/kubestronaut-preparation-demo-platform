@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-064",
+  "title": "Application Scaling with ConfigMaps and Health Probes",
+  "description": "Deploy a scalable web application in the pluto namespace that uses ConfigMaps for dynamic configuration. Implement horizontal pod autoscaling based on multiple metrics and configure comprehensive health probes that adapt based on configuration changes.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["application-scaling", "configmaps-secrets", "health-probes", "deployments-rolling-updates"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ConfigMap ||app-config|| with scaling and health check configurations"
+    },
+    {
+      "step": 2,
+      "description": "Deploy web application with initial ||2|| replicas that reads from ConfigMap"
+    },
+    {
+      "step": 3,
+      "description": "Configure HPA with multiple metrics: CPU ||70%||, Memory ||80%||, custom ||requests_per_minute|| > ||100||"
+    },
+    {
+      "step": 4,
+      "description": "Set HPA scaling range: minimum ||2||, maximum ||12|| replicas"
+    },
+    {
+      "step": 5,
+      "description": "Configure health probes with ConfigMap-driven intervals and thresholds"
+    },
+    {
+      "step": 6,
+      "description": "Update ConfigMap to test dynamic reconfiguration and health probe adaptation"
+    },
+    {
+      "step": 7,
+      "description": "Verify scaling behavior and health probe responsiveness to configuration changes"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "app-config",
+      "description": "Verify application ConfigMap exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "2",
+      "description": "Verify initial replica count",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa web-app-hpa -n pluto -o jsonpath='{.spec.minReplicas}'",
+      "expectedOutput": "2",
+      "description": "Verify HPA minimum replicas",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa web-app-hpa -n pluto -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "12",
+      "description": "Verify HPA maximum replicas",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa web-app-hpa -n pluto -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}'",
+      "expectedOutput": "70",
+      "description": "Verify CPU scaling threshold",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa web-app-hpa -n pluto -o jsonpath='{.spec.metrics[1].resource.name}'",
+      "expectedOutput": "memory",
+      "description": "Verify memory metric configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds}'",
+      "expectedOutput": "30",
+      "description": "Verify health probe timing configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.spec.template.spec.volumes[0].configMap.name}'",
+      "expectedOutput": "app-config",
+      "description": "Verify ConfigMap volume mounting",
+      "points": 1
+    }
+  ]
+}

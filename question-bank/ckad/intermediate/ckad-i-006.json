@@ -1,0 +1,120 @@
+{
+  "id": "ckad-i-006",
+  "title": "Jobs and CronJobs",
+  "description": "Create the following workloads in namespace ||pluto||:\n\n**1. Job named ||data-processor||:**\n- Image: ||busybox:1.35||\n- Command: ||echo \"Processing data at $(date)\" > /tmp/result.txt && cat /tmp/result.txt||\n- Completions: ||3||\n- Parallelism: ||2||\n- Restart policy: ||Never||\n\n**2. CronJob named ||cleanup-job||:**\n- Schedule: ||*/2 * * * *|| (every 2 minutes)\n- Image: ||busybox:1.35||\n- Command: ||echo \"Cleanup executed at $(date)\"||\n- Job history limits: Keep ||2|| successful and ||1|| failed\n- Restart policy: ||OnFailure||\n\nVerify both workloads are created and the Job completes successfully.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Workloads",
+  "tags": [
+    "job",
+    "cronjob",
+    "batch",
+    "scheduling",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "jobs",
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Job YAML:",
+      "   cat <<EOF > data-processor.yaml",
+      "   apiVersion: batch/v1",
+      "   kind: Job",
+      "   metadata:",
+      "     name: data-processor",
+      "     namespace: pluto",
+      "   spec:",
+      "     completions: 3",
+      "     parallelism: 2",
+      "     template:",
+      "       spec:",
+      "         restartPolicy: Never",
+      "         containers:",
+      "         - name: processor",
+      "           image: busybox:1.35",
+      "           command: ['sh', '-c', 'echo \"Processing data at $(date)\" > /tmp/result.txt && cat /tmp/result.txt']",
+      "   EOF",
+      "2. Apply the Job:",
+      "   kubectl apply -f data-processor.yaml",
+      "3. Create CronJob YAML:",
+      "   cat <<EOF > cleanup-job.yaml",
+      "   apiVersion: batch/v1",
+      "   kind: CronJob",
+      "   metadata:",
+      "     name: cleanup-job",
+      "     namespace: pluto",
+      "   spec:",
+      "     schedule: \"*/2 * * * *\"",
+      "     successfulJobsHistoryLimit: 2",
+      "     failedJobsHistoryLimit: 1",
+      "     jobTemplate:",
+      "       spec:",
+      "         template:",
+      "           spec:",
+      "             restartPolicy: OnFailure",
+      "             containers:",
+      "             - name: cleanup",
+      "               image: busybox:1.35",
+      "               command: ['sh', '-c', 'echo \"Cleanup executed at $(date)\"']",
+      "   EOF",
+      "4. Apply the CronJob:",
+      "   kubectl apply -f cleanup-job.yaml",
+      "5. Wait for Job completion:",
+      "   kubectl wait --for=condition=complete job/data-processor -n pluto --timeout=120s",
+      "6. Verify Job results:",
+      "   kubectl logs -n pluto -l job-name=data-processor"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get job data-processor -n pluto -o jsonpath='{.spec.completions}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Job should have 3 completions"
+    },
+    {
+      "command": "kubectl get job data-processor -n pluto -o jsonpath='{.spec.parallelism}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Job should have parallelism of 2"
+    },
+    {
+      "command": "kubectl get job data-processor -n pluto -o jsonpath='{.spec.template.spec.restartPolicy}'",
+      "expected": "Never",
+      "points": 1,
+      "description": "Job should have Never restart policy"
+    },
+    {
+      "command": "kubectl get cronjob cleanup-job -n pluto -o jsonpath='{.spec.schedule}'",
+      "expected": "*/2 * * * *",
+      "points": 2,
+      "description": "CronJob should have correct schedule"
+    },
+    {
+      "command": "kubectl get cronjob cleanup-job -n pluto -o jsonpath='{.spec.successfulJobsHistoryLimit}'",
+      "expected": "2",
+      "points": 1,
+      "description": "CronJob should keep 2 successful jobs"
+    },
+    {
+      "command": "kubectl get cronjob cleanup-job -n pluto -o jsonpath='{.spec.failedJobsHistoryLimit}'",
+      "expected": "1",
+      "points": 1,
+      "description": "CronJob should keep 1 failed job"
+    },
+    {
+      "command": "kubectl get job data-processor -n pluto -o jsonpath='{.status.succeeded}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Job should complete successfully 3 times"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-069",
+  "title": "Create Pod with Custom Image Tag",
+  "description": "Create a Pod named ||tagged-pod|| in Namespace ||default|| using image ||alpine|| with tag ||3.16|| and image pull policy ||IfNotPresent||.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Design and Build",
+  "tags": [
+    "container-images",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Pod YAML:",
+      "   kubectl run tagged-pod --image=alpine:3.16 --dry-run=client -o yaml > tagged-pod.yaml",
+      "2. Edit YAML to set imagePullPolicy: IfNotPresent",
+      "3. Apply the Pod:",
+      "   kubectl apply -f tagged-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod tagged-pod -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "alpine:3.16",
+      "points": 1,
+      "description": "Pod should use alpine:3.16 image"
+    },
+    {
+      "command": "kubectl get pod tagged-pod -o jsonpath='{.spec.containers[0].imagePullPolicy}'",
+      "expected": "IfNotPresent",
+      "points": 1,
+      "description": "Pod should have imagePullPolicy set to IfNotPresent"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "id": "ckad-a-024",
+  "title": "Advanced Label and Selector Patterns for Complex Deployments",
+  "description": "Implement sophisticated labeling strategies and selector patterns in namespace ||mars|| for a complex microservices application with advanced deployment patterns:\n\n1. **Multi-Dimensional Labeling Architecture**:\n   Create a comprehensive labeling system with multiple dimensions:\n   - **Application Tier**: ||tier=frontend||, ||tier=backend||, ||tier=database||, ||tier=cache||\n   - **Environment**: ||environment=production||, ||environment=staging||, ||environment=development||\n   - **Version/Release**: ||version=v1.2.3||, ||release=stable||, ||release=canary||, ||release=blue||, ||release=green||\n   - **Team Ownership**: ||team=frontend-team||, ||team=backend-team||, ||team=platform-team||\n   - **Criticality**: ||criticality=high||, ||criticality=medium||, ||criticality=low||\n   - **Data Classification**: ||data-class=public||, ||data-class=internal||, ||data-class=confidential||\n\n2. **Blue-Green Deployment with Label-Based Traffic Management**:\n   - Deploy ||web-app|| with blue-green pattern:\n     - **Blue Environment**: 3 replicas with ||color=blue||, ||active=true||\n     - **Green Environment**: 3 replicas with ||color=green||, ||active=false||\n   - Create Service ||web-service|| with selector switching between blue and green\n   - Implement traffic switching Job ||traffic-switch|| that updates service selectors\n   - Add validation Job ||deployment-validator|| that checks label consistency\n\n3. **Canary Deployment with Progressive Label Updates**:\n   - Deploy ||api-app|| with canary deployment pattern:\n     - **Stable Version**: 4 replicas with ||version=v1.0||, ||track=stable||\n     - **Canary Version**: 1 replica with ||version=v1.1||, ||track=canary||\n   - Create multiple Services with different selector strategies:\n     - ||api-stable|| service selecting only stable track\n     - ||api-canary|| service selecting only canary track\n     - ||api-mixed|| service selecting both with weight-based routing\n\n4. **Complex Selector Patterns**:\n   - **Set-Based Selectors**: Use advanced selector operators\n     - matchExpressions with ||In||, ||NotIn||, ||Exists||, ||DoesNotExist||\n     - Example: Select pods where ||environment in (production, staging)||, ||team notin (deprecated-team)||\n   - **Anti-Affinity Selectors**: Deploy pods avoiding specific label combinations\n   - **Cross-Cutting Concerns**: Select resources across multiple dimensions\n\n5. **Label-Based Pod Affinity and Anti-Affinity**:\n   - **Database Pod**: Deploy ||postgres-db|| with node affinity for SSD nodes (||node-type=ssd||)\n   - **Cache Pods**: Deploy ||redis-cache|| with pod anti-affinity to spread across nodes\n   - **Frontend Pods**: Deploy with pod affinity to co-locate with cache pods\n   - **Backend Pods**: Deploy with anti-affinity to avoid single points of failure\n\n6. **Dynamic Label Management**:\n   - Create Job ||label-updater|| that dynamically updates labels based on conditions\n   - Implement label lifecycle management (creation, update, cleanup)\n   - Add label validation and constraint enforcement\n   - Configure automatic labeling based on resource characteristics\n\n7. **Service Discovery and Selection**:\n   - Create Services with complex selectors for different use cases:\n     - ||monitoring-targets||: Select all pods with ||metrics=enabled||\n     - ||backup-candidates||: Select stateful pods with ||backup=required||\n     - ||security-scan||: Select pods with ||security-level=high||\n   - Implement service endpoint filtering based on multiple label criteria\n\n8. **Network Policy Integration**:\n   - Create NetworkPolicy ||label-based-security|| using label selectors:\n     - Allow traffic between pods with same ||security-zone|| label\n     - Deny traffic between different ||data-class|| levels\n     - Allow monitoring access to pods with ||monitoring=enabled||\n\n9. **Resource Cleanup and Garbage Collection**:\n   - Create CronJob ||label-cleanup|| that removes orphaned or deprecated labels\n   - Implement label validation and standardization\n   - Add label consistency checking across related resources\n   - Configure automatic cleanup of test/temporary labels\n\n10. **Monitoring and Observability**:\n    - Create monitoring queries based on label dimensions\n    - Implement alerting rules using label-based selection\n    - Add label-based resource grouping and dashboards\n    - Track label usage and distribution analytics\n\n11. **Testing and Validation**:\n    - Create comprehensive test suite ||label-tester|| validating:\n      - Label propagation and inheritance\n      - Selector matching and exclusion\n      - Service discovery functionality\n      - Affinity rule enforcement\n    - Test label-based traffic routing and load balancing\n    - Verify cleanup and lifecycle management\n\nEnsure robust, scalable labeling strategy supporting complex deployment patterns and operational requirements.",
+  "points": 8,
+  "timeLimit": 18,
+  "category": "Labels and Selectors",
+  "tags": [
+    "labels",
+    "selectors",
+    "blue-green-deployment",
+    "canary-deployment",
+    "advanced-patterns",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "networkpolicies",
+      "jobs",
+      "cronjobs",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployments with comprehensive labeling:",
+      "   Blue-green web-app deployments with color, active, environment labels",
+      "   Canary api-app deployments with version, track labels",
+      "   Database and cache deployments with tier, criticality labels",
+      "2. Configure services with advanced selectors:",
+      "   web-service: selector switching between blue/green",
+      "   api-stable: matchLabels for stable track only",
+      "   api-canary: matchLabels for canary track only",
+      "   monitoring-targets: matchExpressions for metrics=enabled",
+      "3. Implement pod affinity and anti-affinity:",
+      "   Database pods with node affinity for SSD nodes",
+      "   Cache pods with pod anti-affinity for distribution",
+      "   Frontend pods with affinity to cache pods",
+      "4. Create network policies with label-based rules:",
+      "   Security policies based on data-class and security-zone labels",
+      "5. Deploy label management and validation jobs:",
+      "   traffic-switch: updates service selectors for blue-green",
+      "   label-updater: dynamic label management",
+      "   label-cleanup: removes orphaned labels",
+      "6. Create comprehensive test suite validating all patterns"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-app-blue -n mars -o jsonpath='{.metadata.labels.color}'",
+      "expected": "blue",
+      "points": 1,
+      "description": "Blue deployment should have color=blue label"
+    },
+    {
+      "command": "kubectl get deployment web-app-green -n mars -o jsonpath='{.metadata.labels.color}'",
+      "expected": "green",
+      "points": 1,
+      "description": "Green deployment should have color=green label"
+    },
+    {
+      "command": "kubectl get deployment api-app-stable -n mars -o jsonpath='{.metadata.labels.track}'",
+      "expected": "stable",
+      "points": 1,
+      "description": "Stable API deployment should have track=stable label"
+    },
+    {
+      "command": "kubectl get deployment api-app-canary -n mars -o jsonpath='{.metadata.labels.track}'",
+      "expected": "canary",
+      "points": 1,
+      "description": "Canary API deployment should have track=canary label"
+    },
+    {
+      "command": "kubectl get service monitoring-targets -n mars -o jsonpath='{.spec.selector.metrics}'",
+      "expected": "enabled",
+      "points": 1,
+      "description": "Monitoring service should select pods with metrics=enabled"
+    },
+    {
+      "command": "kubectl get deployment postgres-db -n mars -o jsonpath='{.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]}'",
+      "expected": "ssd",
+      "points": 1,
+      "description": "Database should have node affinity for SSD nodes"
+    },
+    {
+      "command": "kubectl get networkpolicy label-based-security -n mars -o jsonpath='{.spec.podSelector.matchLabels.security-zone}'",
+      "expected": "restricted",
+      "points": 1,
+      "description": "Network policy should use security-zone labels"
+    },
+    {
+      "command": "kubectl get job label-tester -n mars -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Label validation test should complete successfully"
+    }
+  ]
+}

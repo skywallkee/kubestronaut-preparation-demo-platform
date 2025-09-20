@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-deployment-uranus
+  namespace: uranus
+  labels:
+    app: sample-app-uranus
+    exam-resource: "true"
+    planet: uranus
+    type: "sample"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app-uranus
+  template:
+    metadata:
+      labels:
+        app: sample-app-uranus
+        planet: uranus
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

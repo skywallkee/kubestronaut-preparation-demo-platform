@@ -1,0 +1,114 @@
+{
+  "id": "cka-i-010",
+  "title": "Worker Node Management and Cordoning",
+  "description": "Perform maintenance operations on worker nodes safely. Your tasks are:\n\n1. List all worker nodes and identify node ||worker-node-03|| that needs maintenance\n2. Safely drain node ||worker-node-03|| to move all workloads to other nodes\n3. Cordon the node to prevent new pods from being scheduled on it\n4. Create a DaemonSet named ||node-monitor|| that should run on all nodes except the cordoned one\n5. Simulate maintenance completion and uncordon the node\n6. Verify that new pods can be scheduled on ||worker-node-03|| again\n7. Create a test deployment named ||spread-test|| with 3 replicas that spreads across all available nodes\n8. Ensure the DaemonSet pod gets scheduled on the uncordoned node",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Node Management",
+  "tags": [
+    "node-management",
+    "drain",
+    "cordon",
+    "uncordon",
+    "daemonsets",
+    "maintenance",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "nodes",
+      "daemonsets",
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": [
+      "Multiple worker nodes available",
+      "worker-node-03 exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. List all nodes:",
+      "   kubectl get nodes",
+      "2. Check pods running on worker-node-03:",
+      "   kubectl get pods --all-namespaces --field-selector spec.nodeName=worker-node-03",
+      "3. Cordon the node:",
+      "   kubectl cordon worker-node-03",
+      "4. Drain the node safely:",
+      "   kubectl drain worker-node-03 --ignore-daemonsets --delete-emptydir-data",
+      "5. Verify node is cordoned:",
+      "   kubectl get nodes | grep worker-node-03",
+      "6. Create DaemonSet:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: apps/v1",
+      "   kind: DaemonSet",
+      "   metadata:",
+      "     name: node-monitor",
+      "   spec:",
+      "     selector:",
+      "       matchLabels:",
+      "         app: node-monitor",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: node-monitor",
+      "       spec:",
+      "         containers:",
+      "         - name: monitor",
+      "           image: busybox",
+      "           command: ['sleep', '3600']",
+      "   EOF",
+      "7. Verify DaemonSet doesn't run on cordoned node:",
+      "   kubectl get pods -o wide | grep node-monitor",
+      "8. Uncordon the node after maintenance:",
+      "   kubectl uncordon worker-node-03",
+      "9. Create test deployment:",
+      "   kubectl create deployment spread-test --image=nginx --replicas=3",
+      "10. Verify deployment spreads across nodes:",
+      "    kubectl get pods -o wide | grep spread-test",
+      "11. Verify DaemonSet now runs on uncordoned node:",
+      "    kubectl get pods -o wide | grep node-monitor"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get node worker-node-03 -o jsonpath='{.spec.unschedulable}'",
+      "expected": "null|^$",
+      "points": 2,
+      "description": "Node should be uncordoned and schedulable after maintenance"
+    },
+    {
+      "command": "kubectl get daemonset node-monitor -o jsonpath='{.status.numberReady}'",
+      "expected": "[3-9]",
+      "points": 2,
+      "description": "DaemonSet should be running on multiple nodes"
+    },
+    {
+      "command": "kubectl get pods -l app=node-monitor --field-selector spec.nodeName=worker-node-03",
+      "expected": "node-monitor.*Running",
+      "points": 1,
+      "description": "DaemonSet pod should be running on worker-node-03 after uncordoning"
+    },
+    {
+      "command": "kubectl get deployment spread-test -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Test deployment should have 3 ready replicas"
+    },
+    {
+      "command": "kubectl get pods -l app=spread-test -o jsonpath='{.items[*].spec.nodeName}' | tr ' ' '\\n' | sort -u | wc -l",
+      "expected": "[2-9]",
+      "points": 2,
+      "description": "Test deployment pods should be spread across multiple nodes"
+    },
+    {
+      "command": "kubectl get pods -l app=spread-test --field-selector spec.nodeName=worker-node-03 | grep Running | wc -l",
+      "expected": "[1-9]",
+      "points": 1,
+      "description": "At least one test pod should be scheduled on worker-node-03"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "id": "ckad-a-003",
+  "title": "Advanced Health Checks and Probes",
+  "description": "Create a Deployment ||health-app|| in namespace ||pluto|| with the following health check requirements:\n\n- Use image ||nginx:1.21||\n- 3 replicas\n- **Liveness Probe**: HTTP GET on port 80, path ||/health||, initial delay 30s, period 10s, failure threshold 3\n- **Readiness Probe**: HTTP GET on port 80, path ||/ready||, initial delay 5s, period 5s, failure threshold 2\n- **Startup Probe**: HTTP GET on port 80, path ||/startup||, initial delay 10s, period 2s, failure threshold 15\n- Resource requests: cpu=50m, memory=64Mi\n- Resource limits: cpu=100m, memory=128Mi\n\nCreate a Service ||health-service|| to expose the deployment on port 8080 (target port 80).\n\nSimulate a failing health check by scaling one pod and verify the behavior.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Observability",
+  "tags": [
+    "health-checks",
+    "probes",
+    "deployment",
+    "service",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Deployment with health probes:",
+      "   kubectl create deployment health-app --image=nginx:1.21 --replicas=3 -n pluto --dry-run=client -o yaml > health-app.yaml",
+      "2. Edit YAML to add all three types of probes:",
+      "   - livenessProbe: httpGet /health, initialDelaySeconds: 30, periodSeconds: 10, failureThreshold: 3",
+      "   - readinessProbe: httpGet /ready, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 2",
+      "   - startupProbe: httpGet /startup, initialDelaySeconds: 10, periodSeconds: 2, failureThreshold: 15",
+      "3. Add resource requests and limits",
+      "4. Apply the deployment:",
+      "   kubectl apply -f health-app.yaml",
+      "5. Create Service:",
+      "   kubectl expose deployment health-app --port=8080 --target-port=80 --name=health-service -n pluto",
+      "6. Verify probes are configured:",
+      "   kubectl describe deployment health-app -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Deployment should have 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expected": "/health",
+      "points": 1,
+      "description": "Should have liveness probe on /health"
+    },
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds}'",
+      "expected": "30",
+      "points": 1,
+      "description": "Liveness probe should have 30s initial delay"
+    },
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expected": "/ready",
+      "points": 1,
+      "description": "Should have readiness probe on /ready"
+    },
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.failureThreshold}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Readiness probe should have failure threshold 2"
+    },
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].startupProbe.httpGet.path}'",
+      "expected": "/startup",
+      "points": 1,
+      "description": "Should have startup probe on /startup"
+    },
+    {
+      "command": "kubectl get deployment health-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].startupProbe.failureThreshold}'",
+      "expected": "15",
+      "points": 1,
+      "description": "Startup probe should have failure threshold 15"
+    },
+    {
+      "command": "kubectl get service health-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Service should expose port 8080"
+    },
+    {
+      "command": "kubectl get service health-service -n pluto -o jsonpath='{.spec.ports[0].targetPort}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should target port 80"
+    }
+  ]
+}

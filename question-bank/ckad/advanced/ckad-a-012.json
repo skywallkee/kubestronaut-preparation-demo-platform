@@ -1,0 +1,97 @@
+{
+  "id": "ckad-a-012",
+  "title": "Advanced ConfigMap and Secret Management with Environment Variables",
+  "description": "Create a sophisticated configuration management setup in namespace ||saturn|| for a three-tier application:\n\n1. Create ConfigMaps for application tiers:\n   - **Database Config**: ||db-config|| with connection parameters (host, port, database name, pool settings)\n   - **App Config**: ||app-config|| with application settings (debug mode, timeouts, feature flags)\n   - **Cache Config**: ||redis-config|| with Redis configuration (memory limits, eviction policy)\n\n2. Create Secrets for sensitive data:\n   - **Database Secret**: ||db-credentials|| with username, password, and connection string\n   - **API Keys Secret**: ||api-keys|| with external service API keys (payment gateway, notification service)\n   - **TLS Secret**: ||app-tls|| with certificate and private key for HTTPS\n\n3. Deploy three applications using different configuration methods:\n   - **Frontend**: Deployment ||frontend-app|| using environment variables from ConfigMaps and Secrets\n   - **Backend**: Deployment ||backend-app|| using volume mounts for configuration files\n   - **Worker**: Deployment ||worker-app|| using mixed approach (env vars + volume mounts)\n\n4. Configuration requirements:\n   - All deployments should use specific config keys, not entire ConfigMaps/Secrets\n   - Implement configuration validation using init containers\n   - Add environment-specific overrides using envFrom\n   - Configure proper secret rotation capabilities\n\n5. Add monitoring and validation:\n   - Create a Job ||config-validator|| that checks all configurations are valid\n   - Ensure secrets are base64 encoded and ConfigMaps are properly formatted\n   - Verify each deployment can access its required configurations\n\nAll resources should be properly labeled with ||tier||, ||config-type||, and ||environment|| labels.",
+  "points": 8,
+  "timeLimit": 18,
+  "category": "Configuration Management",
+  "tags": [
+    "configmaps",
+    "secrets",
+    "environment-variables",
+    "configuration-management",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "configmaps",
+      "secrets",
+      "deployments",
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMaps with application configurations:",
+      "   kubectl create configmap db-config --from-literal=host=db.saturn.svc.cluster.local --from-literal=port=5432 --from-literal=database=appdb --from-literal=pool_size=20 -n saturn",
+      "   kubectl create configmap app-config --from-literal=debug=false --from-literal=timeout=30s --from-literal=feature_x=enabled -n saturn",
+      "   kubectl create configmap redis-config --from-literal=maxmemory=256mb --from-literal=policy=allkeys-lru -n saturn",
+      "2. Create Secrets with sensitive data:",
+      "   kubectl create secret generic db-credentials --from-literal=username=appuser --from-literal=password=securepass123 -n saturn",
+      "   kubectl create secret generic api-keys --from-literal=payment_key=pk_test_12345 --from-literal=notification_key=nk_prod_67890 -n saturn",
+      "   kubectl create secret tls app-tls --cert=app.crt --key=app.key -n saturn",
+      "3. Create deployment manifests using different configuration approaches:",
+      "   - Frontend: environment variables with valueFrom",
+      "   - Backend: volume mounts for config files",
+      "   - Worker: mixed environment and volume approach",
+      "4. Create init containers for configuration validation",
+      "5. Apply all resources and verify configurations are accessible",
+      "6. Create and run config-validator job to verify setup"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap db-config -n saturn -o jsonpath='{.data.host}'",
+      "expected": "db.saturn.svc.cluster.local",
+      "points": 1,
+      "description": "Database ConfigMap should have correct host configuration"
+    },
+    {
+      "command": "kubectl get secret db-credentials -n saturn -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "appuser",
+      "points": 1,
+      "description": "Database secret should contain correct username"
+    },
+    {
+      "command": "kubectl get deployment frontend-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].env[?(@.valueFrom.configMapKeyRef.name==\"app-config\")].name}'",
+      "expected": "DEBUG",
+      "points": 1,
+      "description": "Frontend should use environment variables from ConfigMap"
+    },
+    {
+      "command": "kubectl get deployment backend-app -n saturn -o jsonpath='{.spec.template.spec.volumes[?(@.configMap.name==\"db-config\")].name}'",
+      "expected": "config-volume",
+      "points": 1,
+      "description": "Backend should mount ConfigMap as volume"
+    },
+    {
+      "command": "kubectl get deployment worker-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].envFrom[0].secretRef.name}'",
+      "expected": "api-keys",
+      "points": 1,
+      "description": "Worker should use envFrom for secrets"
+    },
+    {
+      "command": "kubectl get pods -n saturn -l tier=frontend -o jsonpath='{.items[0].status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Frontend pods should be running"
+    },
+    {
+      "command": "kubectl get job config-validator -n saturn -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Configuration validator job should complete successfully"
+    },
+    {
+      "command": "kubectl get all -n saturn -l config-type --no-headers | wc -l",
+      "expected": "6",
+      "points": 1,
+      "description": "Should have proper config-type labels on all resources"
+    }
+  ]
+}

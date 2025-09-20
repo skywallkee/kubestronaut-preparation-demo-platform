@@ -1,0 +1,47 @@
+{
+  "id": "ckad-e-066",
+  "title": "Scale Deployment",
+  "description": "Scale the Deployment ||api-deploy|| in Namespace ||production|| to ||7|| replicas and verify all replicas are running.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Design and Build",
+  "tags": [
+    "deployments-rolling-updates",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "api-deploy Deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Scale the Deployment:",
+      "   kubectl scale deployment api-deploy --replicas=7 -n production",
+      "2. Verify scaling:",
+      "   kubectl get deployment api-deploy -n production",
+      "3. Check all pods are running:",
+      "   kubectl get pods -l app=api-deploy -n production"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment api-deploy -n production -o jsonpath='{.spec.replicas}'",
+      "expected": "7",
+      "points": 1,
+      "description": "Deployment should be scaled to 7 replicas"
+    },
+    {
+      "command": "kubectl get deployment api-deploy -n production -o jsonpath='{.status.readyReplicas}'",
+      "expected": "7",
+      "points": 1,
+      "description": "All 7 replicas should be ready"
+    }
+  ]
+}

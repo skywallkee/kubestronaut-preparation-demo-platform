@@ -1,0 +1,119 @@
+{
+  "id": "kcna-i-009",
+  "title": "CI/CD Concepts with Kubernetes",
+  "description": "Demonstrate understanding of CI/CD patterns and deployment strategies in cloud-native environments:\n\n1. Create a GitOps-style deployment setup in namespace ||pluto||:\n   - Application: Deployment ||app-v1|| with image ||nginx:1.20|| (initial version)\n   - ConfigMap ||app-config|| with version information\n   - Service ||app-service|| for external access\n\n2. Implement deployment strategies:\n   - Perform a rolling update to ||nginx:1.21||\n   - Demonstrate rollback capabilities\n   - Show deployment history\n\n3. Create a simple CI/CD pipeline simulation:\n   - Job named ||build-job|| that simulates building an image\n   - Job named ||test-job|| that simulates running tests\n   - CronJob named ||deploy-job|| for scheduled deployments\n\n4. Configure deployment automation:\n   - Use labels for environment tracking: ||stage=production||\n   - Add annotations for deployment metadata\n   - Implement health checks for deployment validation\n\n5. Demonstrate deployment best practices:\n   - Show how to check deployment status\n   - Verify zero-downtime deployments\n   - Monitor rollout progress",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "CI/CD",
+  "tags": [
+    "cicd",
+    "deployment",
+    "rolling-update",
+    "jobs",
+    "automation"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "configmaps",
+      "jobs",
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create initial application version:",
+      "   kubectl create deployment app-v1 --image=nginx:1.20 --replicas=3 -n pluto",
+      "   kubectl label deployment app-v1 stage=production -n pluto",
+      "2. Create ConfigMap with version info:",
+      "   kubectl create configmap app-config --from-literal=version=1.0 --from-literal=environment=production -n pluto",
+      "3. Create service:",
+      "   kubectl expose deployment app-v1 --port=80 --name=app-service -n pluto",
+      "4. Perform rolling update:",
+      "   kubectl set image deployment/app-v1 nginx=nginx:1.21 -n pluto",
+      "   kubectl rollout status deployment/app-v1 -n pluto",
+      "5. Create build job:",
+      "   cat > build-job.yaml << EOF",
+      "   apiVersion: batch/v1",
+      "   kind: Job",
+      "   metadata:",
+      "     name: build-job",
+      "     namespace: pluto",
+      "   spec:",
+      "     template:",
+      "       spec:",
+      "         containers:",
+      "         - name: builder",
+      "           image: busybox:1.35",
+      "           command: [\"sh\", \"-c\", \"echo 'Building application...' && sleep 10 && echo 'Build complete'\"]",
+      "         restartPolicy: Never",
+      "   EOF",
+      "   kubectl apply -f build-job.yaml",
+      "6. Create test job:",
+      "   cat > test-job.yaml << EOF",
+      "   apiVersion: batch/v1",
+      "   kind: Job",
+      "   metadata:",
+      "     name: test-job",
+      "     namespace: pluto",
+      "   spec:",
+      "     template:",
+      "       spec:",
+      "         containers:",
+      "         - name: tester",
+      "           image: busybox:1.35",
+      "           command: [\"sh\", \"-c\", \"echo 'Running tests...' && sleep 5 && echo 'Tests passed'\"]",
+      "         restartPolicy: Never",
+      "   EOF",
+      "   kubectl apply -f test-job.yaml",
+      "7. Check deployment history:",
+      "   kubectl rollout history deployment/app-v1 -n pluto",
+      "8. Verify deployment status:",
+      "   kubectl get deployment app-v1 -n pluto",
+      "   kubectl get pods -l app=app-v1 -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment app-v1 -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21",
+      "points": 2,
+      "description": "Deployment should be updated to nginx:1.21"
+    },
+    {
+      "command": "kubectl get deployment app-v1 -n pluto -o jsonpath='{.metadata.labels.stage}'",
+      "expected": "production",
+      "points": 1,
+      "description": "Deployment should have stage label for environment tracking"
+    },
+    {
+      "command": "kubectl get job build-job -n pluto -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Build job should complete successfully"
+    },
+    {
+      "command": "kubectl get job test-job -n pluto -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Test job should complete successfully"
+    },
+    {
+      "command": "kubectl rollout history deployment/app-v1 -n pluto | grep -c 'REVISION'",
+      "expected": "2",
+      "points": 1,
+      "description": "Should have deployment history with revisions"
+    },
+    {
+      "command": "kubectl get deployment app-v1 -n pluto -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "All replicas should be ready after deployment"
+    }
+  ]
+}

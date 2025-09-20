@@ -1,0 +1,95 @@
+{
+  "id": "cka-i-006",
+  "title": "Network Troubleshooting and DNS",
+  "description": "Troubleshoot networking issues in the cluster and fix DNS resolution problems. Your tasks are:\n\n1. Investigate why pods in namespace ||saturn|| cannot resolve DNS names\n2. Check the status of the CoreDNS pods and service\n3. Create a test pod named ||dns-test|| in namespace ||saturn|| to verify DNS resolution\n4. Fix any DNS configuration issues in the cluster\n5. Ensure the test pod can resolve:\n   - ||kubernetes.default.svc.cluster.local||\n   - ||google.com|| (external DNS)\n   - Service names within the same namespace\n6. Create a simple service named ||test-service|| and verify it can be resolved by name",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Networking",
+  "tags": [
+    "dns",
+    "networking",
+    "coredns",
+    "troubleshooting",
+    "services",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods",
+      "services",
+      "configmaps"
+    ],
+    "prerequisites": [
+      "CoreDNS deployed",
+      "Cluster networking configured"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check CoreDNS pods status:",
+      "   kubectl get pods -n kube-system | grep coredns",
+      "   kubectl describe pods -n kube-system -l k8s-app=kube-dns",
+      "2. Check CoreDNS service:",
+      "   kubectl get service -n kube-system kube-dns",
+      "   kubectl describe service -n kube-system kube-dns",
+      "3. Check CoreDNS configuration:",
+      "   kubectl get configmap coredns -n kube-system -o yaml",
+      "4. Create test pod with DNS tools:",
+      "   kubectl run dns-test --image=busybox --rm -it -n saturn -- sh",
+      "5. Test DNS resolution from within pod:",
+      "   nslookup kubernetes.default.svc.cluster.local",
+      "   nslookup google.com",
+      "6. If DNS is broken, restart CoreDNS:",
+      "   kubectl rollout restart deployment/coredns -n kube-system",
+      "7. Create test service:",
+      "   kubectl create service clusterip test-service --tcp=80:80 -n saturn",
+      "8. Test service resolution:",
+      "   kubectl run dns-test --image=busybox --rm -it -n saturn -- nslookup test-service",
+      "9. Check cluster DNS settings:",
+      "   kubectl get pods dns-test -n saturn -o yaml | grep dnsPolicy",
+      "10. Verify DNS endpoints:",
+      "    kubectl get endpoints kube-dns -n kube-system"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pods -n kube-system -l k8s-app=kube-dns --no-headers | grep Running | wc -l",
+      "expected": "[1-9]",
+      "points": 2,
+      "description": "CoreDNS pods should be running"
+    },
+    {
+      "command": "kubectl get service kube-dns -n kube-system -o jsonpath='{.spec.clusterIP}'",
+      "expected": "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+",
+      "points": 1,
+      "description": "CoreDNS service should have a cluster IP"
+    },
+    {
+      "command": "kubectl run dns-test-validation --image=busybox --rm --restart=Never -n saturn -- nslookup kubernetes.default.svc.cluster.local",
+      "expected": ".*Server:.*Address:.*Name:.*kubernetes.default.svc.cluster.local.*",
+      "points": 2,
+      "description": "DNS should resolve internal cluster services"
+    },
+    {
+      "command": "kubectl run dns-test-external --image=busybox --rm --restart=Never -n saturn -- nslookup google.com",
+      "expected": ".*Server:.*Address:.*Name:.*google.com.*",
+      "points": 2,
+      "description": "DNS should resolve external domains"
+    },
+    {
+      "command": "kubectl get service test-service -n saturn",
+      "expected": "test-service.*ClusterIP",
+      "points": 1,
+      "description": "Test service should exist"
+    },
+    {
+      "command": "kubectl run dns-test-service --image=busybox --rm --restart=Never -n saturn -- nslookup test-service",
+      "expected": ".*Server:.*Address:.*Name:.*test-service.*",
+      "points": 1,
+      "description": "DNS should resolve service names within namespace"
+    }
+  ]
+}

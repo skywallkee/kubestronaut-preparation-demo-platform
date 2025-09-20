@@ -1,0 +1,100 @@
+{
+  "id": "ckad-i-078",
+  "title": "Comprehensive Application Stack with All Components",
+  "description": "Deploy a complete e-commerce application stack in the saturn namespace integrating all CKAD concepts. Include multi-container pods, persistent storage, network policies, ingress, autoscaling, health monitoring, service discovery, and proper RBAC configuration.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["multi-container-pods", "ingress", "application-scaling", "network-policies"],
+  "points": 15,
+  "timeMinutes": 30,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy frontend service (React) with nginx sidecar using multi-container pod"
+    },
+    {
+      "step": 2,
+      "description": "Deploy API service with Redis cache sidecar for session management"
+    },
+    {
+      "step": 3,
+      "description": "Deploy database with persistent storage and backup sidecar container"
+    },
+    {
+      "step": 4,
+      "description": "Configure Ingress with host ||ecommerce.local|| and path-based routing"
+    },
+    {
+      "step": 5,
+      "description": "Implement HPA for frontend and API based on CPU and custom metrics"
+    },
+    {
+      "step": 6,
+      "description": "Create NetworkPolicies for tier-based security isolation"
+    },
+    {
+      "step": 7,
+      "description": "Set up service discovery, health probes, and RBAC for all components"
+    },
+    {
+      "step": 8,
+      "description": "Configure monitoring and logging for the entire application stack"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pod frontend -n saturn -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "2",
+      "description": "Verify frontend multi-container pod",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod api -n saturn -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "2",
+      "description": "Verify API multi-container pod",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod database -n saturn -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "2",
+      "description": "Verify database multi-container pod",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress ecommerce-ingress -n saturn -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "ecommerce.local",
+      "description": "Verify Ingress host configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa frontend-hpa -n saturn -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "10",
+      "description": "Verify frontend HPA configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa api-hpa -n saturn -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "8",
+      "description": "Verify API HPA configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get networkpolicy frontend-policy -n saturn -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expectedOutput": "frontend",
+      "description": "Verify frontend NetworkPolicy",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy api-policy -n saturn -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expectedOutput": "api",
+      "description": "Verify API NetworkPolicy",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc database-storage -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "10Gi",
+      "description": "Verify database persistent storage",
+      "points": 2
+    }
+  ]
+}

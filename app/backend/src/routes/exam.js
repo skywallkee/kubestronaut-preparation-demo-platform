@@ -6,15 +6,15 @@ const ScoringService = require('../services/scoring-service');
 // Create new exam session
 router.post('/', async (req, res) => {
   try {
-    const { type, difficulty } = req.body;
-    
+    const { type, difficulty, practiceMode } = req.body;
+
     if (!type || !difficulty) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: type and difficulty' 
+      return res.status(400).json({
+        error: 'Missing required fields: type and difficulty'
       });
     }
 
-    const exam = await ExamService.createExam(type, difficulty);
+    const exam = await ExamService.createExam(type, difficulty, practiceMode);
     res.json({ success: true, examId: exam.id, exam });
   } catch (error) {
     console.error('Error creating exam:', error);
@@ -34,6 +34,7 @@ router.get('/current', async (req, res) => {
       id: exam.id,
       type: exam.type,
       difficulty: exam.difficulty,
+      practiceMode: exam.practiceMode || false,
       questions: exam.questions.map(q => ({
         id: q.id,
         originalId: q.originalId,
@@ -41,7 +42,9 @@ router.get('/current', async (req, res) => {
         description: q.description,
         points: q.points,
         flagged: q.flagged || false,
-        completed: q.completed || false
+        completed: q.completed || false,
+        solution: exam.practiceMode ? q.solution : undefined,
+        validations: exam.practiceMode ? q.validations : undefined
       })),
       duration: exam.duration,
       startTime: exam.startTime,
@@ -114,23 +117,39 @@ router.post('/submit', async (req, res) => {
       return res.status(400).json({ error: 'Exam already submitted' });
     }
 
+    console.log(`Starting exam submission and scoring for ${exam.type}-${exam.difficulty}`);
+
     // End the exam
     ExamService.endExam();
 
-    // Score the exam
+    // Score the exam with detailed validation
     const results = await ScoringService.scoreExam(exam);
-    
+
+    // Store results in exam for later retrieval
+    ExamService.setExamResults(results);
+
+    console.log(`Exam scored: ${results.totalScore}/100 (${results.passed ? 'PASSED' : 'FAILED'})`);
+
     res.json({
       success: true,
       score: results.totalScore,
       maxScore: results.maxScore,
-      passed: results.totalScore >= 67,
+      passed: results.passed,
+      pointsEarned: results.pointsEarned,
+      totalPoints: results.totalPoints,
+      questionsCorrect: results.questionsCorrect,
+      totalQuestions: results.totalQuestions,
+      completedQuestions: results.completedQuestions,
       feedback: results.feedback,
-      summary: results.summary
+      summary: results.summary,
+      detailedResults: true // Flag to indicate detailed results are available
     });
   } catch (error) {
     console.error('Error submitting exam:', error);
-    res.status(500).json({ error: 'Failed to submit exam' });
+    res.status(500).json({
+      error: 'Failed to submit exam',
+      message: error.message
+    });
   }
 });
 

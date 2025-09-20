@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-058",
+  "title": "Create Job with Completion Count",
+  "description": "Create a Job named ||batch-job|| in Namespace ||default|| using image ||busybox:1.35|| that runs command ||echo 'Processing batch'|| and completes ||3|| times.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Design and Build",
+  "tags": [
+    "jobs-cronjobs",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Job YAML:",
+      "   kubectl create job batch-job --image=busybox:1.35 --dry-run=client -o yaml > batch-job.yaml",
+      "2. Edit YAML to set completions: 3 and command",
+      "3. Apply the Job:",
+      "   kubectl apply -f batch-job.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get job batch-job -o jsonpath='{.spec.completions}'",
+      "expected": "3",
+      "points": 1.5,
+      "description": "Job should be configured to complete 3 times"
+    },
+    {
+      "command": "kubectl get job batch-job -o jsonpath='{.status.succeeded}'",
+      "expected": "3",
+      "points": 1.5,
+      "description": "Job should have succeeded 3 times"
+    }
+  ]
+}

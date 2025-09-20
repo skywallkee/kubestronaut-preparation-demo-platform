@@ -1,0 +1,73 @@
+{
+  "id": "ckad-e-020",
+  "title": "Create Pod with Secret as Volume",
+  "description": "Create a Pod named ||secret-vol-pod|| using image ||nginx:1.20-alpine|| that mounts the ||db-secret|| as a volume at ||/etc/secrets|| in the ||mercury|| namespace.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "configmaps-secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "pods",
+      "secrets"
+    ],
+    "prerequisites": [
+      "db-secret exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run secret-vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > secret-vol-pod.yaml",
+      "2. Add volumes section:",
+      "   volumes:",
+      "   - name: secret-vol",
+      "     secret:",
+      "       secretName: db-secret",
+      "3. Add volumeMounts:",
+      "   volumeMounts:",
+      "   - name: secret-vol",
+      "     mountPath: /etc/secrets",
+      "4. Apply pod:",
+      "   kubectl apply -f secret-vol-pod.yaml -n mercury"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod secret-vol-pod -n mercury -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 2,
+      "description": "Pod should be running"
+    },
+    {
+      "command": "kubectl get pod secret-vol-pod -n mercury -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "nginx:1.20-alpine",
+      "points": 0.5,
+      "description": "Pod should use correct image"
+    },
+    {
+      "command": "kubectl get pod secret-vol-pod -n mercury -o jsonpath='{.spec.volumes[0].secret.secretName}'",
+      "expected": "db-secret",
+      "points": 1,
+      "description": "Pod should have secret volume referencing db-secret"
+    },
+    {
+      "command": "kubectl get pod secret-vol-pod -n mercury -o jsonpath='{.spec.containers[0].volumeMounts[0].mountPath}'",
+      "expected": "/etc/secrets",
+      "points": 1,
+      "description": "Secret volume should be mounted at /etc/secrets"
+    },
+    {
+      "command": "kubectl exec secret-vol-pod -n mercury -- test -f /etc/secrets/username",
+      "expected": "0",
+      "points": 0.5,
+      "description": "Username secret file should exist at mount path"
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-045",
+  "title": "Multi-Container Debug Pod with ConfigMaps and Volume Types",
+  "description": "Create a debugging pod in the mars namespace with multiple containers for different troubleshooting tools. Configure various volume types for data sharing and use ConfigMaps to customize tool configurations. The pod should help diagnose network and storage issues.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["multi-container-pods", "debugging-troubleshooting", "configmaps-secrets", "volume-types"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ConfigMaps for network tools config ||nettools-config|| and storage tools config ||storage-config||"
+    },
+    {
+      "step": 2,
+      "description": "Create a multi-container pod with containers: ||network-debug||, ||storage-debug||, and ||general-debug||"
+    },
+    {
+      "step": 3,
+      "description": "Configure emptyDir volume ||shared-data|| for data sharing between containers"
+    },
+    {
+      "step": 4,
+      "description": "Configure hostPath volume ||host-logs|| mounted at ||/var/log|| for system log access"
+    },
+    {
+      "step": 5,
+      "description": "Mount ConfigMaps as volumes in appropriate containers"
+    },
+    {
+      "step": 6,
+      "description": "Use images: ||nicolaka/netshoot||, ||busybox||, and ||alpine|| for different debug capabilities"
+    },
+    {
+      "step": 7,
+      "description": "Verify all containers are running and volumes are properly mounted"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get configmap nettools-config -n mars -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "nettools-config",
+      "description": "Verify network tools ConfigMap exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get configmap storage-config -n mars -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "storage-config",
+      "description": "Verify storage tools ConfigMap exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod debug-pod -n mars -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "3",
+      "description": "Verify pod has 3 containers",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod debug-pod -n mars -o jsonpath='{.spec.volumes[0].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify emptyDir volume exists",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod debug-pod -n mars -o jsonpath='{.spec.volumes[1].hostPath.path}'",
+      "expectedOutput": "/var/log",
+      "description": "Verify hostPath volume for logs",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod debug-pod -n mars -o jsonpath='{.spec.containers[0].image}' | grep -E '(netshoot|busybox|alpine)'",
+      "expectedOutput": "nicolaka/netshoot",
+      "description": "Verify appropriate debug images are used",
+      "points": 2
+    }
+  ]
+}

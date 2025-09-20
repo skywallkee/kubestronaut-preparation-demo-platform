@@ -1,0 +1,64 @@
+{
+  "id": "ckad-a-079",
+  "title": "Data Backup and Disaster Recovery",
+  "description": "Implement a comprehensive ||backup and disaster recovery|| strategy for stateful applications using Kubernetes storage primitives. Create automated backup systems using ||volume snapshots||, ||cross-region replication||, and ||point-in-time recovery||. Design backup workflows that handle ||application-consistent|| snapshots, ||incremental backups||, and ||backup verification||. Implement disaster recovery procedures with ||RTO|| and ||RPO|| requirements, demonstrate data restoration processes, and create automated failover mechanisms. Include scenarios with backup encryption, retention policies, and compliance requirements.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "State Persistence",
+  "tags": ["backup", "disaster-recovery", "snapshots", "point-in-time-recovery", "rto", "rpo", "compliance", "advanced"],
+  "infrastructure": {
+    "namespaces": ["backup-recovery"],
+    "resources": ["VolumeSnapshot", "VolumeSnapshotClass", "CronJob", "StatefulSet"],
+    "prerequisites": ["CSI driver with snapshot and backup capabilities"]
+  },
+  "solution": {
+    "steps": [
+      "# Create backup-recovery namespace\nkubectl create namespace backup-recovery",
+      "Configure VolumeSnapshotClass for backup operations",
+      "Create StatefulSet with consistent backup requirements",
+      "Set up CronJob for automated snapshot creation",
+      "Implement application-consistent backup procedures",
+      "Configure cross-region backup replication",
+      "Test point-in-time recovery scenarios",
+      "Verify backup integrity and restoration procedures"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get volumesnapshotclass backup-snapshots -o jsonpath='{.driver}'",
+      "expected": "csi-driver",
+      "points": 2,
+      "description": "VolumeSnapshotClass configured for backups"
+    },
+    {
+      "command": "kubectl get cronjob backup-scheduler -n backup-recovery -o jsonpath='{.spec.schedule}'",
+      "expected": "0 2 * * *",
+      "points": 2,
+      "description": "Automated backup scheduled daily"
+    },
+    {
+      "command": "kubectl get volumesnapshot -n backup-recovery | wc -l",
+      "expected": "4",
+      "points": 3,
+      "description": "Multiple snapshots created for point-in-time recovery"
+    },
+    {
+      "command": "kubectl get pvc restored-data -n backup-recovery -o jsonpath='{.spec.dataSource.kind}'",
+      "expected": "VolumeSnapshot",
+      "points": 3,
+      "description": "PVC restored from volume snapshot"
+    },
+    {
+      "command": "kubectl exec -n backup-recovery statefulset/database -- /backup/verify-backup.sh | grep 'PASS'",
+      "expected": "PASS",
+      "points": 3,
+      "description": "Backup verification passes integrity checks"
+    },
+    {
+      "command": "kubectl logs -n backup-recovery cronjob/backup-scheduler | grep -c 'backup completed'",
+      "expected": "3",
+      "points": 2,
+      "description": "Automated backups complete successfully"
+    }
+  ]
+}

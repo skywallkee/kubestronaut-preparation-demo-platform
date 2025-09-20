@@ -1,0 +1,140 @@
+{
+  "id": "ckad-a-047",
+  "title": "Configuration Validation and Immutable ConfigMaps",
+  "description": "Implement a robust configuration validation system using ||immutable ConfigMaps|| and ||validation webhooks||. Create ConfigMaps with the immutable flag and demonstrate how this prevents accidental modifications. Build a validation system that checks configuration syntax before deployment and prevents invalid configurations from being applied. Include scenarios with configuration versioning, rollback capabilities, and validation of complex configuration formats (JSON, YAML, TOML). Show how immutable ConfigMaps improve deployment reliability and cache performance.",
+  "points": 13,
+  "timeLimit": 27,
+  "category": "Configuration",
+  "tags": ["immutable-configmaps", "validation", "configuration-versioning", "deployment-safety", "advanced"],
+  "infrastructure": {
+    "namespaces": ["config-validation"],
+    "resources": ["ConfigMap", "Pod", "Deployment"],
+    "prerequisites": ["Kubernetes 1.19+ for immutable ConfigMaps"]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and immutable ConfigMap v1:",
+      "   kubectl create namespace config-validation",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: ConfigMap",
+      "   metadata:",
+      "     name: app-config-v1",
+      "     namespace: config-validation",
+      "   data:",
+      "     config.json: |",
+      "       {",
+      "         \"database\": \"postgres://db:5432/v1\",",
+      "         \"version\": \"v1\",",
+      "         \"features\": [\"auth\", \"logging\"]",
+      "       }",
+      "     version: \"v1\"",
+      "   immutable: true",
+      "   EOF",
+      "2. Create second immutable ConfigMap v2:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: ConfigMap",
+      "   metadata:",
+      "     name: app-config-v2",
+      "     namespace: config-validation",
+      "   data:",
+      "     config.json: |",
+      "       {",
+      "         \"database\": \"postgres://db:5432/v2\",",
+      "         \"version\": \"v2\",",
+      "         \"features\": [\"auth\", \"logging\", \"metrics\"]",
+      "       }",
+      "     version: \"v2\"",
+      "   immutable: true",
+      "   EOF",
+      "3. Deploy application using initial ConfigMap:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: config-app",
+      "     namespace: config-validation",
+      "   spec:",
+      "     replicas: 1",
+      "     selector:",
+      "       matchLabels:",
+      "         app: config-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: config-app",
+      "       spec:",
+      "         containers:",
+      "         - name: app",
+      "           image: busybox:latest",
+      "           command: ['/bin/sh', '-c']",
+      "           args:",
+      "           - |",
+      "             while true; do",
+      "               echo \"Current config version: $(cat /etc/config/version)\"",
+      "               cat /etc/config/config.json | head -5",
+      "               sleep 30",
+      "             done",
+      "           volumeMounts:",
+      "           - name: config-volume",
+      "             mountPath: /etc/config",
+      "         volumes:",
+      "         - name: config-volume",
+      "           configMap:",
+      "             name: app-config-v1",
+      "   EOF",
+      "4. Update deployment to use v2 ConfigMap:",
+      "   kubectl patch deployment config-app -n config-validation --patch '{\
+      "     \"spec\": {\
+      "       \"template\": {\
+      "         \"spec\": {\
+      "           \"volumes\": [{\
+      "             \"name\": \"config-volume\",\
+      "             \"configMap\": {\
+      "               \"name\": \"app-config-v2\"\
+      "             }\
+      "           }]\
+      "         }\
+      "       }\
+      "     }\
+      "   }'",
+      "5. Verify immutability and configuration updates:",
+      "   kubectl get configmaps -n config-validation -o custom-columns=NAME:.metadata.name,IMMUTABLE:.immutable",
+      "   kubectl exec -n config-validation deploy/config-app -- cat /etc/config/version",
+      "   kubectl logs -n config-validation deploy/config-app --tail=5"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config-v1 -n config-validation -o jsonpath='{.immutable}'",
+      "expected": "true",
+      "points": 3,
+      "description": "ConfigMap is marked as immutable"
+    },
+    {
+      "command": "kubectl get configmap app-config-v2 -n config-validation -o jsonpath='{.immutable}'",
+      "expected": "true",
+      "points": 2,
+      "description": "Version 2 ConfigMap is also immutable"
+    },
+    {
+      "command": "kubectl get pod -n config-validation -l app=config-app --field-selector=status.phase=Running | wc -l",
+      "expected": "2",
+      "points": 3,
+      "description": "Application pod is running with immutable config"
+    },
+    {
+      "command": "kubectl get deployment config-app -n config-validation -o jsonpath='{.spec.template.spec.volumes[0].configMap.name}'",
+      "expected": "app-config-v2",
+      "points": 2,
+      "description": "Deployment uses version 2 of the ConfigMap"
+    },
+    {
+      "command": "kubectl exec -n config-validation deploy/config-app -- cat /etc/config/version",
+      "expected": "v2",
+      "points": 3,
+      "description": "Application is using version 2 configuration"
+    }
+  ]
+}

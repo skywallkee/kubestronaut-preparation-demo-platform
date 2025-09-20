@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-052",
+  "title": "Storage Classes with Health Probes and Resource Management",
+  "description": "Configure multiple storage classes for different application tiers in the pluto namespace. Deploy applications with varying storage requirements, implement comprehensive health probes, and apply resource quotas to ensure efficient resource utilization across different storage tiers.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["storage-classes", "health-probes", "resource-management", "persistent-volumes-claims"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create StorageClass ||premium-ssd|| with fast provisioner and ||standard-hdd|| with slow provisioner"
+    },
+    {
+      "step": 2,
+      "description": "Create ResourceQuota ||storage-quota|| limiting storage requests to ||10Gi|| total"
+    },
+    {
+      "step": 3,
+      "description": "Deploy database application using premium-ssd storage with ||3Gi|| PVC"
+    },
+    {
+      "step": 4,
+      "description": "Deploy logging application using standard-hdd storage with ||5Gi|| PVC"
+    },
+    {
+      "step": 5,
+      "description": "Configure liveness probes: database on ||/health|| port ||5432||, logging on ||/status|| port ||8080||"
+    },
+    {
+      "step": 6,
+      "description": "Configure readiness probes with appropriate timeouts and failure thresholds"
+    },
+    {
+      "step": 7,
+      "description": "Set resource requests and limits to stay within quota boundaries"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get storageclass premium-ssd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "premium-ssd",
+      "description": "Verify premium-ssd StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass standard-hdd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "standard-hdd",
+      "description": "Verify standard-hdd StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get resourcequota storage-quota -n pluto -o jsonpath='{.spec.hard.\"requests.storage\"}'",
+      "expectedOutput": "10Gi",
+      "description": "Verify ResourceQuota storage limit",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc database-pvc -n pluto -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "premium-ssd",
+      "description": "Verify database uses premium storage",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc logging-pvc -n pluto -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "standard-hdd",
+      "description": "Verify logging uses standard storage",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment database -n pluto -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}'",
+      "expectedOutput": "5432",
+      "description": "Verify database liveness probe port",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment logging -n pluto -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expectedOutput": "/status",
+      "description": "Verify logging readiness probe path",
+      "points": 2
+    }
+  ]
+}

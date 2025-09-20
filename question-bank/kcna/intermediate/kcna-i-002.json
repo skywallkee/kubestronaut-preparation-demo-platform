@@ -1,0 +1,78 @@
+{
+  "id": "kcna-i-002",
+  "title": "Kubernetes Architecture and Components",
+  "description": "Demonstrate understanding of Kubernetes architecture by examining cluster components:\n\n1. List all nodes in the cluster and identify their roles\n\n2. Examine the control plane components running in the ||kube-system|| namespace:\n   - API Server\n   - etcd\n   - Controller Manager\n   - Scheduler\n\n3. Check the status and health of these critical components\n\n4. Identify which nodes are running kubelet and kube-proxy\n\n5. Display information about the cluster including:\n   - Kubernetes version\n   - Number of nodes\n   - Node operating system details\n\nExplain the role of each component you find.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Architecture",
+  "tags": [
+    "architecture",
+    "components",
+    "control-plane",
+    "nodes"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "kube-system"
+    ],
+    "resources": [
+      "nodes",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. List all nodes and their roles:",
+      "   kubectl get nodes -o wide",
+      "2. List control plane components:",
+      "   kubectl get pods -n kube-system",
+      "3. Check API server status:",
+      "   kubectl get pods -n kube-system | grep apiserver",
+      "4. Check etcd status:",
+      "   kubectl get pods -n kube-system | grep etcd",
+      "5. Check controller manager:",
+      "   kubectl get pods -n kube-system | grep controller-manager",
+      "6. Check scheduler:",
+      "   kubectl get pods -n kube-system | grep scheduler",
+      "7. Check kubelet and kube-proxy on nodes:",
+      "   kubectl get pods -n kube-system | grep kube-proxy",
+      "8. Get cluster information:",
+      "   kubectl cluster-info",
+      "9. Get detailed node information:",
+      "   kubectl describe nodes"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get nodes --no-headers | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should identify the correct number of nodes"
+    },
+    {
+      "command": "kubectl get pods -n kube-system | grep -c 'apiserver\\|etcd\\|controller-manager\\|scheduler'",
+      "expected": "4",
+      "points": 2,
+      "description": "Should identify all four main control plane components"
+    },
+    {
+      "command": "kubectl get pods -n kube-system | grep kube-proxy | grep -c Running",
+      "expected": "3",
+      "points": 1,
+      "description": "Should find kube-proxy running on all nodes"
+    },
+    {
+      "command": "kubectl version --short | grep Server",
+      "expected": "v1.",
+      "points": 1,
+      "description": "Should display server version information"
+    },
+    {
+      "command": "kubectl cluster-info | grep -c 'Kubernetes control plane'",
+      "expected": "1",
+      "points": 1,
+      "description": "Should display cluster info correctly"
+    }
+  ]
+}

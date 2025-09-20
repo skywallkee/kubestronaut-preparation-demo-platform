@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-067",
+  "title": "CronJob with Storage Classes and Health Monitoring",
+  "description": "Create a scheduled data backup system in the venus namespace using CronJobs. Configure different storage classes for backup tiers (hot, warm, cold) and implement health monitoring to ensure backup integrity and storage performance across different storage types.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "storage-classes", "health-probes", "logging-monitoring"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create StorageClasses: ||hot-backup|| (SSD), ||warm-backup|| (SSD), ||cold-backup|| (HDD)"
+    },
+    {
+      "step": 2,
+      "description": "Create CronJob ||backup-scheduler|| that runs every ||6|| hours (0 */6 * * *)"
+    },
+    {
+      "step": 3,
+      "description": "Configure job to create backups on different storage tiers based on data age"
+    },
+    {
+      "step": 4,
+      "description": "Create PVCs for each storage tier with appropriate sizes: hot (1Gi), warm (5Gi), cold (20Gi)"
+    },
+    {
+      "step": 5,
+      "description": "Add health monitoring container to verify backup integrity and storage performance"
+    },
+    {
+      "step": 6,
+      "description": "Configure liveness and readiness probes for the monitoring container"
+    },
+    {
+      "step": 7,
+      "description": "Verify backup process and storage tier health monitoring"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get storageclass hot-backup -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "hot-backup",
+      "description": "Verify hot-backup StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass warm-backup -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "warm-backup",
+      "description": "Verify warm-backup StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass cold-backup -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "cold-backup",
+      "description": "Verify cold-backup StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get cronjob backup-scheduler -n venus -o jsonpath='{.spec.schedule}'",
+      "expectedOutput": "0 */6 * * *",
+      "description": "Verify CronJob schedule is every 6 hours",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc hot-backup-pvc -n venus -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "hot-backup",
+      "description": "Verify hot backup uses hot storage class",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc cold-backup-pvc -n venus -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "20Gi",
+      "description": "Verify cold backup storage size",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob backup-scheduler -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[1].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify monitoring container health probe",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob backup-scheduler -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "2",
+      "description": "Verify job has backup and monitoring containers",
+      "points": 1
+    }
+  ]
+}

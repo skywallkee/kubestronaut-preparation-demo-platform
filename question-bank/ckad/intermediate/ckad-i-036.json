@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-036",
+  "title": "Deployment with Persistent Volume and Service Account",
+  "description": "Create a web application deployment in the pluto namespace that uses a persistent volume for data storage. Configure a service account with appropriate RBAC permissions for the application to read ConfigMaps and Secrets. Expose the application through a ClusterIP service.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["deployments-rolling-updates", "persistent-volumes-claims", "service-accounts-rbac", "services", "storage-classes", "helm-package-manager"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a PersistentVolumeClaim named ||web-data-pvc|| with ||1Gi|| storage"
+    },
+    {
+      "step": 2,
+      "description": "Create a ServiceAccount named ||web-app-sa|| in the pluto namespace"
+    },
+    {
+      "step": 3,
+      "description": "Create a Role with permissions to get/list ConfigMaps and Secrets"
+    },
+    {
+      "step": 4,
+      "description": "Create a RoleBinding to bind the Role to the ServiceAccount"
+    },
+    {
+      "step": 5,
+      "description": "Create a Deployment with ||3|| replicas using the ServiceAccount and PVC"
+    },
+    {
+      "step": 6,
+      "description": "Create a ClusterIP Service to expose the deployment on port ||80||"
+    },
+    {
+      "step": 7,
+      "description": "Verify the deployment is running and the service is accessible"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pvc web-data-pvc -n pluto -o jsonpath='{.status.phase}'",
+      "expectedOutput": "Bound",
+      "description": "Verify PVC is bound",
+      "points": 2
+    },
+    {
+      "command": "kubectl get serviceaccount web-app-sa -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "web-app-sa",
+      "description": "Verify ServiceAccount exists",
+      "points": 2
+    },
+    {
+      "command": "kubectl get role web-app-role -n pluto -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "configmaps",
+      "description": "Verify Role has ConfigMap permissions",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "3",
+      "description": "Verify deployment has 3 replicas",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expectedOutput": "web-app-sa",
+      "description": "Verify deployment uses the service account",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service web-app-svc -n pluto -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify service is ClusterIP type",
+      "points": 2
+    }
+  ]
+}

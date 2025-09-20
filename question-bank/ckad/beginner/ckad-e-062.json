@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-062",
+  "title": "Monitor Pod Resource Usage",
+  "description": "Get the CPU and memory usage of Pod ||resource-pod|| in Namespace ||monitoring|| and save the output to ||/opt/course/062/usage.txt||.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "logging-monitoring",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "monitoring"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "resource-pod exists",
+      "metrics-server running"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Get pod resource usage:",
+      "   kubectl top pod resource-pod -n monitoring",
+      "2. Save to file:",
+      "   kubectl top pod resource-pod -n monitoring > /opt/course/062/usage.txt",
+      "3. Verify file:",
+      "   cat /opt/course/062/usage.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/062/usage.txt",
+      "expected": "0",
+      "points": 2,
+      "description": "Usage file should exist"
+    }
+  ]
+}

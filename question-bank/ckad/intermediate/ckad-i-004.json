@@ -1,0 +1,119 @@
+{
+  "id": "ckad-i-004",
+  "title": "Persistent Volumes and Claims",
+  "description": "Create a PersistentVolume named ||data-pv|| with the following specifications:\n\n- Storage capacity: ||2Gi||\n- Access mode: ||ReadWriteOnce||\n- Host path: ||/data/storage||\n- Reclaim policy: ||Retain||\n\nThen create a PersistentVolumeClaim named ||data-pvc|| in namespace ||venus|| with:\n- Request: ||1Gi|| storage\n- Access mode: ||ReadWriteOnce||\n\nFinally, create a Pod named ||data-pod|| that:\n- Uses image ||busybox:1.35||\n- Mounts the PVC at ||/app/data||\n- Runs command: ||sleep 3600||\n- Writes a file ||test.txt|| with content ||Hello from PV|| to the mounted volume",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Storage",
+  "tags": [
+    "persistentvolume",
+    "persistentvolumeclaim",
+    "pod",
+    "storage",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create PersistentVolume YAML:",
+      "   cat <<EOF > data-pv.yaml",
+      "   apiVersion: v1",
+      "   kind: PersistentVolume",
+      "   metadata:",
+      "     name: data-pv",
+      "   spec:",
+      "     capacity:",
+      "       storage: 2Gi",
+      "     accessModes:",
+      "       - ReadWriteOnce",
+      "     persistentVolumeReclaimPolicy: Retain",
+      "     hostPath:",
+      "       path: /data/storage",
+      "   EOF",
+      "2. Apply PersistentVolume:",
+      "   kubectl apply -f data-pv.yaml",
+      "3. Create PersistentVolumeClaim YAML:",
+      "   cat <<EOF > data-pvc.yaml",
+      "   apiVersion: v1",
+      "   kind: PersistentVolumeClaim",
+      "   metadata:",
+      "     name: data-pvc",
+      "     namespace: venus",
+      "   spec:",
+      "     accessModes:",
+      "       - ReadWriteOnce",
+      "     resources:",
+      "       requests:",
+      "         storage: 1Gi",
+      "   EOF",
+      "4. Apply PersistentVolumeClaim:",
+      "   kubectl apply -f data-pvc.yaml",
+      "5. Create Pod YAML:",
+      "   cat <<EOF > data-pod.yaml",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: data-pod",
+      "     namespace: venus",
+      "   spec:",
+      "     containers:",
+      "     - name: busybox",
+      "       image: busybox:1.35",
+      "       command: ['sleep', '3600']",
+      "       volumeMounts:",
+      "       - name: data-volume",
+      "         mountPath: /app/data",
+      "     volumes:",
+      "     - name: data-volume",
+      "       persistentVolumeClaim:",
+      "         claimName: data-pvc",
+      "   EOF",
+      "6. Apply Pod:",
+      "   kubectl apply -f data-pod.yaml",
+      "7. Write test file to mounted volume:",
+      "   kubectl exec -n venus data-pod -- sh -c 'echo \"Hello from PV\" > /app/data/test.txt'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pv data-pv -o jsonpath='{.spec.capacity.storage}'",
+      "expected": "2Gi",
+      "points": 1,
+      "description": "PersistentVolume should have 2Gi capacity"
+    },
+    {
+      "command": "kubectl get pv data-pv -o jsonpath='{.spec.persistentVolumeReclaimPolicy}'",
+      "expected": "Retain",
+      "points": 1,
+      "description": "PV should have Retain reclaim policy"
+    },
+    {
+      "command": "kubectl get pvc data-pvc -n venus -o jsonpath='{.status.phase}'",
+      "expected": "Bound",
+      "points": 1,
+      "description": "PVC should be bound to PV"
+    },
+    {
+      "command": "kubectl get pod data-pod -n venus -o jsonpath='{.spec.volumes[0].persistentVolumeClaim.claimName}'",
+      "expected": "data-pvc",
+      "points": 2,
+      "description": "Pod should mount the PVC"
+    },
+    {
+      "command": "kubectl exec -n venus data-pod -- cat /app/data/test.txt",
+      "expected": "Hello from PV",
+      "points": 2,
+      "description": "File should be written to mounted volume"
+    }
+  ]
+}

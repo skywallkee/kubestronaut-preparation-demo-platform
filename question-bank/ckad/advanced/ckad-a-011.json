@@ -1,0 +1,109 @@
+{
+  "id": "ckad-a-011",
+  "title": "Complex Multi-Container Pod with Ambassador Pattern",
+  "description": "Create a sophisticated multi-container Pod implementing the Ambassador pattern in namespace ||mars||:\n\n1. Create a Pod ||ambassador-app|| with three containers:\n   - **Main Application**: ||nginx:1.21|| serving on port 80\n   - **Ambassador Proxy**: ||envoyproxy/envoy:v1.24.0|| acting as a proxy on port 8080\n   - **Logging Sidecar**: ||fluentd:v1.14|| collecting and processing logs\n\n2. Configure shared storage and communication:\n   - EmptyDir volume ||app-logs|| mounted at ||/var/log/nginx|| in nginx and ||/fluentd/log|| in fluentd\n   - EmptyDir volume ||envoy-config|| mounted at ||/etc/envoy|| in envoy container\n   - ConfigMap ||envoy-config|| with basic Envoy configuration for proxying to nginx\n\n3. Container-specific configurations:\n   - **Nginx**: Resource requests (cpu: 100m, memory: 128Mi), custom index.html via ConfigMap\n   - **Envoy**: Resource requests (cpu: 50m, memory: 64Mi), admin interface on port 9901\n   - **Fluentd**: Resource requests (cpu: 50m, memory: 64Mi), environment variable ||FLUENTD_CONF=fluent.conf||\n\n4. Add initialization:\n   - Init container using ||busybox:1.35|| that creates required directories and initial config files\n   - Runs before main containers start\n\n5. Configure networking:\n   - Pod should expose port 8080 (Ambassador) and 9901 (Envoy admin)\n   - Add labels: ||app=ambassador-app||, ||pattern=ambassador||, ||tier=proxy||\n\n6. Health checks:\n   - Readiness probe for Envoy on port 9901\n   - Liveness probe for Nginx on port 80\n\nVerify all containers are running and the ambassador pattern is working correctly.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Multi-Container Pods",
+  "tags": [
+    "multi-container",
+    "ambassador-pattern",
+    "init-containers",
+    "complex-networking",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "pods",
+      "configmaps",
+      "volumes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMaps for Envoy and Nginx:",
+      "   kubectl create configmap envoy-config --from-literal=envoy.yaml='basic envoy config' -n mars",
+      "   kubectl create configmap nginx-config --from-literal=index.html='<h1>Ambassador Pattern Demo</h1>' -n mars",
+      "2. Create the multi-container pod YAML:",
+      "   kubectl run ambassador-app --image=nginx:1.21 --dry-run=client -o yaml > ambassador-app.yaml",
+      "3. Edit YAML to add:",
+      "   - Init container for directory setup",
+      "   - Envoy ambassador container with proxy configuration",
+      "   - Fluentd logging sidecar",
+      "   - Shared volumes and mounts",
+      "   - Resource requirements and probes",
+      "4. Apply the pod:",
+      "   kubectl apply -f ambassador-app.yaml",
+      "5. Verify the ambassador pattern:",
+      "   kubectl port-forward ambassador-app 8080:8080 9901:9901 -n mars",
+      "   curl localhost:8080  # Should proxy to nginx",
+      "   curl localhost:9901  # Envoy admin interface"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Pod should be in Running state"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.containers[*].name}' | tr ' ' '\\n' | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have exactly 3 main containers"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.initContainers[*].name}' | wc -w",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have 1 init container"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.containers[*].image}' | grep -c nginx:1.21",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have nginx:1.21 container"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.containers[*].image}' | grep -c envoyproxy/envoy:v1.24.0",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have Envoy proxy container"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.containers[*].image}' | grep -c fluentd:v1.14",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have Fluentd logging container"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.volumes[*].emptyDir}' | grep -c '{}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Should have 2 emptyDir volumes"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.metadata.labels.pattern}'",
+      "expected": "ambassador",
+      "points": 1,
+      "description": "Should have pattern=ambassador label"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.containers[?(@.image==\"nginx:1.21\")].livenessProbe.httpGet.port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Nginx should have liveness probe on port 80"
+    },
+    {
+      "command": "kubectl get pod ambassador-app -n mars -o jsonpath='{.spec.containers[?(@.image==\"envoyproxy/envoy:v1.24.0\")].readinessProbe.httpGet.port}'",
+      "expected": "9901",
+      "points": 1,
+      "description": "Envoy should have readiness probe on admin port 9901"
+    }
+  ]
+}

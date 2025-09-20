@@ -1,0 +1,81 @@
+{
+  "id": "ckad-i-011",
+  "title": "Custom Container Image Build and Optimization",
+  "description": "Create a custom Docker image for a Node.js application with the following requirements:\n\n1. Build a Docker image named ||venus-app:v1.0|| using the following Dockerfile specifications:\n   - Base image: ||node:18-alpine||\n   - Working directory: ||/app||\n   - Copy package files and install dependencies\n   - Copy application source code\n   - Expose port ||3000||\n   - Run command: ||npm start||\n\n2. Create a simple package.json and app.js file for the application\n\n3. Build the image and optimize it for size\n\n4. Deploy the custom image to namespace ||venus|| as a Deployment named ||custom-app|| with 2 replicas\n\n5. Create a Service to expose the application on port ||80||",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Configuration",
+  "tags": [
+    "container-images",
+    "dockerfile",
+    "deployment",
+    "service",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create application files:",
+      "   mkdir custom-app && cd custom-app",
+      "2. Create package.json:",
+      "   echo '{\"name\":\"venus-app\",\"version\":\"1.0.0\",\"scripts\":{\"start\":\"node app.js\"},\"dependencies\":{\"express\":\"^4.18.0\"}}' > package.json",
+      "3. Create simple app.js:",
+      "   echo 'const express = require(\"express\"); const app = express(); app.get(\"/\", (req, res) => res.send(\"Venus App Running!\")); app.listen(3000);' > app.js",
+      "4. Create optimized Dockerfile:",
+      "   echo 'FROM node:18-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --only=production && npm cache clean --force\nCOPY . .\nEXPOSE 3000\nUSER node\nCMD [\"npm\", \"start\"]' > Dockerfile",
+      "5. Build the Docker image:",
+      "   docker build -t venus-app:v1.0 .",
+      "6. Create deployment with custom image:",
+      "   kubectl create deployment custom-app --image=venus-app:v1.0 --replicas=2 -n venus",
+      "7. Create service to expose the application:",
+      "   kubectl expose deployment custom-app --port=80 --target-port=3000 -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "docker images venus-app:v1.0 --format '{{.Repository}}:{{.Tag}}'",
+      "expected": "venus-app:v1.0",
+      "points": 2,
+      "description": "Custom Docker image should be built with correct name and tag"
+    },
+    {
+      "command": "kubectl get deployment custom-app -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 replicas"
+    },
+    {
+      "command": "kubectl get deployment custom-app -n venus -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "venus-app:v1.0",
+      "points": 2,
+      "description": "Deployment should use the custom built image"
+    },
+    {
+      "command": "kubectl get deployment custom-app -n venus -o jsonpath='{.spec.template.spec.containers[0].ports[0].containerPort}'",
+      "expected": "3000",
+      "points": 1,
+      "description": "Container should expose port 3000"
+    },
+    {
+      "command": "kubectl get service custom-app -n venus -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl get service custom-app -n venus -o jsonpath='{.spec.ports[0].targetPort}'",
+      "expected": "3000",
+      "points": 1,
+      "description": "Service should target container port 3000"
+    }
+  ]
+}

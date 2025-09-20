@@ -1,0 +1,71 @@
+{
+  "id": "ckad-a-059",
+  "title": "Application Performance Monitoring (APM)",
+  "description": "Design a comprehensive ||Application Performance Monitoring|| system that tracks application behavior, performance bottlenecks, and user experience metrics. Implement ||custom performance metrics||, ||error tracking||, ||response time monitoring||, and ||resource utilization|| tracking. Create performance profiling capabilities, implement SLA monitoring, and build alerting systems for performance degradation. Include scenarios with performance regression detection, capacity planning metrics, and automated performance testing.",
+  "points": 13,
+  "timeLimit": 27,
+  "category": "Observability",
+  "tags": ["apm", "performance-monitoring", "error-tracking", "profiling", "sla", "capacity-planning", "advanced"],
+  "infrastructure": {
+    "namespaces": ["apm-demo"],
+    "resources": ["Deployment", "Service", "ConfigMap", "HorizontalPodAutoscaler"],
+    "prerequisites": ["APM backend system"]
+  },
+  "solution": {
+    "steps": [
+      "# Create apm-demo namespace\nkubectl create namespace apm-demo",
+
+      "# Deploy APM application with comprehensive monitoring\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: apm-app\n  namespace: apm-demo\n  labels:\n    app: apm-app\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: apm-app\n  template:\n    metadata:\n      labels:\n        app: apm-app\n    spec:\n      containers:\n      - name: apm-app\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        resources:\n          requests:\n            memory: \"128Mi\"\n            cpu: \"100m\"\n          limits:\n            memory: \"256Mi\"\n            cpu: \"200m\"\n        env:\n        - name: APP_ENV\n          value: \"production\"\n        - name: SLA_TARGET_P95\n          value: \"50\"\n        command:\n        - /bin/sh\n        - -c\n        - |\n          pip install flask numpy psutil\n          \n          cat > /app/main.py << 'SCRIPT'\n          import flask\n          import time\n          import random\n          import json\n          import threading\n          import psutil\n          import os\n          from collections import defaultdict, deque\n          from datetime import datetime, timedelta\n          \n          app = flask.Flask(__name__)\n          \n          # APM data structures\n          response_times = deque(maxlen=1000)\n          error_counts = defaultdict(int)\n          request_counts = defaultdict(int)\n          error_rates = deque(maxlen=100)\n          performance_scores = deque(maxlen=50)\n          \n          # Performance profiler data\n          cpu_samples = deque(maxlen=100)\n          memory_samples = deque(maxlen=100)\n          \n          def collect_performance_data():\n              while True:\n                  cpu_percent = psutil.cpu_percent(interval=1)\n                  memory_info = psutil.virtual_memory()\n                  \n                  cpu_samples.append(cpu_percent)\n                  memory_samples.append(memory_info.percent)\n                  \n                  time.sleep(5)\n          \n          # Start background performance collection\n          threading.Thread(target=collect_performance_data, daemon=True).start()\n          \n          @app.route('/api/users')\n          def get_users():\n              start_time = time.time()\n              \n              # Simulate processing with random response time\n              processing_time = random.uniform(0.01, 0.15)\n              time.sleep(processing_time)\n              \n              # Simulate occasional errors\n              if random.random() < 0.02:  # 2% error rate\n                  error_counts['api_error'] += 1\n                  flask.abort(500)\n              \n              response_time = (time.time() - start_time) * 1000\n              response_times.append(response_time)\n              request_counts['users'] += 1\n              \n              return flask.jsonify({\n                  'users': [{'id': i, 'name': f'User{i}'} for i in range(10)],\n                  'response_time_ms': response_time\n              })\n          \n          @app.route('/apm/metrics')\n          def get_apm_metrics():\n              if not response_times:\n                  return flask.jsonify({'error': 'No data available'})\n              \n              sorted_times = sorted(response_times)\n              p50 = sorted_times[int(len(sorted_times) * 0.5)]\n              p95 = sorted_times[int(len(sorted_times) * 0.95)]\n              p99 = sorted_times[int(len(sorted_times) * 0.99)]\n              \n              total_requests = sum(request_counts.values())\n              total_errors = sum(error_counts.values())\n              current_error_rate = (total_errors / max(total_requests, 1)) if total_requests > 0 else 0\n              \n              # Calculate 5-minute error rate\n              error_rate_5min = current_error_rate * 0.02  # Simplified calculation\n              \n              return flask.jsonify({\n                  'performance': {\n                      'response_time_p50': round(p50, 2),\n                      'response_time_p95': round(p95, 2),\n                      'response_time_p99': round(p99, 2),\n                      'avg_response_time': round(sum(response_times) / len(response_times), 2)\n                  },\n                  'errors': {\n                      'total_count': total_errors,\n                      'rate_5min': round(error_rate_5min, 3),\n                      'types': dict(error_counts)\n                  },\n                  'requests': {\n                      'total_count': total_requests,\n                      'by_endpoint': dict(request_counts)\n                  }\n              })\n          \n          @app.route('/apm/profiler/cpu')\n          def get_cpu_profiler():\n              return flask.jsonify({\n                  'sampling_rate': 0.1,\n                  'current_usage': psutil.cpu_percent(),\n                  'avg_usage_1min': sum(cpu_samples) / len(cpu_samples) if cpu_samples else 0,\n                  'samples_collected': len(cpu_samples)\n              })\n          \n          @app.route('/apm/health')\n          def get_health():\n              if not response_times:\n                  performance_score = 100\n              else:\n                  p95 = sorted(response_times)[int(len(response_times) * 0.95)]\n                  sla_target = float(os.getenv('SLA_TARGET_P95', '50'))\n                  performance_score = max(0, 100 - (p95 - sla_target) * 2)\n              \n              total_requests = sum(request_counts.values())\n              total_errors = sum(error_counts.values())\n              error_rate = (total_errors / max(total_requests, 1)) if total_requests > 0 else 0\n              \n              # Check for SLA violations\n              sla_violations = 0\n              if response_times:\n                  p95 = sorted(response_times)[int(len(response_times) * 0.95)]\n                  if p95 > float(os.getenv('SLA_TARGET_P95', '50')):\n                      app.logger.warning('SLA_VIOLATION: P95 response time exceeded target')\n              \n              return flask.jsonify({\n                  'status': 'healthy',\n                  'performance_score': round(performance_score),\n                  'sla_violations': sla_violations,\n                  'error_rate': round(error_rate, 4)\n              })\n          \n          if __name__ == '__main__':\n              app.run(host='0.0.0.0', port=8080)\n          SCRIPT\n          \n          cd /app && python main.py\nEOF",
+
+      "# Create service for APM application\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: apm-app\n  namespace: apm-demo\n  labels:\n    app: apm-app\nspec:\n  selector:\n    app: apm-app\n  ports:\n  - port: 8080\n    targetPort: 8080\nEOF",
+
+      "# Create HorizontalPodAutoscaler for performance-based scaling\nkubectl apply -f - <<EOF\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: apm-app-hpa\n  namespace: apm-demo\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: apm-app\n  minReplicas: 2\n  maxReplicas: 10\n  metrics:\n  - type: Resource\n    resource:\n      name: cpu\n      target:\n        type: Utilization\n        averageUtilization: 70\n  - type: Resource\n    resource:\n      name: memory\n      target:\n        type: Utilization\n        averageUtilization: 80\nEOF",
+
+      "# Create ConfigMap for APM configuration\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: apm-config\n  namespace: apm-demo\ndata:\n  apm.yaml: |\n    performance:\n      sla_targets:\n        p95_response_time: 50ms\n        error_rate: 0.01\n        availability: 99.9\n      monitoring:\n        sample_rate: 0.1\n        retention_hours: 24\n    alerting:\n      error_rate_threshold: 0.05\n      response_time_threshold: 100ms\n      availability_threshold: 99.0\nEOF",
+
+      "# Wait for deployment to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/apm-app -n apm-demo",
+
+      "# Generate some load to populate metrics\nkubectl run load-generator --image=busybox --rm -it --restart=Never -n apm-demo -- sh -c 'for i in $(seq 1 20); do wget -qO- http://apm-app:8080/api/users; sleep 1; done'",
+
+      "# Test APM endpoints\nkubectl exec -n apm-demo deploy/apm-app -- curl -s localhost:8080/apm/health\nkubectl exec -n apm-demo deploy/apm-app -- curl -s localhost:8080/apm/metrics"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl exec -n apm-demo deploy/apm-app -- curl -s localhost:8080/apm/metrics | jq .performance.response_time_p95",
+      "expected": "50",
+      "points": 3,
+      "description": "Application tracks 95th percentile response times"
+    },
+    {
+      "command": "kubectl exec -n apm-demo deploy/apm-app -- curl -s localhost:8080/apm/metrics | jq .errors.rate_5min",
+      "expected": "0.02",
+      "points": 3,
+      "description": "Application tracks error rates over time windows"
+    },
+    {
+      "command": "kubectl get hpa apm-app-hpa -n apm-demo -o jsonpath='{.spec.metrics[0].resource.name}'",
+      "expected": "cpu",
+      "points": 2,
+      "description": "HPA configured for performance-based scaling"
+    },
+    {
+      "command": "kubectl exec -n apm-demo deploy/apm-app -- curl -s localhost:8080/apm/profiler/cpu | jq .sampling_rate",
+      "expected": "0.1",
+      "points": 2,
+      "description": "Application includes CPU profiling capabilities"
+    },
+    {
+      "command": "kubectl logs -n apm-demo deploy/apm-app | grep -c 'SLA_VIOLATION'",
+      "expected": "0",
+      "points": 2,
+      "description": "No SLA violations detected in application logs"
+    },
+    {
+      "command": "kubectl exec -n apm-demo deploy/apm-app -- curl -s localhost:8080/apm/health | jq .performance_score",
+      "expected": "85",
+      "points": 1,
+      "description": "Application provides overall performance score"
+    }
+  ]
+}

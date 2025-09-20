@@ -1,0 +1,109 @@
+{
+  "id": "kcna-i-006",
+  "title": "ConfigMaps and Basic Configuration",
+  "description": "Demonstrate understanding of configuration management in Kubernetes:\n\n1. Create a ConfigMap named ||app-settings|| in namespace ||saturn|| using multiple methods:\n   - From literal values: ||environment=staging||, ||debug=true||\n   - From a properties file with content:\n     ||database.host=db.example.com||\n     ||database.port=5432||\n     ||database.name=myapp||\n\n2. Create a Secret named ||db-credentials|| with:\n   - ||username||: ||admin|| (base64 encoded)\n   - ||password||: ||secret123|| (base64 encoded)\n\n3. Create a Deployment named ||config-app|| with:\n   - Image: ||busybox:1.35||\n   - Environment variables from ConfigMap\n   - Secret mounted as volume at ||/etc/secrets||\n   - Command: ||sleep 3600||\n\n4. Verify configuration is accessible:\n   - Check environment variables in the pod\n   - Verify secret files are mounted\n   - Test configuration reload capabilities",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Configuration",
+  "tags": [
+    "configmap",
+    "secrets",
+    "configuration",
+    "environment-variables"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "configmaps",
+      "secrets",
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMap from literals:",
+      "   kubectl create configmap app-settings --from-literal=environment=staging --from-literal=debug=true -n saturn",
+      "2. Create properties file and add to ConfigMap:",
+      "   cat > db.properties << EOF",
+      "   database.host=db.example.com",
+      "   database.port=5432",
+      "   database.name=myapp",
+      "   EOF",
+      "   kubectl create configmap app-settings --from-file=db.properties --dry-run=client -o yaml | kubectl apply -n saturn -f -",
+      "3. Create Secret:",
+      "   kubectl create secret generic db-credentials --from-literal=username=admin --from-literal=password=secret123 -n saturn",
+      "4. Create Deployment with ConfigMap and Secret:",
+      "   cat > config-deployment.yaml << EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: config-app",
+      "     namespace: saturn",
+      "   spec:",
+      "     replicas: 1",
+      "     selector:",
+      "       matchLabels:",
+      "         app: config-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: config-app",
+      "       spec:",
+      "         containers:",
+      "         - name: busybox",
+      "           image: busybox:1.35",
+      "           command: [\"sleep\", \"3600\"]",
+      "           envFrom:",
+      "           - configMapRef:",
+      "               name: app-settings",
+      "           volumeMounts:",
+      "           - name: secret-volume",
+      "             mountPath: /etc/secrets",
+      "         volumes:",
+      "         - name: secret-volume",
+      "           secret:",
+      "             secretName: db-credentials",
+      "   EOF",
+      "   kubectl apply -f config-deployment.yaml",
+      "5. Verify configuration:",
+      "   kubectl exec deployment/config-app -n saturn -- env | grep -E 'environment|debug'",
+      "   kubectl exec deployment/config-app -n saturn -- ls /etc/secrets",
+      "   kubectl exec deployment/config-app -n saturn -- cat /etc/secrets/username"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-settings -n saturn -o jsonpath='{.data.environment}'",
+      "expected": "staging",
+      "points": 1,
+      "description": "ConfigMap should contain environment setting"
+    },
+    {
+      "command": "kubectl get secret db-credentials -n saturn -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "admin",
+      "points": 1,
+      "description": "Secret should contain encoded username"
+    },
+    {
+      "command": "kubectl exec deployment/config-app -n saturn -- sh -c 'echo $environment'",
+      "expected": "staging",
+      "points": 2,
+      "description": "Environment variable should be available in pod"
+    },
+    {
+      "command": "kubectl exec deployment/config-app -n saturn -- cat /etc/secrets/username",
+      "expected": "admin",
+      "points": 1,
+      "description": "Secret should be mounted as file"
+    },
+    {
+      "command": "kubectl exec deployment/config-app -n saturn -- sh -c 'echo $debug'",
+      "expected": "true",
+      "points": 1,
+      "description": "All ConfigMap values should be loaded as environment variables"
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "id": "cka-i-007",
+  "title": "Storage Classes and Volume Provisioning",
+  "description": "Configure dynamic storage provisioning for the cluster. Your tasks are:\n\n1. Create a StorageClass named ||fast-ssd|| with:\n   - Provisioner: ||kubernetes.io/no-provisioner|| (for local storage)\n   - Volume binding mode: ||WaitForFirstConsumer||\n   - Reclaim policy: ||Retain||\n2. Create a PersistentVolume named ||local-pv|| with:\n   - Capacity: ||5Gi||\n   - Access mode: ||ReadWriteOnce||\n   - Storage class: ||fast-ssd||\n   - Host path: ||/mnt/local-storage|| on ||worker-node-01||\n3. Create a PersistentVolumeClaim named ||app-storage|| in namespace ||venus|| requesting ||3Gi|| from the ||fast-ssd|| storage class\n4. Create a pod named ||storage-test|| that uses this PVC and mounts it at ||/data||\n5. Verify the pod can write to and read from the persistent volume",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Storage",
+  "tags": [
+    "storage-class",
+    "persistent-volumes",
+    "pvc",
+    "local-storage",
+    "volume-mounting",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "storageclasses",
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "pods"
+    ],
+    "prerequisites": [
+      "worker-node-01 available",
+      "Local storage directory created"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create the StorageClass:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: storage.k8s.io/v1",
+      "   kind: StorageClass",
+      "   metadata:",
+      "     name: fast-ssd",
+      "   provisioner: kubernetes.io/no-provisioner",
+      "   volumeBindingMode: WaitForFirstConsumer",
+      "   reclaimPolicy: Retain",
+      "   EOF",
+      "2. Create directory on worker node:",
+      "   ssh worker-node-01 'sudo mkdir -p /mnt/local-storage && sudo chmod 777 /mnt/local-storage'",
+      "3. Create PersistentVolume:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: PersistentVolume",
+      "   metadata:",
+      "     name: local-pv",
+      "   spec:",
+      "     capacity:",
+      "       storage: 5Gi",
+      "     accessModes:",
+      "     - ReadWriteOnce",
+      "     persistentVolumeReclaimPolicy: Retain",
+      "     storageClassName: fast-ssd",
+      "     local:",
+      "       path: /mnt/local-storage",
+      "     nodeAffinity:",
+      "       required:",
+      "         nodeSelectorTerms:",
+      "         - matchExpressions:",
+      "           - key: kubernetes.io/hostname",
+      "             operator: In",
+      "             values:",
+      "             - worker-node-01",
+      "   EOF",
+      "4. Create PersistentVolumeClaim:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: PersistentVolumeClaim",
+      "   metadata:",
+      "     name: app-storage",
+      "     namespace: venus",
+      "   spec:",
+      "     accessModes:",
+      "     - ReadWriteOnce",
+      "     storageClassName: fast-ssd",
+      "     resources:",
+      "       requests:",
+      "         storage: 3Gi",
+      "   EOF",
+      "5. Create pod with PVC:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: storage-test",
+      "     namespace: venus",
+      "   spec:",
+      "     containers:",
+      "     - name: app",
+      "       image: busybox",
+      "       command: ['sleep', '3600']",
+      "       volumeMounts:",
+      "       - name: data-volume",
+      "         mountPath: /data",
+      "     volumes:",
+      "     - name: data-volume",
+      "       persistentVolumeClaim:",
+      "         claimName: app-storage",
+      "   EOF",
+      "6. Test writing to volume:",
+      "   kubectl exec storage-test -n venus -- sh -c 'echo \"test data\" > /data/test.txt'",
+      "7. Verify data persistence:",
+      "   kubectl exec storage-test -n venus -- cat /data/test.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.provisioner}'",
+      "expected": "kubernetes.io/no-provisioner",
+      "points": 1,
+      "description": "StorageClass should use no-provisioner"
+    },
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.volumeBindingMode}'",
+      "expected": "WaitForFirstConsumer",
+      "points": 1,
+      "description": "StorageClass should use WaitForFirstConsumer binding mode"
+    },
+    {
+      "command": "kubectl get pv local-pv -o jsonpath='{.spec.capacity.storage}'",
+      "expected": "5Gi",
+      "points": 1,
+      "description": "PersistentVolume should have 5Gi capacity"
+    },
+    {
+      "command": "kubectl get pv local-pv -o jsonpath='{.spec.storageClassName}'",
+      "expected": "fast-ssd",
+      "points": 1,
+      "description": "PersistentVolume should use fast-ssd storage class"
+    },
+    {
+      "command": "kubectl get pvc app-storage -n venus -o jsonpath='{.status.phase}'",
+      "expected": "Bound",
+      "points": 2,
+      "description": "PVC should be bound to the PV"
+    },
+    {
+      "command": "kubectl get pod storage-test -n venus -o jsonpath='{.spec.volumes[0].persistentVolumeClaim.claimName}'",
+      "expected": "app-storage",
+      "points": 1,
+      "description": "Pod should use the app-storage PVC"
+    },
+    {
+      "command": "kubectl exec storage-test -n venus -- ls /data",
+      "expected": ".*",
+      "points": 1,
+      "description": "Pod should have access to mounted volume"
+    },
+    {
+      "command": "kubectl exec storage-test -n venus -- sh -c 'echo \"persistence-test\" > /data/verify.txt && cat /data/verify.txt'",
+      "expected": "persistence-test",
+      "points": 1,
+      "description": "Pod should be able to write and read from persistent volume"
+    }
+  ]
+}

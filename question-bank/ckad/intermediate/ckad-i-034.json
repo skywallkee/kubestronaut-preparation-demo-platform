@@ -1,0 +1,68 @@
+{
+  "id": "ckad-i-034",
+  "title": "Multi-Container Pod with Health Probes and Security Context",
+  "description": "Create a multi-container pod in the saturn namespace with a main application container and a sidecar logging container. Configure health probes for both containers and apply appropriate security contexts. The main container should serve HTTP traffic while the sidecar collects and forwards logs.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["multi-container-pods", "health-probes", "security-contexts", "logging-monitoring", "volume-types"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a multi-container pod YAML file with nginx main container and busybox sidecar"
+    },
+    {
+      "step": 2,
+      "description": "Configure liveness and readiness probes for the nginx container"
+    },
+    {
+      "step": 3,
+      "description": "Add security context to run containers as non-root user"
+    },
+    {
+      "step": 4,
+      "description": "Set up shared volume for log sharing between containers"
+    },
+    {
+      "step": 5,
+      "description": "Apply the pod configuration to the saturn namespace"
+    },
+    {
+      "step": 6,
+      "description": "Verify both containers are running and healthy"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pod multi-app-pod -n saturn -o jsonpath='{.status.phase}'",
+      "expectedOutput": "Running",
+      "description": "Verify pod is in Running state",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod multi-app-pod -n saturn -o jsonpath='{.spec.containers[*].name}' | grep -E '(nginx|busybox|app|sidecar)'",
+      "expectedOutput": "nginx busybox",
+      "description": "Verify pod has two containers",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod multi-app-pod -n saturn -o jsonpath='{.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/",
+      "description": "Verify liveness probe is configured",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod multi-app-pod -n saturn -o jsonpath='{.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expectedOutput": "/",
+      "description": "Verify readiness probe is configured",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod multi-app-pod -n saturn -o jsonpath='{.spec.securityContext.runAsUser}'",
+      "expectedOutput": "1000",
+      "description": "Verify security context with non-root user",
+      "points": 2
+    }
+  ]
+}

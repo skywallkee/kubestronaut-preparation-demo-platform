@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-048",
+  "title": "CronJob with Monitoring and Network Policies",
+  "description": "Create a scheduled monitoring job in the pluto namespace that collects metrics from various services. Implement network policies to allow the monitoring job to access only specific services and configure health checks to ensure the monitoring system is functioning correctly.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "logging-monitoring", "network-policies", "health-probes", "helm-package-manager"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a CronJob ||metrics-collector|| that runs every ||10|| minutes (*/10 * * * *)"
+    },
+    {
+      "step": 2,
+      "description": "Configure the job to use an image with monitoring tools like ||prom/prometheus||"
+    },
+    {
+      "step": 3,
+      "description": "Create a NetworkPolicy allowing the monitoring job to access target services with label ||monitored=true||"
+    },
+    {
+      "step": 4,
+      "description": "Deploy target services with appropriate labels for monitoring"
+    },
+    {
+      "step": 5,
+      "description": "Configure health checks for the monitoring job with HTTP probe on ||/health|| endpoint"
+    },
+    {
+      "step": 6,
+      "description": "Set job completion and parallelism: ||completions: 1||, ||parallelism: 1||"
+    },
+    {
+      "step": 7,
+      "description": "Verify the CronJob can access monitored services and health checks pass"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get cronjob metrics-collector -n pluto -o jsonpath='{.spec.schedule}'",
+      "expectedOutput": "*/10 * * * *",
+      "description": "Verify CronJob schedule is every 10 minutes",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob metrics-collector -n pluto -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "prom/prometheus",
+      "description": "Verify monitoring container image",
+      "points": 1
+    },
+    {
+      "command": "kubectl get networkpolicy monitoring-access -n pluto -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+      "expectedOutput": "metrics-collector",
+      "description": "Verify NetworkPolicy for monitoring access",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy monitoring-access -n pluto -o jsonpath='{.spec.egress[0].to[0].podSelector.matchLabels.monitored}'",
+      "expectedOutput": "true",
+      "description": "Verify NetworkPolicy allows access to monitored services",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service target-service -n pluto -o jsonpath='{.metadata.labels.monitored}'",
+      "expectedOutput": "true",
+      "description": "Verify target service has monitoring label",
+      "points": 1
+    },
+    {
+      "command": "kubectl get cronjob metrics-collector -n pluto -o jsonpath='{.spec.jobTemplate.spec.completions}'",
+      "expectedOutput": "1",
+      "description": "Verify job completions setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get cronjob metrics-collector -n pluto -o jsonpath='{.spec.jobTemplate.spec.parallelism}'",
+      "expectedOutput": "1",
+      "description": "Verify job parallelism setting",
+      "points": 1
+    }
+  ]
+}

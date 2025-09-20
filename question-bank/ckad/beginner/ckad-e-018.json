@@ -1,0 +1,47 @@
+{
+  "id": "ckad-e-018",
+  "title": "Update Deployment Image",
+  "description": "Update the ||web-deploy|| Deployment to use image ||nginx:1.21-alpine|| in the ||pluto|| namespace.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Deployment",
+  "tags": [
+    "deployments-rolling-updates",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Update deployment image:",
+      "   kubectl set image deployment/web-deploy nginx=nginx:1.21-alpine -n pluto",
+      "2. Check rollout status:",
+      "   kubectl rollout status deployment/web-deploy -n pluto",
+      "3. Verify new image:",
+      "   kubectl describe deployment web-deploy -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-deploy -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21-alpine",
+      "points": 1.5,
+      "description": "Deployment should use nginx:1.21-alpine image"
+    },
+    {
+      "command": "kubectl rollout status deployment/web-deploy -n pluto --timeout=30s",
+      "expected": "0",
+      "points": 1.5,
+      "description": "Deployment rollout should be successful"
+    }
+  ]
+}

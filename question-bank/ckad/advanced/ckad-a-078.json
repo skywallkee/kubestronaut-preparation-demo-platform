@@ -1,0 +1,64 @@
+{
+  "id": "ckad-a-078",
+  "title": "Advanced Volume Types and Access Patterns",
+  "description": "Implement a comprehensive storage solution using multiple ||volume types|| and ||access patterns|| for different application requirements. Create applications that utilize ||ReadWriteOnce||, ||ReadOnlyMany||, and ||ReadWriteMany|| access modes with appropriate storage backends. Implement ||emptyDir|| with memory backing, ||hostPath|| for node-specific data, ||configMap|| and ||secret|| volumes with custom mount paths, and ||projected volumes|| for complex data aggregation. Demonstrate volume performance optimization, security considerations, and troubleshooting storage issues.",
+  "points": 13,
+  "timeLimit": 27,
+  "category": "State Persistence",
+  "tags": ["volume-types", "access-modes", "emptydir", "hostpath", "projected-volumes", "performance", "advanced"],
+  "infrastructure": {
+    "namespaces": ["volume-types"],
+    "resources": ["Pod", "Deployment", "ConfigMap", "Secret", "PersistentVolumeClaim"],
+    "prerequisites": ["Storage backend supporting multiple access modes"]
+  },
+  "solution": {
+    "steps": [
+      "# Create volume-types namespace\nkubectl create namespace volume-types",
+      "Create pod with emptyDir volume using memory",
+      "Configure pod with hostPath for node data access",
+      "Set up projected volume combining ConfigMap and Secret",
+      "Create deployment with ReadWriteMany PVC for shared storage",
+      "Configure volume with custom mount options and subpaths",
+      "Test different access patterns and performance characteristics",
+      "Verify volume security and access control"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod memory-cache -n volume-types -o jsonpath='{.spec.volumes[0].emptyDir.medium}'",
+      "expected": "Memory",
+      "points": 2,
+      "description": "EmptyDir volume uses memory backing"
+    },
+    {
+      "command": "kubectl get pod node-logger -n volume-types -o jsonpath='{.spec.volumes[0].hostPath.path}'",
+      "expected": "/var/log",
+      "points": 2,
+      "description": "HostPath volume mounts node directory"
+    },
+    {
+      "command": "kubectl get pod config-aggregator -n volume-types -o jsonpath='{.spec.volumes[0].projected.sources}' | jq length",
+      "expected": "3",
+      "points": 3,
+      "description": "Projected volume combines multiple sources"
+    },
+    {
+      "command": "kubectl get pvc shared-storage -n volume-types -o jsonpath='{.spec.accessModes[0]}'",
+      "expected": "ReadWriteMany",
+      "points": 3,
+      "description": "PVC configured with ReadWriteMany access mode"
+    },
+    {
+      "command": "kubectl exec -n volume-types pod/subpath-test -- ls /app/config/database/",
+      "expected": "config.yaml",
+      "points": 2,
+      "description": "Volume subPath mounting works correctly"
+    },
+    {
+      "command": "kubectl get pod -n volume-types --field-selector=status.phase=Running | wc -l",
+      "expected": "6",
+      "points": 1,
+      "description": "All volume test pods are running"
+    }
+  ]
+}

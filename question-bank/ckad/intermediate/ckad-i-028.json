@@ -1,0 +1,186 @@
+{
+  "id": "ckad-i-028",
+  "title": "DNS Service Discovery with Headless Services",
+  "description": "Implement service discovery in namespace ||venus|| using DNS and headless services:\n\n**StatefulSet:**\n- Name: ||database-cluster||\n- Image: ||postgres:13||\n- Replicas: ||3||\n- Environment variable ||POSTGRES_PASSWORD|| = ||clusterpass||\n- Ordered deployment with stable network identities\n- Volume claim template for persistent storage\n\n**Headless Service:**\n- Name: ||database-headless||\n- ClusterIP: ||None||\n- Port: ||5432|| -> target port ||5432||\n- Selector: targets the StatefulSet pods\n\n**Client Application:**\n- Deployment name: ||client-app||\n- Image: ||busybox:1.35||\n- Command: ||sleep 3600|| (keep running)\n- Replicas: ||2||\n\n**Service Discovery Tasks:**\n- Query DNS for individual pod IPs\n- Resolve headless service to get all pod IPs\n- Test connectivity to specific database instances\n- Demonstrate service endpoint discovery\n\n**DNS Testing:**\n- Query ||database-cluster-0.database-headless.venus.svc.cluster.local||\n- Query ||database-cluster-1.database-headless.venus.svc.cluster.local||\n- Query ||database-headless.venus.svc.cluster.local|| for all endpoints\n- Test from client pods using ||nslookup|| and ||dig||\n\n**Network Verification:**\n- Verify each database pod has unique hostname\n- Test connectivity between client and each database instance\n- Confirm DNS resolution works correctly",
+  "points": 10,
+  "timeLimit": 16,
+  "category": "Services and Networking",
+  "tags": [
+    "dns-service-discovery",
+    "services",
+    "volume-types",
+    "persistent-volumes-claims",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "statefulsets",
+      "services",
+      "deployments",
+      "persistentvolumeclaims"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create StatefulSet with persistent storage:",
+      "   cat <<EOF > database-cluster-statefulset.yaml",
+      "   apiVersion: apps/v1",
+      "   kind: StatefulSet",
+      "   metadata:",
+      "     name: database-cluster",
+      "     namespace: venus",
+      "   spec:",
+      "     serviceName: database-headless",
+      "     replicas: 3",
+      "     selector:",
+      "       matchLabels:",
+      "         app: database-cluster",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: database-cluster",
+      "       spec:",
+      "         containers:",
+      "         - name: postgres",
+      "           image: postgres:13",
+      "           ports:",
+      "           - containerPort: 5432",
+      "           env:",
+      "           - name: POSTGRES_PASSWORD",
+      "             value: clusterpass",
+      "           - name: PGDATA",
+      "             value: /var/lib/postgresql/data/pgdata",
+      "           volumeMounts:",
+      "           - name: postgres-storage",
+      "             mountPath: /var/lib/postgresql/data",
+      "     volumeClaimTemplates:",
+      "     - metadata:",
+      "         name: postgres-storage",
+      "       spec:",
+      "         accessModes: [\"ReadWriteOnce\"]",
+      "         resources:",
+      "           requests:",
+      "             storage: 1Gi",
+      "   EOF",
+      "2. Create headless service:",
+      "   cat <<EOF > database-headless-service.yaml",
+      "   apiVersion: v1",
+      "   kind: Service",
+      "   metadata:",
+      "     name: database-headless",
+      "     namespace: venus",
+      "   spec:",
+      "     clusterIP: None",
+      "     ports:",
+      "     - port: 5432",
+      "       targetPort: 5432",
+      "     selector:",
+      "       app: database-cluster",
+      "   EOF",
+      "3. Create client application deployment:",
+      "   cat <<EOF > client-app-deployment.yaml",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: client-app",
+      "     namespace: venus",
+      "   spec:",
+      "     replicas: 2",
+      "     selector:",
+      "       matchLabels:",
+      "         app: client-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: client-app",
+      "       spec:",
+      "         containers:",
+      "         - name: busybox",
+      "           image: busybox:1.35",
+      "           command: [\"sleep\", \"3600\"]",
+      "   EOF",
+      "4. Apply all resources:",
+      "   kubectl apply -f database-cluster-statefulset.yaml",
+      "   kubectl apply -f database-headless-service.yaml",
+      "   kubectl apply -f client-app-deployment.yaml",
+      "5. Wait for StatefulSet to be ready:",
+      "   kubectl rollout status statefulset/database-cluster -n venus --timeout=120s",
+      "6. Test DNS resolution from client pod:",
+      "   kubectl exec -n venus deployment/client-app -- nslookup database-headless.venus.svc.cluster.local",
+      "7. Query individual pod DNS names:",
+      "   kubectl exec -n venus deployment/client-app -- nslookup database-cluster-0.database-headless.venus.svc.cluster.local",
+      "   kubectl exec -n venus deployment/client-app -- nslookup database-cluster-1.database-headless.venus.svc.cluster.local",
+      "8. Test connectivity to database instances:",
+      "   kubectl exec -n venus deployment/client-app -- nc -zv database-cluster-0.database-headless.venus.svc.cluster.local 5432",
+      "9. Verify unique hostnames in StatefulSet pods:",
+      "   kubectl exec -n venus database-cluster-0 -- hostname",
+      "   kubectl exec -n venus database-cluster-1 -- hostname"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get statefulset database-cluster -n venus -o jsonpath='{.spec.serviceName}'",
+      "expected": "database-headless",
+      "points": 1,
+      "description": "StatefulSet should reference the headless service"
+    },
+    {
+      "command": "kubectl get service database-headless -n venus -o jsonpath='{.spec.clusterIP}'",
+      "expected": "None",
+      "points": 1,
+      "description": "Service should be headless (clusterIP: None)"
+    },
+    {
+      "command": "kubectl get statefulset database-cluster -n venus -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "All StatefulSet replicas should be ready"
+    },
+    {
+      "command": "kubectl get deployment client-app -n venus -o jsonpath='{.status.readyReplicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Client app deployment should have 2 ready replicas"
+    },
+    {
+      "command": "kubectl get pvc -n venus -l app=database-cluster | grep -c 'postgres-storage'",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have 3 PVCs for StatefulSet storage"
+    },
+    {
+      "command": "kubectl exec -n venus deployment/client-app -- nslookup database-headless.venus.svc.cluster.local | grep -c 'Address:'",
+      "expected": "3",
+      "points": 1,
+      "description": "DNS lookup should resolve to 3 addresses for headless service"
+    },
+    {
+      "command": "kubectl exec -n venus deployment/client-app -- nslookup database-cluster-0.database-headless.venus.svc.cluster.local | grep -c 'Address:'",
+      "expected": "1",
+      "points": 1,
+      "description": "Individual pod DNS should resolve to single address"
+    },
+    {
+      "command": "kubectl exec -n venus database-cluster-0 -- hostname",
+      "expected": "database-cluster-0",
+      "points": 1,
+      "description": "First StatefulSet pod should have predictable hostname"
+    },
+    {
+      "command": "kubectl exec -n venus database-cluster-1 -- hostname",
+      "expected": "database-cluster-1",
+      "points": 1,
+      "description": "Second StatefulSet pod should have predictable hostname"
+    },
+    {
+      "command": "kubectl exec -n venus deployment/client-app -- sh -c 'nc -zv database-cluster-0.database-headless.venus.svc.cluster.local 5432 2>&1' | grep -c 'open'",
+      "expected": "1",
+      "points": 1,
+      "description": "Client should be able to connect to database pod via DNS"
+    }
+  ]
+}

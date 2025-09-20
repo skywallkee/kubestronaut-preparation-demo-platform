@@ -1,0 +1,78 @@
+{
+  "id": "kcna-i-007",
+  "title": "Cloud-Native Application Patterns",
+  "description": "Demonstrate understanding of cloud-native application patterns and microservices:\n\n1. Create a multi-tier application in namespace ||venus|| with:\n   - Frontend: Deployment ||frontend|| with ||nginx:1.21|| image, 2 replicas\n   - Backend: Deployment ||backend|| with ||node:16-alpine|| image, 3 replicas\n   - Database: Deployment ||database|| with ||postgres:13|| image, 1 replica\n\n2. Implement the following cloud-native patterns:\n   - Service discovery: Create ClusterIP services for each tier\n   - Health checks: Add readiness and liveness probes\n   - Resource management: Set resource requests and limits\n   - Rolling updates: Demonstrate zero-downtime deployment\n\n3. Configure inter-service communication:\n   - Frontend communicates with backend on port ||3000||\n   - Backend communicates with database on port ||5432||\n   - Use environment variables for service URLs\n\n4. Demonstrate scalability:\n   - Scale backend from 3 to 5 replicas\n   - Show how load is distributed\n   - Verify all instances are healthy",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "Cloud-Native Patterns",
+  "tags": [
+    "microservices",
+    "service-discovery",
+    "health-checks",
+    "scalability"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create frontend deployment:",
+      "   kubectl create deployment frontend --image=nginx:1.21 --replicas=2 -n venus",
+      "   kubectl patch deployment frontend -n venus -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"resources\":{\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"},\"limits\":{\"cpu\":\"200m\",\"memory\":\"256Mi\"}},\"readinessProbe\":{\"httpGet\":{\"path\":\"/\",\"port\":80},\"initialDelaySeconds\":5},\"livenessProbe\":{\"httpGet\":{\"path\":\"/\",\"port\":80},\"initialDelaySeconds\":10}}]}}}}'",
+      "2. Create backend deployment:",
+      "   kubectl create deployment backend --image=node:16-alpine --replicas=3 -n venus",
+      "   kubectl patch deployment backend -n venus -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"node\",\"command\":[\"sleep\",\"3600\"],\"ports\":[{\"containerPort\":3000}],\"env\":[{\"name\":\"DATABASE_URL\",\"value\":\"postgres://database:5432/app\"}],\"resources\":{\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"},\"limits\":{\"cpu\":\"200m\",\"memory\":\"256Mi\"}},\"readinessProbe\":{\"tcpSocket\":{\"port\":3000},\"initialDelaySeconds\":5},\"livenessProbe\":{\"tcpSocket\":{\"port\":3000},\"initialDelaySeconds\":10}}]}}}}'",
+      "3. Create database deployment:",
+      "   kubectl create deployment database --image=postgres:13 --replicas=1 -n venus",
+      "   kubectl patch deployment database -n venus -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"postgres\",\"env\":[{\"name\":\"POSTGRES_DB\",\"value\":\"app\"},{\"name\":\"POSTGRES_USER\",\"value\":\"user\"},{\"name\":\"POSTGRES_PASSWORD\",\"value\":\"password\"}],\"ports\":[{\"containerPort\":5432}],\"resources\":{\"requests\":{\"cpu\":\"200m\",\"memory\":\"256Mi\"},\"limits\":{\"cpu\":\"500m\",\"memory\":\"512Mi\"}},\"readinessProbe\":{\"exec\":{\"command\":[\"pg_isready\",\"-U\",\"user\",\"-d\",\"app\"]},\"initialDelaySeconds\":10},\"livenessProbe\":{\"exec\":{\"command\":[\"pg_isready\",\"-U\",\"user\",\"-d\",\"app\"]},\"initialDelaySeconds\":30}}]}}}}'",
+      "4. Create services:",
+      "   kubectl expose deployment frontend --port=80 --name=frontend-service -n venus",
+      "   kubectl expose deployment backend --port=3000 --name=backend-service -n venus",
+      "   kubectl expose deployment database --port=5432 --name=database-service -n venus",
+      "5. Scale backend:",
+      "   kubectl scale deployment backend --replicas=5 -n venus",
+      "6. Verify scaling and health:",
+      "   kubectl get pods -l app=backend -n venus",
+      "   kubectl get deployment backend -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployments -n venus --no-headers | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have 3 deployments (frontend, backend, database)"
+    },
+    {
+      "command": "kubectl get deployment backend -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "Backend should be scaled to 5 replicas"
+    },
+    {
+      "command": "kubectl get services -n venus --no-headers | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have 3 services for service discovery"
+    },
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expected": "/",
+      "points": 2,
+      "description": "Frontend should have readiness probe configured"
+    },
+    {
+      "command": "kubectl get deployment backend -n venus -o jsonpath='{.spec.template.spec.containers[0].env[0].value}'",
+      "expected": "postgres://database:5432/app",
+      "points": 2,
+      "description": "Backend should have database connection configured"
+    }
+  ]
+}

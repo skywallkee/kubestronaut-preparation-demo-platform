@@ -1,0 +1,103 @@
+{
+  "id": "ckad-a-004",
+  "title": "CronJob with Persistent Storage",
+  "description": "Create a CronJob ||backup-job|| in namespace ||mars|| that runs every 2 minutes and performs backup operations:\n\n- Schedule: every 2 minutes (||*/2 * * * *||)\n- Use image ||busybox:1.35||\n- Command: ||[\"/bin/sh\", \"-c\", \"date >> /backup/backup.log && echo 'Backup completed' >> /backup/backup.log\"]||\n- Mount a PersistentVolumeClaim ||backup-storage|| at ||/backup||\n- Set ||successfulJobsHistoryLimit|| to 3\n- Set ||failedJobsHistoryLimit|| to 1\n- Job should complete within 30 seconds (||activeDeadlineSeconds||)\n\nFirst create the PVC ||backup-storage|| requesting 1Gi of storage with ReadWriteOnce access mode.\n\nVerify that the CronJob creates Jobs and the backup log file persists between runs.",
+  "points": 8,
+  "timeLimit": 16,
+  "category": "Pod Design",
+  "tags": [
+    "cronjob",
+    "persistent-volume",
+    "pvc",
+    "scheduling",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "cronjobs",
+      "jobs",
+      "persistentvolumeclaims",
+      "persistentvolumes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create PersistentVolumeClaim:",
+      "   kubectl create -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: PersistentVolumeClaim",
+      "   metadata:",
+      "     name: backup-storage",
+      "     namespace: mars",
+      "   spec:",
+      "     accessModes:",
+      "       - ReadWriteOnce",
+      "     resources:",
+      "       requests:",
+      "         storage: 1Gi",
+      "   EOF",
+      "2. Create CronJob YAML:",
+      "   kubectl create cronjob backup-job --image=busybox:1.35 --schedule='*/2 * * * *' -n mars --dry-run=client -o yaml > backup-job.yaml",
+      "3. Edit YAML to add:",
+      "   - PVC volume mount",
+      "   - Custom command for backup",
+      "   - History limits and deadline",
+      "4. Apply the CronJob:",
+      "   kubectl apply -f backup-job.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pvc backup-storage -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expected": "1Gi",
+      "points": 1,
+      "description": "PVC should request 1Gi storage"
+    },
+    {
+      "command": "kubectl get pvc backup-storage -n mars -o jsonpath='{.spec.accessModes[0]}'",
+      "expected": "ReadWriteOnce",
+      "points": 1,
+      "description": "PVC should have ReadWriteOnce access mode"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n mars -o jsonpath='{.spec.schedule}'",
+      "expected": "*/2 * * * *",
+      "points": 1,
+      "description": "CronJob should run every 2 minutes"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n mars -o jsonpath='{.spec.successfulJobsHistoryLimit}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Should keep 3 successful jobs in history"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n mars -o jsonpath='{.spec.failedJobsHistoryLimit}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Should keep 1 failed job in history"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n mars -o jsonpath='{.spec.jobTemplate.spec.activeDeadlineSeconds}'",
+      "expected": "30",
+      "points": 1,
+      "description": "Job should have 30 second deadline"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n mars -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[*].persistentVolumeClaim.claimName}' | grep -c backup-storage",
+      "expected": "1",
+      "points": 1,
+      "description": "Should mount backup-storage PVC"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n mars -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[*].mountPath}' | grep -c '/backup'",
+      "expected": "1",
+      "points": 1,
+      "description": "Should mount volume at /backup"
+    }
+  ]
+}

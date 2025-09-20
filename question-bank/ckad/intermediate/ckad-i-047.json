@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-047",
+  "title": "Service Discovery with Persistent Storage and RBAC",
+  "description": "Set up a service mesh architecture in the venus namespace where services discover each other using DNS. Configure persistent storage for service state and implement RBAC for service-to-service authentication. Services should communicate securely with proper authorization.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["dns-service-discovery", "persistent-volumes-claims", "service-accounts-rbac", "services", "helm-package-manager"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ServiceAccounts for ||api-service||, ||data-service||, and ||auth-service||"
+    },
+    {
+      "step": 2,
+      "description": "Create PVCs for each service: ||api-data-pvc||, ||data-storage-pvc||, ||auth-state-pvc|| with ||1Gi|| each"
+    },
+    {
+      "step": 3,
+      "description": "Create Roles with permissions for service discovery and secret access"
+    },
+    {
+      "step": 4,
+      "description": "Create RoleBindings to associate ServiceAccounts with appropriate Roles"
+    },
+    {
+      "step": 5,
+      "description": "Deploy services that discover each other using FQDN: ||service-name.venus.svc.cluster.local||"
+    },
+    {
+      "step": 6,
+      "description": "Configure ClusterIP services for internal communication"
+    },
+    {
+      "step": 7,
+      "description": "Verify DNS resolution and service authentication work correctly"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount api-service -n venus -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "api-service",
+      "description": "Verify api-service ServiceAccount exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc api-data-pvc -n venus -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "1Gi",
+      "description": "Verify api-data PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get role service-discovery-role -n venus -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "services",
+      "description": "Verify Role has service discovery permissions",
+      "points": 2
+    },
+    {
+      "command": "kubectl get rolebinding api-service-binding -n venus -o jsonpath='{.subjects[0].name}'",
+      "expectedOutput": "api-service",
+      "description": "Verify RoleBinding for api-service",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service api-service -n venus -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify api-service is ClusterIP type",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment api-service -n venus -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expectedOutput": "api-service",
+      "description": "Verify deployment uses correct ServiceAccount",
+      "points": 2
+    },
+    {
+      "command": "kubectl exec -n venus deployment/api-service -- nslookup data-service.venus.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS service discovery works",
+      "points": 1
+    }
+  ]
+}

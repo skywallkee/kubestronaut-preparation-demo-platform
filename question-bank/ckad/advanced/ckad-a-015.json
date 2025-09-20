@@ -1,0 +1,113 @@
+{
+  "id": "ckad-a-015",
+  "title": "Network Policy for Multi-Tier Application Security",
+  "description": "Implement comprehensive network security for a multi-tier application in namespace ||mars|| using Network Policies:\n\n1. Deploy a three-tier application architecture:\n   - **Frontend Tier**: Deployment ||frontend|| (3 replicas) with ||nginx:1.21|| and Service ||frontend-svc||\n   - **Backend Tier**: Deployment ||backend|| (2 replicas) with ||httpd:2.4|| and Service ||backend-svc||\n   - **Database Tier**: Deployment ||database|| (1 replica) with ||postgres:13|| and Service ||db-svc||\n\n2. Create restrictive Network Policies:\n   - **Default Deny**: ||default-deny-all|| policy that blocks all ingress and egress traffic\n   - **Frontend Policy**: ||frontend-netpol|| allowing:\n     - Ingress from external traffic on port 80\n     - Egress to backend tier only on port 8080\n     - DNS resolution (port 53)\n   - **Backend Policy**: ||backend-netpol|| allowing:\n     - Ingress from frontend tier only on port 8080\n     - Egress to database tier only on port 5432\n     - DNS resolution (port 53)\n   - **Database Policy**: ||database-netpol|| allowing:\n     - Ingress from backend tier only on port 5432\n     - No egress except DNS\n\n3. Advanced Network Policy features:\n   - **Namespace Isolation**: Create policy ||cross-namespace-policy|| allowing specific communication from ||venus|| namespace\n   - **External Access Control**: Allow frontend to access external APIs on specific domains\n   - **Monitoring Access**: Allow monitoring pods (labeled ||role=monitoring||) to access all tiers on metrics ports\n   - **Emergency Access**: Create ||emergency-access|| policy that can be quickly applied for troubleshooting\n\n4. Label-based security:\n   - Use specific labels for tier identification: ||tier=frontend||, ||tier=backend||, ||tier=database||\n   - Add environment labels: ||environment=production||, ||security-level=high||\n   - Network policy selectors must use these labels precisely\n\n5. Testing and Validation:\n   - Deploy test pods ||network-test-frontend|| and ||network-test-backend|| for connectivity testing\n   - Create Job ||network-policy-tester|| that validates all network policies work correctly\n   - Test scenarios: allowed connections succeed, blocked connections fail\n\n6. Documentation and Monitoring:\n   - Add annotations to all policies explaining their purpose\n   - Label policies with ||policy-type|| and ||security-scope||\n   - Ensure policies are ordered correctly for evaluation\n\nImplement zero-trust networking with precise traffic control between application tiers.",
+  "points": 9,
+  "timeLimit": 20,
+  "category": "Network Security",
+  "tags": [
+    "network-policies",
+    "security",
+    "multi-tier-architecture",
+    "traffic-control",
+    "zero-trust",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars",
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "networkpolicies",
+      "pods",
+      "jobs"
+    ],
+    "prerequisites": [
+      "network-policy-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Deploy three-tier application:",
+      "   kubectl create deployment frontend --image=nginx:1.21 --replicas=3 -n mars",
+      "   kubectl create deployment backend --image=httpd:2.4 --replicas=2 -n mars",
+      "   kubectl create deployment database --image=postgres:13 --replicas=1 -n mars",
+      "2. Expose services for each tier:",
+      "   kubectl expose deployment frontend --port=80 --name=frontend-svc -n mars",
+      "   kubectl expose deployment backend --port=8080 --name=backend-svc -n mars",
+      "   kubectl expose deployment database --port=5432 --name=db-svc -n mars",
+      "3. Label all resources with tier and security labels:",
+      "   kubectl label deployment frontend tier=frontend environment=production security-level=high -n mars",
+      "   kubectl label deployment backend tier=backend environment=production security-level=high -n mars",
+      "   kubectl label deployment database tier=database environment=production security-level=high -n mars",
+      "4. Create Network Policy manifests:",
+      "   - default-deny-all: blocks all ingress/egress",
+      "   - frontend-netpol: allows external ingress, egress to backend",
+      "   - backend-netpol: allows ingress from frontend, egress to database",
+      "   - database-netpol: allows ingress from backend only",
+      "5. Create test pods and validation job:",
+      "   kubectl run network-test-frontend --image=busybox --sleep=3600 -n mars",
+      "   kubectl run network-test-backend --image=busybox --sleep=3600 -n mars",
+      "6. Apply all policies and verify traffic flow restrictions"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get networkpolicy default-deny-all -n mars -o jsonpath='{.spec.policyTypes[0]}'",
+      "expected": "Ingress",
+      "points": 1,
+      "description": "Default deny policy should block ingress traffic"
+    },
+    {
+      "command": "kubectl get networkpolicy frontend-netpol -n mars -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expected": "frontend",
+      "points": 1,
+      "description": "Frontend policy should target frontend tier"
+    },
+    {
+      "command": "kubectl get networkpolicy backend-netpol -n mars -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expected": "frontend",
+      "points": 1,
+      "description": "Backend policy should allow ingress from frontend tier only"
+    },
+    {
+      "command": "kubectl get networkpolicy database-netpol -n mars -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expected": "backend",
+      "points": 1,
+      "description": "Database policy should allow ingress from backend tier only"
+    },
+    {
+      "command": "kubectl get deployment frontend -n mars -o jsonpath='{.metadata.labels.security-level}'",
+      "expected": "high",
+      "points": 1,
+      "description": "Frontend should have security-level=high label"
+    },
+    {
+      "command": "kubectl get networkpolicies -n mars --no-headers | wc -l",
+      "expected": "5",
+      "points": 1,
+      "description": "Should have 5 network policies configured"
+    },
+    {
+      "command": "kubectl get service frontend-svc -n mars -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Frontend service should be exposed on port 80"
+    },
+    {
+      "command": "kubectl get pod network-test-frontend -n mars -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Network test pod should be running"
+    },
+    {
+      "command": "kubectl get job network-policy-tester -n mars -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Network policy tester should complete successfully"
+    }
+  ]
+}

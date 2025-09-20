@@ -1,0 +1,95 @@
+{
+  "id": "ckad-a-005",
+  "title": "Service Discovery and Networking",
+  "description": "Set up a complete service discovery scenario in namespace ||saturn||:\n\n1. Create a **backend** Deployment:\n   - Name: ||backend-app||\n   - Image: ||nginx:1.21||\n   - 2 replicas\n   - Labels: ||app=backend, tier=api||\n   - Port: 8080\n\n2. Create a **frontend** Deployment:\n   - Name: ||frontend-app||\n   - Image: ||nginx:1.21||\n   - 3 replicas\n   - Labels: ||app=frontend, tier=web||\n   - Environment variable ||BACKEND_URL|| that references the backend service DNS name\n\n3. Create Services:\n   - ||backend-service||: ClusterIP, port 80 → 8080, select ||app=backend||\n   - ||frontend-service||: NodePort, port 80 → 80, select ||app=frontend||\n\n4. Test service discovery by exec into a frontend pod and curl the backend service using its DNS name.\n\nSave the DNS resolution test output to ||/opt/course/005/dns-test.txt||",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Services & Networking",
+  "tags": [
+    "service-discovery",
+    "dns",
+    "services",
+    "networking",
+    "deployment",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create backend deployment:",
+      "   kubectl create deployment backend-app --image=nginx:1.21 --replicas=2 -n saturn",
+      "   kubectl label deployment backend-app tier=api -n saturn",
+      "2. Create frontend deployment:",
+      "   kubectl create deployment frontend-app --image=nginx:1.21 --replicas=3 -n saturn",
+      "   kubectl label deployment frontend-app tier=web -n saturn",
+      "3. Create backend service:",
+      "   kubectl expose deployment backend-app --name=backend-service --port=80 --target-port=8080 -n saturn",
+      "4. Create frontend service:",
+      "   kubectl expose deployment frontend-app --name=frontend-service --port=80 --type=NodePort -n saturn",
+      "5. Update frontend deployment with BACKEND_URL env var:",
+      "   kubectl set env deployment/frontend-app BACKEND_URL=http://backend-service.saturn.svc.cluster.local -n saturn",
+      "6. Test DNS resolution:",
+      "   kubectl exec -it deployment/frontend-app -n saturn -- nslookup backend-service.saturn.svc.cluster.local > /opt/course/005/dns-test.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment backend-app -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Backend should have 2 replicas"
+    },
+    {
+      "command": "kubectl get deployment frontend-app -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Frontend should have 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment backend-app -n saturn -o jsonpath='{.metadata.labels.tier}'",
+      "expected": "api",
+      "points": 1,
+      "description": "Backend should have tier=api label"
+    },
+    {
+      "command": "kubectl get service backend-service -n saturn -o jsonpath='{.spec.type}'",
+      "expected": "ClusterIP",
+      "points": 1,
+      "description": "Backend service should be ClusterIP"
+    },
+    {
+      "command": "kubectl get service frontend-service -n saturn -o jsonpath='{.spec.type}'",
+      "expected": "NodePort",
+      "points": 1,
+      "description": "Frontend service should be NodePort"
+    },
+    {
+      "command": "kubectl get service backend-service -n saturn -o jsonpath='{.spec.ports[0].targetPort}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Backend service should target port 8080"
+    },
+    {
+      "command": "kubectl get deployment frontend-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"BACKEND_URL\")].value}'",
+      "expected": "http://backend-service.saturn.svc.cluster.local",
+      "points": 2,
+      "description": "Frontend should have correct BACKEND_URL environment variable"
+    },
+    {
+      "command": "test -f /opt/course/005/dns-test.txt",
+      "expected": "0",
+      "points": 1,
+      "description": "DNS test output file should exist"
+    }
+  ]
+}

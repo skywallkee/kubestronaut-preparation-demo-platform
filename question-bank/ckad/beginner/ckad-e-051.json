@@ -1,0 +1,50 @@
+{
+  "id": "ckad-e-051",
+  "title": "Create a ReplicaSet",
+  "description": "Create a ReplicaSet named ||web-rs|| with ||2|| replicas using image ||nginx:1.21|| in Namespace ||default||. Set the selector to match pods with label ||app=web||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Design and Build",
+  "tags": [
+    "replicasets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "replicasets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ReplicaSet YAML:",
+      "   kubectl create replicaset web-rs --image=nginx:1.21 --replicas=2 --dry-run=client -o yaml > web-rs.yaml",
+      "2. Edit YAML to set proper selector (app=web)",
+      "3. Apply the ReplicaSet:",
+      "   kubectl apply -f web-rs.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get replicaset web-rs -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "ReplicaSet should be configured for 2 replicas"
+    },
+    {
+      "command": "kubectl get replicaset web-rs -o jsonpath='{.status.readyReplicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "All 2 replicas should be ready"
+    },
+    {
+      "command": "kubectl get replicaset web-rs -o jsonpath='{.spec.selector.matchLabels.app}'",
+      "expected": "web",
+      "points": 1,
+      "description": "ReplicaSet should have correct selector"
+    }
+  ]
+}

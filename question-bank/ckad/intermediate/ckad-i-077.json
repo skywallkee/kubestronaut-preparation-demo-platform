@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-077",
+  "title": "Service Discovery with Logging and Container Image Management",
+  "description": "Deploy a microservices logging infrastructure in the mars namespace where log collectors discover target services using DNS. Implement container image management with version control and configure centralized logging with proper image lifecycle management.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["dns-service-discovery", "logging-monitoring", "container-images", "services"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy log collector using ||fluentd:v1.15|| with ||IfNotPresent|| pull policy"
+    },
+    {
+      "step": 2,
+      "description": "Deploy log aggregator using ||elasticsearch:7.17|| with ||Always|| pull policy"
+    },
+    {
+      "step": 3,
+      "description": "Deploy log dashboard using ||kibana:7.17|| with ||Never|| pull policy (assuming pre-pulled)"
+    },
+    {
+      "step": 4,
+      "description": "Configure services for each component with DNS-based discovery"
+    },
+    {
+      "step": 5,
+      "description": "Set up environment variables for service discovery using FQDNs"
+    },
+    {
+      "step": 6,
+      "description": "Configure log routing: collector → aggregator → dashboard"
+    },
+    {
+      "step": 7,
+      "description": "Verify DNS resolution, log flow, and image version management"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment log-collector -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "fluentd:v1.15",
+      "description": "Verify log collector image version",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-aggregator -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "elasticsearch:7.17",
+      "description": "Verify log aggregator image version",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-collector -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "IfNotPresent",
+      "description": "Verify collector image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-aggregator -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "Always",
+      "description": "Verify aggregator image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-dashboard -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "Never",
+      "description": "Verify dashboard image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service log-aggregator-svc -n mars -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify log aggregator service",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment log-collector -n mars -o jsonpath='{.spec.template.spec.containers[0].env[0].value}' | grep log-aggregator-svc.mars.svc.cluster.local",
+      "expectedOutput": "log-aggregator-svc.mars.svc.cluster.local",
+      "description": "Verify DNS-based service discovery",
+      "points": 2
+    },
+    {
+      "command": "kubectl exec deployment/log-collector -n mars -- nslookup log-aggregator-svc.mars.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS service discovery works",
+      "points": 3
+    }
+  ]
+}

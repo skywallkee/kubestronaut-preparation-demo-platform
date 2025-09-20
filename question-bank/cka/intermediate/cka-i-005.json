@@ -1,0 +1,99 @@
+{
+  "id": "cka-i-005",
+  "title": "Cluster Upgrade Procedures",
+  "description": "Perform a controlled upgrade of your Kubernetes cluster components. Your tasks are:\n\n1. Check the current cluster version and available upgrade versions\n2. Upgrade the control plane components first (kubeadm, kubelet, kubectl) to version ||1.28.5||\n3. Drain the master node ||master-node|| safely before upgrading\n4. Upgrade kubeadm on the master node and apply the cluster upgrade\n5. Restart the kubelet service and uncordon the master node\n6. Create a verification pod named ||upgrade-test|| in namespace ||mars|| to ensure the cluster is functional\n7. Document the upgrade process and verify no workloads were disrupted",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Cluster Management",
+  "tags": [
+    "cluster-upgrade",
+    "kubeadm",
+    "drain",
+    "version-management",
+    "maintenance",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "nodes",
+      "pods"
+    ],
+    "prerequisites": [
+      "Cluster running older Kubernetes version",
+      "apt/yum package manager available"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check current cluster version:",
+      "   kubectl version --short",
+      "   kubectl get nodes",
+      "2. Check available versions:",
+      "   apt list -a kubeadm (on Ubuntu/Debian)",
+      "   yum list --showduplicates kubeadm (on RHEL/CentOS)",
+      "3. Drain the master node:",
+      "   kubectl drain master-node --ignore-daemonsets --delete-emptydir-data",
+      "4. Upgrade kubeadm on master:",
+      "   apt-mark unhold kubeadm && apt-get update && apt-get install -y kubeadm=1.28.5-00 && apt-mark hold kubeadm",
+      "5. Verify kubeadm version:",
+      "   kubeadm version",
+      "6. Plan the upgrade:",
+      "   kubeadm upgrade plan",
+      "7. Apply the upgrade:",
+      "   kubeadm upgrade apply v1.28.5",
+      "8. Upgrade kubelet and kubectl:",
+      "   apt-mark unhold kubelet kubectl && apt-get update && apt-get install -y kubelet=1.28.5-00 kubectl=1.28.5-00 && apt-mark hold kubelet kubectl",
+      "9. Restart kubelet:",
+      "   sudo systemctl daemon-reload",
+      "   sudo systemctl restart kubelet",
+      "10. Uncordon the master node:",
+      "    kubectl uncordon master-node",
+      "11. Create verification pod:",
+      "    kubectl run upgrade-test --image=nginx -n mars",
+      "12. Verify cluster health:",
+      "    kubectl get nodes",
+      "    kubectl get pods --all-namespaces"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl version --short | grep Server | grep v1.28.5",
+      "expected": ".*v1.28.5.*",
+      "points": 3,
+      "description": "Cluster should be upgraded to version 1.28.5"
+    },
+    {
+      "command": "kubectl get node master-node -o jsonpath='{.spec.unschedulable}'",
+      "expected": "null|^$",
+      "points": 2,
+      "description": "Master node should be uncordoned and schedulable"
+    },
+    {
+      "command": "kubectl get node master-node -o jsonpath='{.status.nodeInfo.kubeletVersion}'",
+      "expected": "v1.28.5",
+      "points": 2,
+      "description": "Kubelet should be upgraded to version 1.28.5"
+    },
+    {
+      "command": "kubectl get pod upgrade-test -n mars -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Verification pod should be running successfully"
+    },
+    {
+      "command": "kubectl get nodes | grep Ready | wc -l",
+      "expected": "[0-9]+",
+      "points": 1,
+      "description": "All nodes should remain Ready after upgrade"
+    },
+    {
+      "command": "kubectl get pods -n kube-system | grep -E '(kube-apiserver|kube-controller-manager|kube-scheduler)' | grep Running | wc -l",
+      "expected": "[3-9]",
+      "points": 1,
+      "description": "Control plane components should be running after upgrade"
+    }
+  ]
+}

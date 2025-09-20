@@ -1,0 +1,99 @@
+{
+  "id": "ckad-i-005",
+  "title": "Multi-container Pods with Shared Volumes",
+  "description": "Create a Pod named ||shared-pod|| in namespace ||saturn|| with two containers that share data through a volume:\n\n**Producer Container:**\n- Name: ||producer||\n- Image: ||busybox:1.35||\n- Command: Write current date to ||/shared/data.txt|| every 5 seconds\n- Command: ||sh -c \"while true; do date > /shared/data.txt; sleep 5; done\"||\n\n**Consumer Container:**\n- Name: ||consumer||\n- Image: ||busybox:1.35||\n- Command: Read from ||/shared/data.txt|| every 10 seconds\n- Command: ||sh -c \"while true; do cat /shared/data.txt; sleep 10; done\"||\n\n**Shared Volume:**\n- Type: ||emptyDir||\n- Mount path: ||/shared|| (same for both containers)\n\nVerify both containers can access the shared data.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Multi-container",
+  "tags": [
+    "multi-container",
+    "emptydir",
+    "volume",
+    "sidecar",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create multi-container Pod YAML:",
+      "   cat <<EOF > shared-pod.yaml",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: shared-pod",
+      "     namespace: saturn",
+      "   spec:",
+      "     containers:",
+      "     - name: producer",
+      "       image: busybox:1.35",
+      "       command: ['sh', '-c', 'while true; do date > /shared/data.txt; sleep 5; done']",
+      "       volumeMounts:",
+      "       - name: shared-volume",
+      "         mountPath: /shared",
+      "     - name: consumer",
+      "       image: busybox:1.35",
+      "       command: ['sh', '-c', 'while true; do cat /shared/data.txt; sleep 10; done']",
+      "       volumeMounts:",
+      "       - name: shared-volume",
+      "         mountPath: /shared",
+      "     volumes:",
+      "     - name: shared-volume",
+      "       emptyDir: {}",
+      "   EOF",
+      "2. Apply the Pod:",
+      "   kubectl apply -f shared-pod.yaml",
+      "3. Wait for pod to be ready:",
+      "   kubectl wait --for=condition=Ready pod/shared-pod -n saturn --timeout=60s",
+      "4. Verify producer is writing:",
+      "   kubectl exec -n saturn shared-pod -c producer -- cat /shared/data.txt",
+      "5. Verify consumer can read:",
+      "   kubectl exec -n saturn shared-pod -c consumer -- cat /shared/data.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod shared-pod -n saturn -o jsonpath='{.spec.containers[*].name}' | tr ' ' '\n' | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Pod should have 2 containers"
+    },
+    {
+      "command": "kubectl get pod shared-pod -n saturn -o jsonpath='{.spec.containers[0].name}'",
+      "expected": "producer",
+      "points": 1,
+      "description": "First container should be named producer"
+    },
+    {
+      "command": "kubectl get pod shared-pod -n saturn -o jsonpath='{.spec.containers[1].name}'",
+      "expected": "consumer",
+      "points": 1,
+      "description": "Second container should be named consumer"
+    },
+    {
+      "command": "kubectl get pod shared-pod -n saturn -o jsonpath='{.spec.volumes[0].emptyDir}'",
+      "expected": "{}",
+      "points": 1,
+      "description": "Pod should use emptyDir volume"
+    },
+    {
+      "command": "kubectl exec -n saturn shared-pod -c producer -- test -f /shared/data.txt && echo 'exists'",
+      "expected": "exists",
+      "points": 1,
+      "description": "Producer should create the data file"
+    },
+    {
+      "command": "kubectl exec -n saturn shared-pod -c consumer -- cat /shared/data.txt | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Consumer should be able to read the shared file"
+    }
+  ]
+}

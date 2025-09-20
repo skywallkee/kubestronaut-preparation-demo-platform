@@ -1,0 +1,73 @@
+{
+  "id": "ckad-a-074",
+  "title": "Advanced DNS and Service Registration",
+  "description": "Implement sophisticated ||DNS management|| and ||service registration|| patterns for complex networking scenarios. Create custom DNS configurations, implement ||DNS-based service discovery||, configure ||external DNS|| integration for cloud provider DNS, and set up ||CoreDNS|| customization for advanced resolution patterns. Include scenarios with ||DNS caching||, ||custom DNS zones||, ||service mesh DNS integration||, and ||multi-cluster DNS|| federation. Demonstrate troubleshooting DNS resolution issues and performance optimization.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Services & Networking",
+  "tags": ["dns", "coredns", "external-dns", "service-registration", "dns-caching", "multi-cluster", "advanced"],
+  "infrastructure": {
+    "namespaces": ["dns-advanced"],
+    "resources": ["Service", "Deployment", "ConfigMap", "CustomResourceDefinition"],
+    "prerequisites": ["External DNS controller and DNS provider access"]
+  },
+  "solution": {
+    "steps": [
+      "# Create dns-advanced namespace\nkubectl create namespace dns-advanced",
+
+      "# Configure CoreDNS with custom DNS zones\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: coredns-custom\n  namespace: kube-system\ndata:\n  custom.server: |\n    custom.local:53 {\n        hosts {\n            192.168.1.100 api.custom.local\n            192.168.1.101 db.custom.local\n            fallthrough\n        }\n        forward . 8.8.8.8 8.8.4.4\n        log\n        errors\n    }\nEOF",
+
+      "# Deploy DNS client for testing\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: dns-client\n  namespace: dns-advanced\n  labels:\n    app: dns-client\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: dns-client\n  template:\n    metadata:\n      labels:\n        app: dns-client\n    spec:\n      containers:\n      - name: dns-client\n        image: busybox:1.35\n        command: ['sleep', '3600']\n        dnsPolicy: ClusterFirst\nEOF",
+
+      "# Create webapp deployment for service discovery\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webapp\n  namespace: dns-advanced\n  labels:\n    app: webapp\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: webapp\n  template:\n    metadata:\n      labels:\n        app: webapp\n    spec:\n      containers:\n      - name: webapp\n        image: nginx:1.21\n        ports:\n        - containerPort: 80\nEOF",
+
+      "# Create headless service for advanced service discovery\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: webapp-headless\n  namespace: dns-advanced\n  labels:\n    app: webapp\nspec:\n  clusterIP: None\n  selector:\n    app: webapp\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    protocol: TCP\nEOF",
+
+      "# Set up External DNS service\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: api-external\n  namespace: dns-advanced\n  annotations:\n    external-dns.alpha.kubernetes.io/hostname: api.example.com\n    external-dns.alpha.kubernetes.io/ttl: \"300\"\n  labels:\n    app: webapp\nspec:\n  type: LoadBalancer\n  selector:\n    app: webapp\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    protocol: TCP\nEOF",
+
+      "# Deploy DNS cache pod with custom DNS policy\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: dns-cache\n  namespace: dns-advanced\n  labels:\n    app: dns-cache\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: dns-cache\n  template:\n    metadata:\n      labels:\n        app: dns-cache\n    spec:\n      hostNetwork: true\n      dnsPolicy: ClusterFirstWithHostNet\n      containers:\n      - name: dns-cache\n        image: k8s.gcr.io/dns/k8s-dns-node-cache:1.21.1\n        ports:\n        - containerPort: 53\n          protocol: UDP\n        - containerPort: 53\n          protocol: TCP\nEOF",
+
+      "# Create External DNS deployment\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: external-dns\n  namespace: dns-advanced\n  labels:\n    app: external-dns\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: external-dns\n  template:\n    metadata:\n      labels:\n        app: external-dns\n    spec:\n      containers:\n      - name: external-dns\n        image: k8s.gcr.io/external-dns/external-dns:v0.12.0\n        args:\n        - --source=service\n        - --provider=aws-route53\n        - --policy=sync\n        - --interval=1m\n        - --log-level=info\n        env:\n        - name: AWS_DEFAULT_REGION\n          value: us-east-1\nEOF",
+
+      "# Test DNS resolution and service discovery\nkubectl exec -n dns-advanced deploy/dns-client -- nslookup webapp-headless.dns-advanced.svc.cluster.local\nkubectl exec -n dns-advanced deploy/dns-client -- dig +short webapp-headless.dns-advanced.svc.cluster.local\nkubectl exec -n dns-advanced deploy/dns-client -- nslookup custom.local"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap coredns -n kube-system -o jsonpath='{.data.Corefile}' | grep 'custom.local'",
+      "expected": "custom-zone",
+      "points": 3,
+      "description": "CoreDNS configured with custom DNS zone"
+    },
+    {
+      "command": "kubectl get service api-external -n dns-advanced -o jsonpath='{.metadata.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname}'",
+      "expected": "api.example.com",
+      "points": 3,
+      "description": "Service has External DNS annotation"
+    },
+    {
+      "command": "kubectl exec -n dns-advanced deploy/dns-client -- nslookup custom.local",
+      "expected": "resolved-ip",
+      "points": 3,
+      "description": "Custom DNS zone resolves correctly"
+    },
+    {
+      "command": "kubectl get pod -n dns-advanced -l app=dns-cache -o jsonpath='{.items[0].spec.dnsPolicy}'",
+      "expected": "ClusterFirstWithHostNet",
+      "points": 2,
+      "description": "DNS caching pod has appropriate DNS policy"
+    },
+    {
+      "command": "kubectl exec -n dns-advanced deploy/dns-client -- dig +short _http._tcp.webapp.dns-advanced.svc.cluster.local SRV",
+      "expected": "srv-record",
+      "points": 2,
+      "description": "SRV records work for service discovery"
+    },
+    {
+      "command": "kubectl logs -n dns-advanced deploy/external-dns | grep -c 'CREATE'",
+      "expected": "3",
+      "points": 1,
+      "description": "External DNS creates DNS records"
+    }
+  ]
+}

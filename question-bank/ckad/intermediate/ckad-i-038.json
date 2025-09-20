@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-038",
+  "title": "Application Scaling with Network Policies and Ingress",
+  "description": "Create a scalable web application deployment in the saturn namespace with horizontal pod autoscaling. Implement network policies to restrict traffic and configure an Ingress controller to expose the application. The application should scale based on CPU utilization.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["application-scaling", "network-policies", "ingress", "deployments-rolling-updates", "services"],
+  "points": 11,
+  "timeMinutes": 25,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a Deployment named ||scalable-web|| with initial ||2|| replicas"
+    },
+    {
+      "step": 2,
+      "description": "Configure resource requests for CPU ||100m|| and memory ||128Mi||"
+    },
+    {
+      "step": 3,
+      "description": "Create an HPA to scale between ||2|| and ||10|| pods at ||70%|| CPU utilization"
+    },
+    {
+      "step": 4,
+      "description": "Create a NetworkPolicy to allow traffic only from pods with label ||role=frontend||"
+    },
+    {
+      "step": 5,
+      "description": "Create a Service to expose the deployment on port ||80||"
+    },
+    {
+      "step": 6,
+      "description": "Configure an Ingress resource with host ||scalable-web.local|| and path ||/||"
+    },
+    {
+      "step": 7,
+      "description": "Verify the HPA and network policy are functioning correctly"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment scalable-web -n saturn -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "2",
+      "description": "Verify initial replica count",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa scalable-web-hpa -n saturn -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "10",
+      "description": "Verify HPA max replicas",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa scalable-web-hpa -n saturn -o jsonpath='{.spec.targetCPUUtilizationPercentage}'",
+      "expectedOutput": "70",
+      "description": "Verify HPA CPU target",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy web-access-policy -n saturn -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+      "expectedOutput": "scalable-web",
+      "description": "Verify NetworkPolicy targets correct pods",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress scalable-web-ingress -n saturn -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "scalable-web.local",
+      "description": "Verify Ingress host configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service scalable-web-svc -n saturn -o jsonpath='{.spec.ports[0].port}'",
+      "expectedOutput": "80",
+      "description": "Verify service port configuration",
+      "points": 2
+    }
+  ]
+}

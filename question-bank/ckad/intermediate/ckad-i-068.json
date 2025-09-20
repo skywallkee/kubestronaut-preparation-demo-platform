@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-068",
+  "title": "Multi-Container Pod with Ingress and Service Discovery",
+  "description": "Deploy a complex application stack in the pluto namespace with a multi-container pod containing web server, API gateway, and metrics collector. Configure ingress routing with path-based traffic distribution and implement service discovery for backend services.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["multi-container-pods", "ingress", "dns-service-discovery", "services"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create multi-container pod ||app-stack|| with ||nginx||, ||envoy||, and ||prometheus|| containers"
+    },
+    {
+      "step": 2,
+      "description": "Configure nginx as web server on port ||80||, envoy as API gateway on port ||8080||"
+    },
+    {
+      "step": 3,
+      "description": "Deploy backend services that the API gateway will discover via DNS"
+    },
+    {
+      "step": 4,
+      "description": "Configure Ingress with host ||app-stack.local|| and path routing: ||/|| to nginx, ||/api|| to envoy"
+    },
+    {
+      "step": 5,
+      "description": "Set up service discovery using environment variables with backend service FQDNs"
+    },
+    {
+      "step": 6,
+      "description": "Configure prometheus to collect metrics from both nginx and envoy"
+    },
+    {
+      "step": 7,
+      "description": "Verify ingress routing and service discovery functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pod app-stack -n pluto -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "3",
+      "description": "Verify pod has 3 containers",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod app-stack -n pluto -o jsonpath='{.spec.containers[0].ports[0].containerPort}'",
+      "expectedOutput": "80",
+      "description": "Verify nginx container port",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod app-stack -n pluto -o jsonpath='{.spec.containers[1].ports[0].containerPort}'",
+      "expectedOutput": "8080",
+      "description": "Verify envoy container port",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service backend-service -n pluto -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify backend service exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get ingress app-stack-ingress -n pluto -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "app-stack.local",
+      "description": "Verify Ingress host configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress app-stack-ingress -n pluto -o jsonpath='{.spec.rules[0].http.paths[1].path}'",
+      "expectedOutput": "/api",
+      "description": "Verify Ingress API path routing",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod app-stack -n pluto -o jsonpath='{.spec.containers[1].env[0].value}' | grep backend-service.pluto.svc.cluster.local",
+      "expectedOutput": "backend-service.pluto.svc.cluster.local",
+      "description": "Verify service discovery FQDN configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl exec app-stack -n pluto -c envoy -- nslookup backend-service.pluto.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS service discovery works",
+      "points": 1
+    }
+  ]
+}

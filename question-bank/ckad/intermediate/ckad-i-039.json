@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-039",
+  "title": "DNS Service Discovery with Volume Types and Debugging",
+  "description": "Deploy a microservices application in the venus namespace with multiple services that communicate using DNS service discovery. Configure different volume types for data persistence and implement debugging tools to troubleshoot inter-service communication issues.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["dns-service-discovery", "volume-types", "debugging-troubleshooting", "services", "container-images"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a frontend deployment that connects to backend service via DNS name ||backend-svc.venus.svc.cluster.local||"
+    },
+    {
+      "step": 2,
+      "description": "Create a backend deployment with an emptyDir volume for temporary data"
+    },
+    {
+      "step": 3,
+      "description": "Create a database deployment with a hostPath volume for persistent data"
+    },
+    {
+      "step": 4,
+      "description": "Create ClusterIP services for backend and database with appropriate ports"
+    },
+    {
+      "step": 5,
+      "description": "Add a debug container with network tools (nslookup, curl) for troubleshooting"
+    },
+    {
+      "step": 6,
+      "description": "Configure environment variables in frontend to use DNS service discovery"
+    },
+    {
+      "step": 7,
+      "description": "Test DNS resolution and service connectivity from the debug container"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.spec.containers[0].env[0].value}' | grep backend-svc",
+      "expectedOutput": "backend-svc",
+      "description": "Verify frontend uses DNS for backend connection",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment backend -n venus -o jsonpath='{.spec.template.spec.volumes[0].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify backend uses emptyDir volume",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment database -n venus -o jsonpath='{.spec.template.spec.volumes[0].hostPath.path}'",
+      "expectedOutput": "/data/db",
+      "description": "Verify database uses hostPath volume",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service backend-svc -n venus -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify backend service type",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod debug-pod -n venus -o jsonpath='{.spec.containers[0].image}' | grep busybox",
+      "expectedOutput": "busybox",
+      "description": "Verify debug pod exists with network tools",
+      "points": 2
+    },
+    {
+      "command": "kubectl exec debug-pod -n venus -- nslookup backend-svc.venus.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS resolution works",
+      "points": 2
+    }
+  ]
+}

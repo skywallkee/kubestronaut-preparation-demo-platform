@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-062",
+  "title": "Helm Deployment with Security Context and Resource Management",
+  "description": "Deploy a secure microservices application using Helm in the saturn namespace. Configure security contexts to run containers with minimal privileges, implement resource quotas and limits, and ensure the Helm chart follows security best practices.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["helm-package-manager", "security-contexts", "resource-management", "services"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create Helm chart ||secure-microservices|| with proper security configurations"
+    },
+    {
+      "step": 2,
+      "description": "Configure security context in values.yaml: ||runAsNonRoot: true||, ||runAsUser: 1001||"
+    },
+    {
+      "step": 3,
+      "description": "Set resource quotas in namespace: CPU ||2|| cores, Memory ||4Gi||, Storage ||10Gi||"
+    },
+    {
+      "step": 4,
+      "description": "Configure container resource limits: CPU ||200m||, Memory ||256Mi|| per container"
+    },
+    {
+      "step": 5,
+      "description": "Deploy multiple services: ||auth||, ||api||, ||data|| with proper service definitions"
+    },
+    {
+      "step": 6,
+      "description": "Install the Helm chart with security-hardened values"
+    },
+    {
+      "step": 7,
+      "description": "Verify security contexts and resource constraints are properly applied"
+    }
+  ],
+  "validations": [
+    {
+      "command": "helm list -n saturn | grep secure-microservices",
+      "expectedOutput": "secure-microservices",
+      "description": "Verify Helm release is installed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get resourcequota app-quota -n saturn -o jsonpath='{.spec.hard.\"requests.cpu\"}'",
+      "expectedOutput": "2",
+      "description": "Verify ResourceQuota CPU limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment auth-service -n saturn -o jsonpath='{.spec.template.spec.securityContext.runAsNonRoot}'",
+      "expectedOutput": "true",
+      "description": "Verify runAsNonRoot security setting",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment auth-service -n saturn -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "1001",
+      "description": "Verify runAsUser security setting",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment api-service -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}'",
+      "expectedOutput": "200m",
+      "description": "Verify CPU resource limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment data-service -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expectedOutput": "256Mi",
+      "description": "Verify memory resource limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service auth-service -n saturn -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "auth-service",
+      "description": "Verify auth service exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service api-service -n saturn -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "api-service",
+      "description": "Verify API service exists",
+      "points": 1
+    }
+  ]
+}

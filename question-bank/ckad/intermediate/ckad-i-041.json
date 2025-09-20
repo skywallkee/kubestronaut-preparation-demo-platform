@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-041",
+  "title": "Rolling Updates with Security Context and Resource Management",
+  "description": "Perform a rolling update of a web application deployment in the mars namespace. Configure security contexts to run containers with specific user IDs and implement resource quotas at the namespace level. Ensure zero-downtime deployment during the update process.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["deployments-rolling-updates", "security-contexts", "resource-management", "container-images", "jobs-cronjobs"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a ResourceQuota in mars namespace limiting CPU to ||2|| cores and memory to ||4Gi||"
+    },
+    {
+      "step": 2,
+      "description": "Deploy initial web application using image ||nginx:1.20|| with ||3|| replicas"
+    },
+    {
+      "step": 3,
+      "description": "Configure security context to run as user ID ||1001|| and group ID ||1001||"
+    },
+    {
+      "step": 4,
+      "description": "Set resource requests and limits within the quota boundaries"
+    },
+    {
+      "step": 5,
+      "description": "Perform rolling update to ||nginx:1.21|| with strategy ||RollingUpdate||"
+    },
+    {
+      "step": 6,
+      "description": "Configure ||maxUnavailable: 1|| and ||maxSurge: 1|| for controlled rollout"
+    },
+    {
+      "step": 7,
+      "description": "Verify the update completes successfully without service interruption"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get resourcequota web-quota -n mars -o jsonpath='{.spec.hard.\"requests.cpu\"}'",
+      "expectedOutput": "2",
+      "description": "Verify ResourceQuota CPU limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "1001",
+      "description": "Verify security context user ID",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "nginx:1.21",
+      "description": "Verify image was updated to nginx:1.21",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}'",
+      "expectedOutput": "1",
+      "description": "Verify rolling update strategy maxUnavailable",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.spec.strategy.rollingUpdate.maxSurge}'",
+      "expectedOutput": "1",
+      "description": "Verify rolling update strategy maxSurge",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.status.readyReplicas}'",
+      "expectedOutput": "3",
+      "description": "Verify all replicas are ready after update",
+      "points": 1
+    }
+  ]
+}

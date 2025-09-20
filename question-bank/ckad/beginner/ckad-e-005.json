@@ -1,0 +1,54 @@
+{
+  "id": "ckad-e-005",
+  "title": "Expose a Deployment with ClusterIP Service",
+  "description": "Create a ClusterIP Service named ||web-svc|| that exposes the ||web-deploy|| Deployment on port ||80||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "services",
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Expose deployment:",
+      "   kubectl expose deployment web-deploy --name=web-svc --port=80 --target-port=80 -n jupiter",
+      "2. Verify service:",
+      "   kubectl get service web-svc -n jupiter",
+      "3. Check endpoints:",
+      "   kubectl get endpoints web-svc -n jupiter"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service web-svc -n jupiter -o jsonpath='{.spec.type}'",
+      "expected": "ClusterIP",
+      "points": 1.5,
+      "description": "Service should be ClusterIP type"
+    },
+    {
+      "command": "kubectl get service web-svc -n jupiter -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl get endpoints web-svc -n jupiter -o jsonpath='{.subsets[0].addresses[0].targetRef.name}' | grep -q web-deploy",
+      "expected": "0",
+      "points": 0.5,
+      "description": "Service should have endpoints from web-deploy pods"
+    }
+  ]
+}

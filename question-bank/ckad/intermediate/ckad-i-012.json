@@ -1,0 +1,82 @@
+{
+  "id": "ckad-i-012",
+  "title": "Horizontal Pod Autoscaler Configuration",
+  "description": "Set up automatic scaling for an application based on CPU and memory metrics in namespace ||saturn||:\n\n1. Create a Deployment named ||scalable-app|| with:\n   - Image: ||nginx:1.21||\n   - 1 replica initially\n   - Resource requests: CPU ||100m||, Memory ||128Mi||\n   - Resource limits: CPU ||200m||, Memory ||256Mi||\n\n2. Create a HorizontalPodAutoscaler named ||app-hpa|| with:\n   - Target: ||scalable-app|| deployment\n   - Min replicas: ||1||\n   - Max replicas: ||5||\n   - CPU utilization target: ||70%||\n   - Memory utilization target: ||80%||\n\n3. Create a Service to expose the deployment\n\n4. Generate load to test the autoscaling behavior",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Application Design and Build",
+  "tags": [
+    "application-scaling",
+    "hpa",
+    "resource-management",
+    "deployment",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "horizontalpodautoscalers"
+    ],
+    "prerequisites": [
+      "metrics-server"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment with resource specifications:",
+      "   kubectl create deployment scalable-app --image=nginx:1.21 --replicas=1 -n saturn",
+      "2. Edit deployment to add resource requests and limits:",
+      "   kubectl patch deployment scalable-app -n saturn -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"nginx\",\"resources\":{\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"},\"limits\":{\"cpu\":\"200m\",\"memory\":\"256Mi\"}}}]}}}}'",
+      "3. Create HorizontalPodAutoscaler with CPU and memory targets:",
+      "   kubectl autoscale deployment scalable-app --min=1 --max=5 --cpu-percent=70 -n saturn",
+      "4. Patch HPA to add memory target:",
+      "   kubectl patch hpa scalable-app -n saturn -p '{\"spec\":{\"metrics\":[{\"type\":\"Resource\",\"resource\":{\"name\":\"cpu\",\"target\":{\"type\":\"Utilization\",\"averageUtilization\":70}}},{\"type\":\"Resource\",\"resource\":{\"name\":\"memory\",\"target\":{\"type\":\"Utilization\",\"averageUtilization\":80}}}]}}'",
+      "5. Create service to expose the deployment:",
+      "   kubectl expose deployment scalable-app --port=80 --target-port=80 -n saturn",
+      "6. Verify HPA is working:",
+      "   kubectl get hpa scalable-app -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment scalable-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Deployment should have CPU request of 100m"
+    },
+    {
+      "command": "kubectl get deployment scalable-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}'",
+      "expected": "128Mi",
+      "points": 1,
+      "description": "Deployment should have memory request of 128Mi"
+    },
+    {
+      "command": "kubectl get hpa scalable-app -n saturn -o jsonpath='{.spec.minReplicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "HPA should have minimum replicas set to 1"
+    },
+    {
+      "command": "kubectl get hpa scalable-app -n saturn -o jsonpath='{.spec.maxReplicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "HPA should have maximum replicas set to 5"
+    },
+    {
+      "command": "kubectl get hpa scalable-app -n saturn -o jsonpath='{.spec.metrics[?(@.resource.name==\"cpu\")].resource.target.averageUtilization}'",
+      "expected": "70",
+      "points": 2,
+      "description": "HPA should target 70% CPU utilization"
+    },
+    {
+      "command": "kubectl get hpa scalable-app -n saturn -o jsonpath='{.spec.metrics[?(@.resource.name==\"memory\")].resource.target.averageUtilization}'",
+      "expected": "80",
+      "points": 2,
+      "description": "HPA should target 80% memory utilization"
+    }
+  ]
+}

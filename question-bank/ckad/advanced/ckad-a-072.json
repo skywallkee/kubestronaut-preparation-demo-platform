@@ -1,0 +1,77 @@
+{
+  "id": "ckad-a-072",
+  "title": "Service Mesh and Advanced Traffic Management",
+  "description": "Implement advanced traffic management using ||service mesh|| technologies (Istio, Linkerd, or Consul Connect). Create a microservices architecture with sophisticated traffic policies including ||circuit breaking||, ||retry logic||, ||timeout configuration||, and ||traffic splitting||. Implement mutual TLS (mTLS) for service-to-service communication, configure traffic mirroring for testing, and set up advanced observability through service mesh metrics. Include scenarios with fault injection, progressive delivery, and service mesh federation.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "Services & Networking",
+  "tags": ["service-mesh", "istio", "traffic-management", "mtls", "circuit-breaker", "progressive-delivery", "advanced"],
+  "infrastructure": {
+    "namespaces": ["service-mesh"],
+    "resources": ["Deployment", "Service", "VirtualService", "DestinationRule"],
+    "prerequisites": ["Service mesh installed (Istio, Linkerd, etc.)"]
+  },
+  "solution": {
+    "steps": [
+      "# Create service-mesh namespace with Istio sidecar injection\nkubectl create namespace service-mesh\nkubectl label namespace service-mesh istio-injection=enabled",
+
+      "# Deploy frontend microservice\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: frontend\n  namespace: service-mesh\n  labels:\n    app: frontend\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: frontend\n  template:\n    metadata:\n      labels:\n        app: frontend\n        version: v1\n    spec:\n      containers:\n      - name: frontend\n        image: nginx:1.21\n        ports:\n        - containerPort: 80\n        env:\n        - name: BACKEND_URL\n          value: \"http://backend-service:8080\"\nEOF",
+
+      "# Deploy backend microservice with multiple versions\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: backend-v1\n  namespace: service-mesh\n  labels:\n    app: backend\n    version: v1\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: backend\n      version: v1\n  template:\n    metadata:\n      labels:\n        app: backend\n        version: v1\n    spec:\n      containers:\n      - name: backend\n        image: httpd:2.4\n        ports:\n        - containerPort: 80\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: backend-v2\n  namespace: service-mesh\n  labels:\n    app: backend\n    version: v2\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: backend\n      version: v2\n  template:\n    metadata:\n      labels:\n        app: backend\n        version: v2\n    spec:\n      containers:\n      - name: backend\n        image: httpd:2.4\n        ports:\n        - containerPort: 80\nEOF",
+
+      "# Create services for microservices\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: frontend-service\n  namespace: service-mesh\n  labels:\n    app: frontend\nspec:\n  selector:\n    app: frontend\n  ports:\n  - port: 80\n    targetPort: 80\n    name: http\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: backend-service\n  namespace: service-mesh\n  labels:\n    app: backend\nspec:\n  selector:\n    app: backend\n  ports:\n  - port: 8080\n    targetPort: 80\n    name: http\nEOF",
+
+      "# Configure VirtualService for traffic routing\nkubectl apply -f - <<EOF\napiVersion: networking.istio.io/v1beta1\nkind: VirtualService\nmetadata:\n  name: frontend-vs\n  namespace: service-mesh\nspec:\n  hosts:\n  - frontend-service\n  http:\n  - route:\n    - destination:\n        host: frontend-service\n        port:\n          number: 80\n    timeout: 30s\n    retries:\n      attempts: 3\n      perTryTimeout: 10s\nEOF",
+
+      "# Set up DestinationRule with circuit breaker\nkubectl apply -f - <<EOF\napiVersion: networking.istio.io/v1beta1\nkind: DestinationRule\nmetadata:\n  name: backend-dr\n  namespace: service-mesh\nspec:\n  host: backend-service\n  trafficPolicy:\n    circuitBreaker:\n      consecutiveErrors: 3\n      interval: 30s\n      baseEjectionTime: 30s\n      maxEjectionPercent: 50\n    tls:\n      mode: ISTIO_MUTUAL\n  subsets:\n  - name: v1\n    labels:\n      version: v1\n  - name: v2\n    labels:\n      version: v2\nEOF",
+
+      "# Configure DestinationRule for frontend with mTLS\nkubectl apply -f - <<EOF\napiVersion: networking.istio.io/v1beta1\nkind: DestinationRule\nmetadata:\n  name: frontend-dr\n  namespace: service-mesh\nspec:\n  host: frontend-service\n  trafficPolicy:\n    tls:\n      mode: ISTIO_MUTUAL\nEOF",
+
+      "# Configure traffic splitting for canary deployment\nkubectl apply -f - <<EOF\napiVersion: networking.istio.io/v1beta1\nkind: VirtualService\nmetadata:\n  name: canary-vs\n  namespace: service-mesh\nspec:\n  hosts:\n  - backend-service\n  http:\n  - match:\n    - headers:\n        canary:\n          exact: \"true\"\n    route:\n    - destination:\n        host: backend-service\n        subset: v2\n      weight: 100\n  - route:\n    - destination:\n        host: backend-service\n        subset: v1\n      weight: 90\n    - destination:\n        host: backend-service\n        subset: v2\n      weight: 10\nEOF",
+
+      "# Set up traffic mirroring for testing\nkubectl apply -f - <<EOF\napiVersion: networking.istio.io/v1beta1\nkind: VirtualService\nmetadata:\n  name: mirror-vs\n  namespace: service-mesh\nspec:\n  hosts:\n  - backend-service\n  http:\n  - route:\n    - destination:\n        host: backend-service\n        subset: v1\n    mirror:\n      host: backend-service\n      subset: v2\n    mirrorPercentage:\n      value: 50.0\nEOF",
+
+      "# Test fault injection for resilience\nkubectl apply -f - <<EOF\napiVersion: networking.istio.io/v1beta1\nkind: VirtualService\nmetadata:\n  name: fault-injection-vs\n  namespace: service-mesh\nspec:\n  hosts:\n  - backend-service\n  http:\n  - fault:\n      delay:\n        percentage:\n          value: 10.0\n        fixedDelay: 5s\n      abort:\n        percentage:\n          value: 5.0\n        httpStatus: 500\n    route:\n    - destination:\n        host: backend-service\n        subset: v1\nEOF",
+
+      "# Verify service mesh deployment\nkubectl get pods -n service-mesh\nkubectl get virtualservices -n service-mesh\nkubectl get destinationrules -n service-mesh"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get namespace service-mesh -o jsonpath='{.metadata.labels.istio-injection}'",
+      "expected": "enabled",
+      "points": 2,
+      "description": "Namespace has sidecar injection enabled"
+    },
+    {
+      "command": "kubectl get virtualservice frontend-vs -n service-mesh -o jsonpath='{.spec.http[0].route[0].destination.host}'",
+      "expected": "frontend-service",
+      "points": 3,
+      "description": "VirtualService routes traffic to frontend service"
+    },
+    {
+      "command": "kubectl get destinationrule backend-dr -n service-mesh -o jsonpath='{.spec.trafficPolicy.circuitBreaker.consecutiveErrors}'",
+      "expected": "3",
+      "points": 3,
+      "description": "DestinationRule has circuit breaker configured"
+    },
+    {
+      "command": "kubectl get pod -n service-mesh -l app=frontend -o jsonpath='{.items[0].spec.containers}' | jq length",
+      "expected": "2",
+      "points": 2,
+      "description": "Frontend pod has application and sidecar containers"
+    },
+    {
+      "command": "kubectl get virtualservice canary-vs -n service-mesh -o jsonpath='{.spec.http[0].match[0].headers.canary.exact}'",
+      "expected": "true",
+      "points": 3,
+      "description": "Canary VirtualService uses header-based routing"
+    },
+    {
+      "command": "kubectl get destinationrule frontend-dr -n service-mesh -o jsonpath='{.spec.trafficPolicy.tls.mode}'",
+      "expected": "ISTIO_MUTUAL",
+      "points": 2,
+      "description": "DestinationRule enables mutual TLS"
+    }
+  ]
+}

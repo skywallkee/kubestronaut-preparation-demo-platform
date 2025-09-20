@@ -1,0 +1,125 @@
+{
+  "id": "ckad-a-007",
+  "title": "Persistent Volume and Storage Configuration",
+  "description": "In namespace ||saturn||, create a complete persistent storage solution for a database application:\n\n1. Create a PersistentVolume ||db-pv|| with:\n   - Storage capacity: ||5Gi||\n   - AccessMode: ||ReadWriteOnce||\n   - StorageClass: ||manual||\n   - HostPath: ||/data/db|| (create directory if needed)\n   - Reclaim policy: ||Retain||\n\n2. Create a PersistentVolumeClaim ||db-pvc|| with:\n   - Request storage: ||3Gi||\n   - AccessMode: ||ReadWriteOnce||\n   - StorageClass: ||manual||\n\n3. Create a StatefulSet ||database|| with:\n   - 2 replicas using ||postgres:13||\n   - Environment variable ||POSTGRES_PASSWORD=dbpassword||\n   - Mount PVC at ||/var/lib/postgresql/data||\n   - Resource requests: cpu=200m, memory=512Mi\n   - Service name: ||db-service||\n\n4. Create a headless Service ||db-service|| to support the StatefulSet\n\nVerify the PVC is bound and the StatefulSet pods are running with persistent storage.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "State Persistence",
+  "tags": [
+    "persistent-volumes",
+    "persistent-volume-claims",
+    "statefulset",
+    "storage",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "statefulsets",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the PersistentVolume YAML:",
+      "   cat <<EOF | kubectl apply -f -",
+      "   apiVersion: v1",
+      "   kind: PersistentVolume",
+      "   metadata:",
+      "     name: db-pv",
+      "   spec:",
+      "     capacity:",
+      "       storage: 5Gi",
+      "     accessModes:",
+      "       - ReadWriteOnce",
+      "     storageClassName: manual",
+      "     persistentVolumeReclaimPolicy: Retain",
+      "     hostPath:",
+      "       path: /data/db",
+      "   EOF",
+      "2. Create the PersistentVolumeClaim:",
+      "   cat <<EOF | kubectl apply -f -",
+      "   apiVersion: v1",
+      "   kind: PersistentVolumeClaim",
+      "   metadata:",
+      "     name: db-pvc",
+      "     namespace: saturn",
+      "   spec:",
+      "     accessModes:",
+      "       - ReadWriteOnce",
+      "     storageClassName: manual",
+      "     resources:",
+      "       requests:",
+      "         storage: 3Gi",
+      "   EOF",
+      "3. Create headless service for StatefulSet:",
+      "   kubectl create service clusterip db-service --tcp=5432:5432 --clusterip=None -n saturn",
+      "4. Create StatefulSet with persistent storage:",
+      "   kubectl create -f statefulset.yaml",
+      "5. Verify PVC binding and pod status:",
+      "   kubectl get pv,pvc -n saturn",
+      "   kubectl get statefulset database -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pv db-pv -o jsonpath='{.spec.capacity.storage}'",
+      "expected": "5Gi",
+      "points": 1,
+      "description": "PersistentVolume should have 5Gi capacity"
+    },
+    {
+      "command": "kubectl get pv db-pv -o jsonpath='{.spec.storageClassName}'",
+      "expected": "manual",
+      "points": 1,
+      "description": "PersistentVolume should use manual storage class"
+    },
+    {
+      "command": "kubectl get pvc db-pvc -n saturn -o jsonpath='{.status.phase}'",
+      "expected": "Bound",
+      "points": 1,
+      "description": "PersistentVolumeClaim should be bound"
+    },
+    {
+      "command": "kubectl get pvc db-pvc -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expected": "3Gi",
+      "points": 1,
+      "description": "PVC should request 3Gi storage"
+    },
+    {
+      "command": "kubectl get statefulset database -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "StatefulSet should have 2 replicas"
+    },
+    {
+      "command": "kubectl get statefulset database -n saturn -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "postgres:13",
+      "points": 1,
+      "description": "StatefulSet should use postgres:13 image"
+    },
+    {
+      "command": "kubectl get service db-service -n saturn -o jsonpath='{.spec.clusterIP}'",
+      "expected": "None",
+      "points": 1,
+      "description": "Service should be headless (clusterIP: None)"
+    },
+    {
+      "command": "kubectl get statefulset database -n saturn -o jsonpath='{.spec.template.spec.containers[0].volumeMounts[*].mountPath}' | grep -c '/var/lib/postgresql/data'",
+      "expected": "1",
+      "points": 1,
+      "description": "Container should mount volume at PostgreSQL data path"
+    },
+    {
+      "command": "kubectl get pods -n saturn -l app=database -o jsonpath='{.items[*].status.phase}' | grep -o Running | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Both StatefulSet pods should be running"
+    }
+  ]
+}

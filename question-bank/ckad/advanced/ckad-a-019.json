@@ -1,0 +1,110 @@
+{
+  "id": "ckad-a-019",
+  "title": "Advanced Volume Patterns with PVC Resizing and Backup",
+  "description": "Implement sophisticated storage management in namespace ||mars|| with dynamic volume operations, backup strategies, and advanced volume patterns:\n\n1. **Multi-Tier Storage Setup**:\n   - Create StorageClass ||fast-ssd|| with SSD backend and immediate volume binding\n   - Create StorageClass ||slow-hdd|| with HDD backend and WaitForFirstConsumer binding\n   - Deploy ||database-app|| using fast-ssd storage for data directory\n   - Deploy ||media-server|| using slow-hdd storage for large file storage\n   - Deploy ||log-aggregator|| using local storage for temporary log processing\n\n2. **Dynamic Volume Management**:\n   - Create initial PVC ||db-storage|| with 10Gi size using fast-ssd StorageClass\n   - Create PVC ||media-storage|| with 50Gi size using slow-hdd StorageClass\n   - Implement PVC resizing: expand db-storage to 20Gi and media-storage to 100Gi\n   - Configure automatic volume expansion when usage exceeds 80%\n   - Add volume monitoring and alerting for space usage\n\n3. **Advanced Volume Patterns**:\n   - **Shared Storage**: Create ReadWriteMany PVC ||shared-workspace|| for collaborative editing\n   - **Cache Volumes**: Implement emptyDir with memory medium for Redis cache\n   - **Config Volumes**: Use projected volumes combining multiple ConfigMaps and Secrets\n   - **Backup Volumes**: Create separate PVC ||backup-storage|| for backup operations\n\n4. **Volume Backup and Restore**:\n   - Create CronJob ||volume-backup|| that runs nightly backups:\n     - Backup database volume using volume snapshots\n     - Backup media files using rsync to backup storage\n     - Create incremental backups with retention policy (keep last 7 days)\n   - Create Job ||restore-test|| that validates backup integrity\n   - Implement point-in-time recovery procedures\n\n5. **Volume Security and Access Control**:\n   - Configure volume access modes appropriately (RWO, ROX, RWX)\n   - Set proper filesystem permissions and ownership\n   - Implement volume encryption for sensitive data\n   - Add volume access logging and auditing\n\n6. **Performance Optimization**:\n   - Configure volume IOPS and throughput settings\n   - Implement volume caching strategies\n   - Add volume performance monitoring\n   - Optimize mount options for different workload types\n\n7. **Data Migration and Lifecycle**:\n   - Create Job ||data-migration|| that moves old data from fast to slow storage\n   - Implement data lifecycle policies (hot, warm, cold storage tiers)\n   - Add data compression and deduplication\n   - Configure automatic cleanup of temporary volumes\n\n8. **Monitoring and Alerting**:\n   - Deploy volume monitoring stack with Prometheus metrics\n   - Create alerts for volume usage, performance, and failures\n   - Implement volume health checks and self-healing\n   - Add capacity planning and forecasting\n\nEnsure robust storage management with high availability, performance, and data protection.",
+  "points": 8,
+  "timeLimit": 20,
+  "category": "Storage Management",
+  "tags": [
+    "volumes",
+    "pvc-resizing",
+    "backup-restore",
+    "storage-classes",
+    "volume-patterns",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "persistentvolumeclaims",
+      "storageclasses",
+      "deployments",
+      "cronjobs",
+      "jobs",
+      "configmaps",
+      "secrets",
+      "volumesnapshots"
+    ],
+    "prerequisites": [
+      "csi-driver",
+      "volume-snapshot-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create custom StorageClasses:",
+      "   kubectl create -f fast-ssd-storageclass.yaml",
+      "   kubectl create -f slow-hdd-storageclass.yaml",
+      "2. Create initial PVCs with different storage classes:",
+      "   kubectl create -f db-storage-pvc.yaml  # 10Gi fast-ssd",
+      "   kubectl create -f media-storage-pvc.yaml  # 50Gi slow-hdd",
+      "   kubectl create -f shared-workspace-pvc.yaml  # RWX shared storage",
+      "3. Deploy applications with volume mounts:",
+      "   kubectl create deployment database-app --image=postgres:13 -n mars",
+      "   kubectl create deployment media-server --image=nginx:alpine -n mars",
+      "   kubectl create deployment log-aggregator --image=fluentd:v1.14 -n mars",
+      "4. Configure volume expansion:",
+      "   kubectl patch pvc db-storage -p '{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"20Gi\"}}}}' -n mars",
+      "   kubectl patch pvc media-storage -p '{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"100Gi\"}}}}' -n mars",
+      "5. Create backup and monitoring resources:",
+      "   kubectl create -f volume-backup-cronjob.yaml",
+      "   kubectl create -f data-migration-job.yaml",
+      "   kubectl create -f restore-test-job.yaml",
+      "6. Deploy volume monitoring stack:",
+      "   kubectl create -f volume-metrics-deployment.yaml",
+      "7. Verify volume operations and backup functionality"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.metadata.name}'",
+      "expected": "fast-ssd",
+      "points": 1,
+      "description": "Should have fast-ssd StorageClass"
+    },
+    {
+      "command": "kubectl get pvc db-storage -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expected": "20Gi",
+      "points": 1,
+      "description": "Database storage should be expanded to 20Gi"
+    },
+    {
+      "command": "kubectl get pvc media-storage -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expected": "100Gi",
+      "points": 1,
+      "description": "Media storage should be expanded to 100Gi"
+    },
+    {
+      "command": "kubectl get pvc shared-workspace -n mars -o jsonpath='{.spec.accessModes[0]}'",
+      "expected": "ReadWriteMany",
+      "points": 1,
+      "description": "Shared workspace should support ReadWriteMany access"
+    },
+    {
+      "command": "kubectl get deployment database-app -n mars -o jsonpath='{.spec.template.spec.volumes[?(@.persistentVolumeClaim.claimName==\"db-storage\")].name}'",
+      "expected": "db-volume",
+      "points": 1,
+      "description": "Database app should mount db-storage PVC"
+    },
+    {
+      "command": "kubectl get cronjob volume-backup -n mars -o jsonpath='{.spec.schedule}'",
+      "expected": "0 2 * * *",
+      "points": 1,
+      "description": "Volume backup should run nightly at 2 AM"
+    },
+    {
+      "command": "kubectl get job data-migration -n mars -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Data migration job should complete successfully"
+    },
+    {
+      "command": "kubectl get job restore-test -n mars -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Restore test should validate backup integrity"
+    }
+  ]
+}

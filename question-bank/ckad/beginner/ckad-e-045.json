@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-045",
+  "title": "Create Pod with Node Selector",
+  "description": "Create a Pod named ||node-selector-pod|| using image ||nginx:1.20-alpine|| with nodeSelector for nodes labeled with ||disktype=ssd|| in the ||jupiter|| namespace.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "multi-container-pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "node with disktype=ssd label"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run node-selector-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > node-selector-pod.yaml",
+      "2. Add nodeSelector:",
+      "   nodeSelector:",
+      "     disktype: ssd",
+      "3. Apply pod:",
+      "   kubectl apply -f node-selector-pod.yaml -n jupiter"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod node-selector-pod -n jupiter -o jsonpath='{.spec.nodeSelector.disktype}'",
+      "expected": "ssd",
+      "points": 4,
+      "description": "Pod should have nodeSelector for disktype=ssd"
+    }
+  ]
+}

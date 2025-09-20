@@ -1,0 +1,69 @@
+{
+  "id": "kcna-i-001",
+  "title": "Container Fundamentals and Docker Basics",
+  "description": "Demonstrate understanding of container concepts by:\n\n1. Create a simple Dockerfile for a Node.js application with:\n   - Base image: ||node:16-alpine||\n   - Working directory: ||/app||\n   - Copy package.json and install dependencies\n   - Copy source code and expose port ||3000||\n   - Start command: ||npm start||\n\n2. Build a container image named ||my-node-app:v1.0||\n\n3. Run the container with:\n   - Name: ||app-container||\n   - Port mapping: ||8080:3000||\n   - Environment variable: ||NODE_ENV=production||\n\n4. Verify the container is running and inspect its configuration.\n\nNote: For this simulation, you'll work with existing container tools and demonstrate knowledge of container concepts.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Container Fundamentals",
+  "tags": [
+    "containers",
+    "docker",
+    "dockerfile",
+    "fundamentals"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "containers"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create a Dockerfile:",
+      "   cat > Dockerfile << EOF",
+      "   FROM node:16-alpine",
+      "   WORKDIR /app",
+      "   COPY package.json ./",
+      "   RUN npm install",
+      "   COPY . .",
+      "   EXPOSE 3000",
+      "   CMD [\"npm\", \"start\"]",
+      "   EOF",
+      "2. Build the container image:",
+      "   docker build -t my-node-app:v1.0 .",
+      "3. Run the container:",
+      "   docker run -d --name app-container -p 8080:3000 -e NODE_ENV=production my-node-app:v1.0",
+      "4. Verify container is running:",
+      "   docker ps | grep app-container",
+      "5. Inspect container configuration:",
+      "   docker inspect app-container | grep -A5 -B5 NODE_ENV"
+    ]
+  },
+  "validations": [
+    {
+      "command": "docker images | grep my-node-app | grep v1.0",
+      "expected": "my-node-app",
+      "points": 1,
+      "description": "Container image should be built with correct name and tag"
+    },
+    {
+      "command": "docker ps | grep app-container",
+      "expected": "app-container",
+      "points": 2,
+      "description": "Container should be running with correct name"
+    },
+    {
+      "command": "docker port app-container",
+      "expected": "3000/tcp -> 0.0.0.0:8080",
+      "points": 1,
+      "description": "Port mapping should be configured correctly"
+    },
+    {
+      "command": "docker inspect app-container | grep NODE_ENV",
+      "expected": "NODE_ENV=production",
+      "points": 1,
+      "description": "Environment variable should be set correctly"
+    }
+  ]
+}

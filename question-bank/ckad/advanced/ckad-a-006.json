@@ -1,0 +1,98 @@
+{
+  "id": "ckad-a-006",
+  "title": "Resource Quotas and Limits",
+  "description": "Implement resource management in namespace ||venus||:\n\n1. Create a ResourceQuota ||team-quota|| with:\n   - CPU requests: 2 cores\n   - Memory requests: 4Gi\n   - CPU limits: 4 cores\n   - Memory limits: 8Gi\n   - Maximum pods: 10\n   - Maximum services: 5\n\n2. Create a LimitRange ||default-limits|| with:\n   - Default CPU request: 100m\n   - Default memory request: 128Mi\n   - Default CPU limit: 200m\n   - Default memory limit: 256Mi\n   - Maximum CPU per container: 500m\n   - Maximum memory per container: 1Gi\n\n3. Create a Deployment ||resource-test|| with 2 replicas using ||nginx:1.21|| that will use the default limits.\n\nVerify the ResourceQuota consumption and that pods get default resource specifications.",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "Configuration",
+  "tags": [
+    "resource-quota",
+    "limit-range",
+    "resource-management",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "resourcequotas",
+      "limitranges",
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ResourceQuota:",
+      "   kubectl create quota team-quota -n venus \\",
+      "     --hard=requests.cpu=2,requests.memory=4Gi,limits.cpu=4,limits.memory=8Gi,pods=10,services=5",
+      "2. Create LimitRange YAML:",
+      "   kubectl create -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: LimitRange",
+      "   metadata:",
+      "     name: default-limits",
+      "     namespace: venus",
+      "   spec:",
+      "     limits:",
+      "     - default:",
+      "         cpu: 200m",
+      "         memory: 256Mi",
+      "       defaultRequest:",
+      "         cpu: 100m",
+      "         memory: 128Mi",
+      "       max:",
+      "         cpu: 500m",
+      "         memory: 1Gi",
+      "       type: Container",
+      "   EOF",
+      "3. Create test deployment:",
+      "   kubectl create deployment resource-test --image=nginx:1.21 --replicas=2 -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota team-quota -n venus -o jsonpath='{.spec.hard.requests\\.cpu}'",
+      "expected": "2",
+      "points": 1,
+      "description": "ResourceQuota should limit CPU requests to 2 cores"
+    },
+    {
+      "command": "kubectl get resourcequota team-quota -n venus -o jsonpath='{.spec.hard.requests\\.memory}'",
+      "expected": "4Gi",
+      "points": 1,
+      "description": "ResourceQuota should limit memory requests to 4Gi"
+    },
+    {
+      "command": "kubectl get limitrange default-limits -n venus -o jsonpath='{.spec.limits[0].defaultRequest.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "LimitRange should set default CPU request to 100m"
+    },
+    {
+      "command": "kubectl get limitrange default-limits -n venus -o jsonpath='{.spec.limits[0].default.memory}'",
+      "expected": "256Mi",
+      "points": 1,
+      "description": "LimitRange should set default memory limit to 256Mi"
+    },
+    {
+      "command": "kubectl get deployment resource-test -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 replicas"
+    },
+    {
+      "command": "kubectl get pods -n venus -l app=resource-test --no-headers | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Should have 2 running pods"
+    },
+    {
+      "command": "kubectl describe resourcequota team-quota -n venus | grep -c 'Used'",
+      "expected": "1",
+      "points": 1,
+      "description": "ResourceQuota should show usage statistics"
+    }
+  ]
+}

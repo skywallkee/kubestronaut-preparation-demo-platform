@@ -1,0 +1,79 @@
+{
+  "id": "ckad-a-071",
+  "title": "Network Policies and Micro-segmentation",
+  "description": "Implement comprehensive ||network security|| using ||NetworkPolicies|| for micro-segmentation and traffic control. Design a zero-trust network architecture where pods communicate only through explicitly defined policies. Create policies for ||ingress|| and ||egress|| traffic, implement namespace isolation, configure application-tier communication rules, and demonstrate advanced policy features like ||port-specific|| rules, ||protocol selection||, and ||external traffic|| control. Include policy testing, validation, and troubleshooting scenarios.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Services & Networking",
+  "tags": ["network-policies", "micro-segmentation", "zero-trust", "ingress", "egress", "security", "advanced"],
+  "infrastructure": {
+    "namespaces": ["network-security"],
+    "resources": ["NetworkPolicy", "Deployment", "Service", "Namespace"],
+    "prerequisites": ["CNI with NetworkPolicy support (Calico, Cilium, etc.)"]
+  },
+  "solution": {
+    "steps": [
+      "# Create network-security namespace\nkubectl create namespace network-security",
+
+      "# Create allowed-namespace for cross-namespace testing\nkubectl create namespace allowed-namespace\nkubectl label namespace allowed-namespace name=allowed-namespace",
+
+      "# Deploy frontend application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: frontend\n  namespace: network-security\n  labels:\n    app: frontend\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: frontend\n      tier: frontend\n  template:\n    metadata:\n      labels:\n        app: frontend\n        tier: frontend\n    spec:\n      containers:\n      - name: frontend\n        image: busybox:1.35\n        command: [\"sleep\", \"3600\"]\nEOF",
+
+      "# Deploy backend application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: backend\n  namespace: network-security\n  labels:\n    app: backend\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: backend\n      tier: backend\n  template:\n    metadata:\n      labels:\n        app: backend\n        tier: backend\n    spec:\n      containers:\n      - name: backend\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        command: [\"python\", \"-m\", \"http.server\", \"8080\"]\nEOF",
+
+      "# Create backend service\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: backend-service\n  namespace: network-security\nspec:\n  selector:\n    tier: backend\n  ports:\n  - port: 8080\n    targetPort: 8080\nEOF",
+
+      "# Create default deny-all NetworkPolicy\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: deny-all\n  namespace: network-security\nspec:\n  podSelector: {}\n  policyTypes:\n  - Ingress\n  - Egress\nEOF",
+
+      "# Create NetworkPolicy to allow frontend access\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: allow-frontend\n  namespace: network-security\nspec:\n  podSelector:\n    matchLabels:\n      tier: backend\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - podSelector:\n        matchLabels:\n          tier: frontend\n    ports:\n    - protocol: TCP\n      port: 8080\nEOF",
+
+      "# Create egress policy for database access\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: database-egress\n  namespace: network-security\nspec:\n  podSelector:\n    matchLabels:\n      tier: backend\n  policyTypes:\n  - Egress\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          tier: database\n    ports:\n    - protocol: TCP\n      port: 5432\n  - to: []  # Allow DNS\n    ports:\n    - protocol: UDP\n      port: 53\nEOF",
+
+      "# Create namespace isolation policy\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: namespace-isolation\n  namespace: network-security\nspec:\n  podSelector:\n    matchLabels:\n      tier: frontend\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - namespaceSelector:\n        matchLabels:\n          name: allowed-namespace\nEOF",
+
+      "# Create external access policy\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: external-access\n  namespace: network-security\nspec:\n  podSelector:\n    matchLabels:\n      tier: frontend\n  policyTypes:\n  - Egress\n  egress:\n  - to:\n    - ipBlock:\n        cidr: 0.0.0.0/0\n        except:\n        - 169.254.169.254/32\n    ports:\n    - protocol: TCP\n      port: 80\n    - protocol: TCP\n      port: 443\nEOF",
+
+      "# Wait for deployments\nkubectl wait --for=condition=available --timeout=300s deployment/frontend -n network-security\nkubectl wait --for=condition=available --timeout=300s deployment/backend -n network-security",
+
+      "# Test network policies\necho \"Testing network policy enforcement...\"\necho \"Testing allowed connection (frontend to backend):\"\nkubectl exec -n network-security deploy/frontend -- wget -qO- --timeout=5 backend-service:8080 || echo \"Connection blocked by policy\"\necho\necho \"Network policy testing completed\""
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get networkpolicy deny-all -n network-security -o jsonpath='{.spec.policyTypes[0]}'",
+      "expected": "Ingress",
+      "points": 2,
+      "description": "Default deny-all policy blocks ingress traffic"
+    },
+    {
+      "command": "kubectl get networkpolicy allow-frontend -n network-security -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expected": "frontend",
+      "points": 3,
+      "description": "Frontend policy allows specific pod selector"
+    },
+    {
+      "command": "kubectl get networkpolicy database-egress -n network-security -o jsonpath='{.spec.egress[0].ports[0].port}'",
+      "expected": "5432",
+      "points": 3,
+      "description": "Database egress policy specifies port 5432"
+    },
+    {
+      "command": "kubectl get networkpolicy namespace-isolation -n network-security -o jsonpath='{.spec.ingress[0].from[0].namespaceSelector.matchLabels.name}'",
+      "expected": "allowed-namespace",
+      "points": 3,
+      "description": "Namespace isolation policy uses namespace selector"
+    },
+    {
+      "command": "kubectl exec -n network-security deploy/frontend -- curl -s --max-time 5 backend-service:8080/health",
+      "expected": "allowed-connection",
+      "points": 2,
+      "description": "Allowed connections work through policies"
+    },
+    {
+      "command": "kubectl get networkpolicy external-access -n network-security -o jsonpath='{.spec.egress[0].to[0].ipBlock.cidr}'",
+      "expected": "0.0.0.0/0",
+      "points": 1,
+      "description": "External access policy configured for internet"
+    }
+  ]
+}

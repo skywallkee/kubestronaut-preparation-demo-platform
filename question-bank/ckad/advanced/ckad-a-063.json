@@ -1,0 +1,70 @@
+{
+  "id": "ckad-a-063",
+  "title": "Advanced Pod Lifecycle and Hooks Management",
+  "description": "Design a comprehensive pod lifecycle management system using ||lifecycle hooks||, ||init containers||, and ||graceful termination|| strategies. Create applications that implement sophisticated startup sequences, data migration during initialization, graceful shutdown procedures, and cleanup operations. Include ||postStart|| and ||preStop|| hooks that coordinate with external systems, handle state preservation during pod termination, and implement retry logic for critical lifecycle operations. Demonstrate proper signal handling and resource cleanup patterns.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Pod Design",
+  "tags": ["pod-lifecycle", "lifecycle-hooks", "poststart", "prestop", "graceful-shutdown", "advanced"],
+  "infrastructure": {
+    "namespaces": ["lifecycle-management"],
+    "resources": ["Pod", "Deployment", "ConfigMap", "PersistentVolumeClaim"],
+    "prerequisites": ["External systems for lifecycle coordination"]
+  },
+  "solution": {
+    "steps": [
+      "# Create lifecycle-management namespace\nkubectl create namespace lifecycle-management",
+
+      "# Create deployment with comprehensive lifecycle hooks\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: lifecycle-app\n  namespace: lifecycle-management\n  labels:\n    app: lifecycle-app\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: lifecycle-app\n  template:\n    metadata:\n      labels:\n        app: lifecycle-app\n    spec:\n      terminationGracePeriodSeconds: 60\n      initContainers:\n      - name: data-migration\n        image: busybox:1.35\n        command:\n        - /bin/sh\n        - -c\n        - |\n          echo \"Starting data migration init container\"\n          # Simulate data migration\n          sleep 10\n          echo \"Data migration completed\" > /shared/migration-status\n          echo \"Init container completed successfully\"\n        volumeMounts:\n        - name: shared-data\n          mountPath: /shared\n      containers:\n      - name: app\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        env:\n        - name: POD_NAME\n          valueFrom:\n            fieldRef:\n              fieldPath: metadata.name\n        - name: POD_NAMESPACE\n          valueFrom:\n            fieldRef:\n              fieldPath: metadata.namespace\n        lifecycle:\n          postStart:\n            exec:\n              command:\n              - /bin/sh\n              - -c\n              - |\n                echo \"$(date): PostStart hook executed for pod $POD_NAME\" >> /tmp/poststart.log\n                # Coordinate with external systems\n                echo \"Registering with service discovery...\"\n                sleep 5\n                echo \"initialization completed\" >> /tmp/poststart.log\n                echo \"lifecycle hook completed\" >> /app/lifecycle.log\n          preStop:\n            exec:\n              command:\n              - /bin/sh\n              - -c\n              - |\n                echo \"$(date): PreStop hook executed for pod $POD_NAME\" >> /tmp/prestop.log\n                # Graceful shutdown sequence\n                echo \"Draining connections...\"\n                sleep 10\n                echo \"Saving application state...\"\n                cp /app/state.json /shared/state-backup.json 2>/dev/null || true\n                echo \"Deregistering from service discovery...\"\n                sleep 5\n                echo \"PreStop hook completed\" >> /tmp/prestop.log\n                echo \"lifecycle hook completed\" >> /app/lifecycle.log\n        volumeMounts:\n        - name: shared-data\n          mountPath: /shared\n        command:\n        - /bin/sh\n        - -c\n        - |\n          mkdir -p /app\n          \n          cat > /app/main.py << 'SCRIPT'\n          #!/usr/bin/env python3\n          import http.server\n          import socketserver\n          import json\n          import signal\n          import sys\n          import time\n          import os\n          import threading\n          from datetime import datetime\n          \n          # Global flag for graceful shutdown\n          shutdown_flag = False\n          \n          def signal_handler(sig, frame):\n              global shutdown_flag\n              print(f\"Received signal {sig}, initiating graceful shutdown...\")\n              with open('/app/lifecycle.log', 'a') as f:\n                  f.write(f\"{datetime.now()}: Received SIGTERM, shutting down gracefully\\n\")\n              shutdown_flag = True\n          \n          # Register signal handlers\n          signal.signal(signal.SIGTERM, signal_handler)\n          signal.signal(signal.SIGINT, signal_handler)\n          \n          class LifecycleHandler(http.server.BaseHTTPRequestHandler):\n              def do_GET(self):\n                  if self.path == '/health':\n                      if shutdown_flag:\n                          self.send_response(503)\n                          self.send_header('Content-Type', 'application/json')\n                          self.end_headers()\n                          self.wfile.write(json.dumps({'status': 'shutting down'}).encode())\n                      else:\n                          self.send_response(200)\n                          self.send_header('Content-Type', 'application/json')\n                          self.end_headers()\n                          self.wfile.write(json.dumps({'status': 'healthy'}).encode())\n                  elif self.path == '/status':\n                      # Check if poststart completed\n                      poststart_completed = os.path.exists('/tmp/poststart.log')\n                      migration_completed = os.path.exists('/shared/migration-status')\n                      \n                      status = {\n                          'pod_name': os.getenv('POD_NAME', 'unknown'),\n                          'poststart_completed': poststart_completed,\n                          'migration_completed': migration_completed,\n                          'shutdown_flag': shutdown_flag\n                      }\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'application/json')\n                      self.end_headers()\n                      self.wfile.write(json.dumps(status).encode())\n                  else:\n                      self.send_response(404)\n                      self.end_headers()\n          \n          def save_state_periodically():\n              while not shutdown_flag:\n                  state = {\n                      'timestamp': datetime.now().isoformat(),\n                      'pod_name': os.getenv('POD_NAME', 'unknown'),\n                      'status': 'running'\n                  }\n                  with open('/app/state.json', 'w') as f:\n                      json.dump(state, f)\n                  time.sleep(30)\n          \n          # Start background state saving\n          state_thread = threading.Thread(target=save_state_periodically, daemon=True)\n          state_thread.start()\n          \n          # Start HTTP server\n          with socketserver.TCPServer((\"\", 8080), LifecycleHandler) as httpd:\n              print(\"Server started on port 8080\")\n              \n              while not shutdown_flag:\n                  try:\n                      httpd.handle_request()\n                  except KeyboardInterrupt:\n                      break\n              \n              print(\"Server shutting down gracefully...\")\n              with open('/app/lifecycle.log', 'a') as f:\n                  f.write(f\"{datetime.now()}: Application shutdown completed\\n\")\n          SCRIPT\n          \n          cd /app && python3 main.py\n      volumes:\n      - name: shared-data\n        emptyDir: {}\nEOF",
+
+      "# Wait for deployment to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/lifecycle-app -n lifecycle-management",
+
+      "# Test lifecycle hook execution\necho \"Testing lifecycle hooks...\"\nkubectl exec -n lifecycle-management deploy/lifecycle-app -- cat /tmp/poststart.log\necho \"PostStart hook verification complete\"",
+
+      "# Test application readiness after lifecycle hooks\nkubectl exec -n lifecycle-management deploy/lifecycle-app -- curl -s localhost:8080/status",
+
+      "# Create a ConfigMap to demonstrate external coordination\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: lifecycle-coordination\n  namespace: lifecycle-management\ndata:\n  service-registry.json: |\n    {\n      \"services\": [],\n      \"last_updated\": \"2023-01-01T00:00:00Z\"\n    }\nEOF",
+
+      "# Test graceful termination by deleting a pod\necho \"Testing graceful termination...\"\nPOD_NAME=$(kubectl get pods -n lifecycle-management -l app=lifecycle-app -o jsonpath='{.items[0].metadata.name}')\nkubectl delete pod $POD_NAME -n lifecycle-management --grace-period=60",
+
+      "# Verify new pod starts correctly with lifecycle hooks\nkubectl wait --for=condition=ready --timeout=180s pod -l app=lifecycle-app -n lifecycle-management\necho \"New pod started successfully after graceful termination\""]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment lifecycle-app -n lifecycle-management -o jsonpath='{.spec.template.spec.containers[0].lifecycle.postStart.exec.command[0]}'",
+      "expected": "/bin/sh",
+      "points": 3,
+      "description": "Deployment has postStart hook configured"
+    },
+    {
+      "command": "kubectl get deployment lifecycle-app -n lifecycle-management -o jsonpath='{.spec.template.spec.containers[0].lifecycle.preStop.exec.command[0]}'",
+      "expected": "/bin/sh",
+      "points": 3,
+      "description": "Deployment has preStop hook configured"
+    },
+    {
+      "command": "kubectl get deployment lifecycle-app -n lifecycle-management -o jsonpath='{.spec.template.spec.terminationGracePeriodSeconds}'",
+      "expected": "60",
+      "points": 2,
+      "description": "Pod has extended termination grace period"
+    },
+    {
+      "command": "kubectl exec -n lifecycle-management deploy/lifecycle-app -- cat /tmp/poststart.log",
+      "expected": "initialization completed",
+      "points": 3,
+      "description": "PostStart hook executed successfully"
+    },
+    {
+      "command": "kubectl get pod -n lifecycle-management -l app=lifecycle-app --field-selector=status.phase=Running | wc -l",
+      "expected": "4",
+      "points": 2,
+      "description": "Pods are running after successful lifecycle hook execution"
+    },
+    {
+      "command": "kubectl logs -n lifecycle-management deploy/lifecycle-app | grep -c 'lifecycle hook completed'",
+      "expected": "3",
+      "points": 1,
+      "description": "Lifecycle events are logged properly"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "id": "ckad-a-026",
+  "title": "Advanced Pod Scheduling with Node Affinity and Taints",
+  "description": "Deploy a complex application in namespace ||mercury|| requiring sophisticated scheduling constraints and node management:\n\n1. **Node Preparation and Labeling**:\n   Label cluster nodes with custom attributes:\n   - ||node-type=compute|| for worker nodes\n   - ||storage-type=ssd|| for nodes with SSD storage\n   - ||zone=east|| and ||zone=west|| for geographical distribution\n   - ||security-level=high|| for secure nodes\n\n2. **Taint Management**:\n   Apply taints to control pod placement:\n   - Taint one node with ||dedicated=database:NoSchedule||\n   - Taint another node with ||maintenance=true:NoExecute||\n   - Add ||critical=true:PreferNoSchedule|| to secure nodes\n\n3. **Database Pod with Strict Requirements**:\n   Deploy ||postgres-primary|| with:\n   - **Required Node Affinity**: Must run on nodes with ||storage-type=ssd||\n   - **Toleration**: Must tolerate ||dedicated=database:NoSchedule|| taint\n   - **Anti-Affinity**: Must not run on same node as other database pods\n   - **Resource Requirements**: 2 CPU, 4Gi memory\n\n4. **Application Pods with Preferred Scheduling**:\n   Deploy ||web-frontend|| (3 replicas) with:\n   - **Preferred Node Affinity**: Prefer ||node-type=compute|| nodes\n   - **Zone Anti-Affinity**: Spread across different zones\n   - **CPU Requests**: 500m CPU, 1Gi memory per replica\n\n5. **Critical Service with High Security**:\n   Deploy ||auth-service|| with:\n   - **Required Node Affinity**: Must run on ||security-level=high|| nodes\n   - **Toleration**: Must tolerate ||critical=true:PreferNoSchedule||\n   - **Pod Anti-Affinity**: No two replicas on same node\n\n6. **Maintenance Scenario Handling**:\n   Test pod behavior when nodes are tainted with ||maintenance=true:NoExecute||\n   - Verify pods are evicted from maintenance nodes\n   - Ensure pods reschedule correctly on available nodes\n\n7. **Resource Constraints and Limits**:\n   Configure all pods with appropriate:\n   - Resource requests and limits\n   - Quality of Service classes (Guaranteed, Burstable)\n   - Priority classes for critical workloads\n\n8. **Validation and Testing**:\n   Create Job ||scheduling-validator|| that verifies:\n   - All pods are scheduled correctly according to constraints\n   - Taints and tolerations are working properly\n   - Node affinity rules are enforced\n   - Anti-affinity rules prevent co-location\n\nEnsure proper pod scheduling with complex node constraints and taint management.",
+  "points": 9,
+  "timeLimit": 20,
+  "category": "Core Concepts",
+  "tags": [
+    "node-affinity",
+    "taints-tolerations",
+    "pod-scheduling",
+    "resource-management",
+    "anti-affinity",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "pods",
+      "deployments",
+      "jobs",
+      "nodes"
+    ],
+    "prerequisites": [
+      "multi-node-cluster"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Label nodes with required attributes:",
+      "   kubectl label nodes <node-name> node-type=compute storage-type=ssd zone=east security-level=high",
+      "2. Apply taints to control scheduling:",
+      "   kubectl taint nodes <node-name> dedicated=database:NoSchedule",
+      "   kubectl taint nodes <node-name> maintenance=true:NoExecute",
+      "   kubectl taint nodes <node-name> critical=true:PreferNoSchedule",
+      "3. Deploy postgres-primary with node affinity and tolerations:",
+      "   Include requiredDuringSchedulingIgnoredDuringExecution for storage-type=ssd",
+      "   Add toleration for dedicated=database:NoSchedule",
+      "   Configure pod anti-affinity for database pods",
+      "4. Deploy web-frontend with preferred scheduling:",
+      "   Use preferredDuringSchedulingIgnoredDuringExecution for node-type=compute",
+      "   Configure zone anti-affinity to spread across zones",
+      "5. Deploy auth-service with security constraints:",
+      "   Require security-level=high nodes",
+      "   Add toleration for critical=true:PreferNoSchedule",
+      "   Configure pod anti-affinity",
+      "6. Test maintenance scenarios and validate scheduling"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod postgres-primary -n mercury -o jsonpath='{.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key}'",
+      "expected": "storage-type",
+      "points": 1,
+      "description": "Postgres should have required node affinity for storage-type"
+    },
+    {
+      "command": "kubectl get pod postgres-primary -n mercury -o jsonpath='{.spec.tolerations[0].key}'",
+      "expected": "dedicated",
+      "points": 1,
+      "description": "Postgres should tolerate dedicated=database taint"
+    },
+    {
+      "command": "kubectl get deployment web-frontend -n mercury -o jsonpath='{.spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions[0].key}'",
+      "expected": "node-type",
+      "points": 1,
+      "description": "Web frontend should have preferred node affinity for node-type"
+    },
+    {
+      "command": "kubectl get deployment auth-service -n mercury -o jsonpath='{.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]}'",
+      "expected": "high",
+      "points": 1,
+      "description": "Auth service should require security-level=high nodes"
+    },
+    {
+      "command": "kubectl get pods -n mercury -l app=web-frontend --no-headers | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have 3 web-frontend replicas running"
+    },
+    {
+      "command": "kubectl get job scheduling-validator -n mercury -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Scheduling validation should complete successfully"
+    }
+  ]
+}

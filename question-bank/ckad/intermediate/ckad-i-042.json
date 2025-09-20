@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-042",
+  "title": "Job Processing with Service Account and Volume Management",
+  "description": "Create a batch processing job in the saturn namespace that processes data files from a persistent volume. Configure the job to use a service account with read permissions to secrets and implement proper cleanup policies for completed jobs.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "service-accounts-rbac", "persistent-volumes-claims", "volume-types", "storage-classes"],
+  "points": 9,
+  "timeMinutes": 16,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a PVC named ||batch-data-pvc|| with ||2Gi|| storage for data processing"
+    },
+    {
+      "step": 2,
+      "description": "Create a ServiceAccount ||batch-processor-sa|| for the job"
+    },
+    {
+      "step": 3,
+      "description": "Create a Role with permissions to get and list secrets"
+    },
+    {
+      "step": 4,
+      "description": "Create a RoleBinding to associate the Role with the ServiceAccount"
+    },
+    {
+      "step": 5,
+      "description": "Create a Job with ||parallelism: 2|| and ||completions: 4||"
+    },
+    {
+      "step": 6,
+      "description": "Configure the job to mount the PVC and use the ServiceAccount"
+    },
+    {
+      "step": 7,
+      "description": "Set ||ttlSecondsAfterFinished: 100|| for automatic cleanup"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pvc batch-data-pvc -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get serviceaccount batch-processor-sa -n saturn -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "batch-processor-sa",
+      "description": "Verify ServiceAccount exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get role batch-role -n saturn -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "secrets",
+      "description": "Verify Role has secrets permissions",
+      "points": 2
+    },
+    {
+      "command": "kubectl get job batch-processor -n saturn -o jsonpath='{.spec.parallelism}'",
+      "expectedOutput": "2",
+      "description": "Verify job parallelism setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get job batch-processor -n saturn -o jsonpath='{.spec.completions}'",
+      "expectedOutput": "4",
+      "description": "Verify job completions setting",
+      "points": 2
+    },
+    {
+      "command": "kubectl get job batch-processor -n saturn -o jsonpath='{.spec.ttlSecondsAfterFinished}'",
+      "expectedOutput": "100",
+      "description": "Verify TTL for automatic cleanup",
+      "points": 2
+    }
+  ]
+}

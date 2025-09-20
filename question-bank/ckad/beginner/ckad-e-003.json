@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-003",
+  "title": "Create a Job",
+  "description": "Create a Job named ||simple-job|| in Namespace ||mars|| that runs image ||busybox:1.31.0|| and executes the command ||'sleep 30 && echo done'||. The Job should run once.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "jobs-cronjobs",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Job:",
+      "   kubectl create job simple-job --image=busybox:1.31.0 --dry-run=client -o yaml > job.yaml",
+      "2. Edit yaml to add command:",
+      "   command: ['sh', '-c', 'sleep 30 && echo done']",
+      "3. Apply the job:",
+      "   kubectl apply -f job.yaml -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get job simple-job -n mars -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 4,
+      "description": "Job should complete successfully"
+    }
+  ]
+}

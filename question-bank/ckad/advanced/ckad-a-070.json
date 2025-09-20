@@ -1,0 +1,77 @@
+{
+  "id": "ckad-a-070",
+  "title": "Advanced Ingress and Load Balancing",
+  "description": "Design a comprehensive ||ingress|| architecture with advanced ||load balancing||, ||SSL termination||, and ||traffic routing|| strategies. Implement multiple ingress controllers, configure path-based and host-based routing, set up SSL certificates with automatic renewal, and implement advanced load balancing algorithms. Include scenarios with ||traffic splitting||, ||blue-green deployments|| through ingress, ||rate limiting||, and ||WAF integration||. Demonstrate ingress class management and multi-controller coordination.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "Services & Networking",
+  "tags": ["ingress", "load-balancing", "ssl-termination", "traffic-routing", "rate-limiting", "advanced"],
+  "infrastructure": {
+    "namespaces": ["ingress-demo"],
+    "resources": ["Ingress", "Service", "Deployment", "Secret", "IngressClass"],
+    "prerequisites": ["Ingress controller installed (nginx, traefik, etc.)"]
+  },
+  "solution": {
+    "steps": [
+      "# Create ingress-demo namespace\nkubectl create namespace ingress-demo",
+
+      "# Create TLS secret for SSL certificates\nkubectl create secret tls tls-secret \\\n  --cert=/dev/null \\\n  --key=/dev/null \\\n  -n ingress-demo --dry-run=client -o yaml | \\\n  sed 's/tls.crt: .*/tls.crt: LS0tLS1CRUdJTi8vLS0t/' | \\\n  sed 's/tls.key: .*/tls.key: LS0tLS1CRUdJTi8vLS0t/' | \\\n  kubectl apply -f -",
+
+      "# Create frontend application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: app-v1\n  namespace: ingress-demo\n  labels:\n    app: webapp\n    version: v1\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: webapp\n      version: v1\n  template:\n    metadata:\n      labels:\n        app: webapp\n        version: v1\n    spec:\n      containers:\n      - name: webapp\n        image: nginx:1.20\n        ports:\n        - containerPort: 80\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: app-v2\n  namespace: ingress-demo\n  labels:\n    app: webapp\n    version: v2\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: webapp\n      version: v2\n  template:\n    metadata:\n      labels:\n        app: webapp\n        version: v2\n    spec:\n      containers:\n      - name: webapp\n        image: nginx:1.21\n        ports:\n        - containerPort: 80\nEOF",
+
+      "# Create API application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api-server\n  namespace: ingress-demo\n  labels:\n    app: api\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: api\n  template:\n    metadata:\n      labels:\n        app: api\n    spec:\n      containers:\n      - name: api\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        command: [\"python\", \"-m\", \"http.server\", \"8080\"]\nEOF",
+
+      "# Create services\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-v1\n  namespace: ingress-demo\nspec:\n  selector:\n    app: webapp\n    version: v1\n  ports:\n  - port: 80\n    targetPort: 80\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-v2\n  namespace: ingress-demo\nspec:\n  selector:\n    app: webapp\n    version: v2\n  ports:\n  - port: 80\n    targetPort: 80\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: api-service\n  namespace: ingress-demo\nspec:\n  selector:\n    app: api\n  ports:\n  - port: 80\n    targetPort: 8080\nEOF",
+
+      "# Create main ingress with TLS and host-based routing\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: main-ingress\n  namespace: ingress-demo\n  annotations:\n    nginx.ingress.kubernetes.io/ssl-redirect: \"true\"\n    nginx.ingress.kubernetes.io/rewrite-target: /\nspec:\n  tls:\n  - hosts:\n    - app.example.com\n    - api.example.com\n    secretName: tls-secret\n  rules:\n  - host: app.example.com\n    http:\n      paths:\n      - path: /\n        pathType: Prefix\n        backend:\n          service:\n            name: app-v1\n            port:\n              number: 80\n  - host: api.example.com\n    http:\n      paths:\n      - path: /\n        pathType: Prefix\n        backend:\n          service:\n            name: api-service\n            port:\n              number: 80\nEOF",
+
+      "# Create API ingress with path-based routing\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: api-ingress\n  namespace: ingress-demo\n  annotations:\n    nginx.ingress.kubernetes.io/rewrite-target: /\nspec:\n  rules:\n  - host: example.com\n    http:\n      paths:\n      - path: /api\n        pathType: Prefix\n        backend:\n          service:\n            name: api-service\n            port:\n              number: 80\nEOF",
+
+      "# Create rate-limited ingress\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: rate-limited\n  namespace: ingress-demo\n  annotations:\n    nginx.ingress.kubernetes.io/rate-limit: \"100\"\n    nginx.ingress.kubernetes.io/rate-limit-window: \"1m\"\nspec:\n  rules:\n  - host: limited.example.com\n    http:\n      paths:\n      - path: /\n        pathType: Prefix\n        backend:\n          service:\n            name: app-v1\n            port:\n              number: 80\nEOF",
+
+      "# Create canary ingress for traffic splitting\nkubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: canary-ingress\n  namespace: ingress-demo\n  annotations:\n    nginx.ingress.kubernetes.io/canary: \"true\"\n    nginx.ingress.kubernetes.io/canary-weight: \"20\"\nspec:\n  rules:\n  - host: app.example.com\n    http:\n      paths:\n      - path: /\n        pathType: Prefix\n        backend:\n          service:\n            name: app-v2\n            port:\n              number: 80\nEOF",
+
+      "# Wait for deployments to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/app-v1 -n ingress-demo\nkubectl wait --for=condition=available --timeout=300s deployment/app-v2 -n ingress-demo\nkubectl wait --for=condition=available --timeout=300s deployment/api-server -n ingress-demo",
+
+      "# Test ingress configurations\necho \"Testing ingress configurations...\"\nkubectl get ingress -n ingress-demo\necho\necho \"Ingress details:\"\nkubectl describe ingress main-ingress -n ingress-demo"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get ingress main-ingress -n ingress-demo -o jsonpath='{.spec.tls[0].secretName}'",
+      "expected": "tls-secret",
+      "points": 2,
+      "description": "Ingress configured with TLS secret"
+    },
+    {
+      "command": "kubectl get ingress main-ingress -n ingress-demo -o jsonpath='{.spec.rules}' | jq length",
+      "expected": "2",
+      "points": 3,
+      "description": "Ingress has multiple routing rules"
+    },
+    {
+      "command": "kubectl get ingress api-ingress -n ingress-demo -o jsonpath='{.spec.rules[0].http.paths[0].path}'",
+      "expected": "/api",
+      "points": 2,
+      "description": "API ingress has path-based routing"
+    },
+    {
+      "command": "kubectl get ingress main-ingress -n ingress-demo -o jsonpath='{.metadata.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect}'",
+      "expected": "true",
+      "points": 3,
+      "description": "Ingress configured for SSL redirect"
+    },
+    {
+      "command": "kubectl get ingress rate-limited -n ingress-demo -o jsonpath='{.metadata.annotations.nginx\\.ingress\\.kubernetes\\.io/rate-limit}'",
+      "expected": "100",
+      "points": 3,
+      "description": "Rate limiting configured on ingress"
+    },
+    {
+      "command": "kubectl get service -n ingress-demo | grep -c 'app-v1\\|app-v2'",
+      "expected": "2",
+      "points": 2,
+      "description": "Multiple service versions for traffic splitting"
+    }
+  ]
+}

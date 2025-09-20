@@ -1,0 +1,147 @@
+{
+  "id": "ckad-i-010",
+  "title": "Network Policies (Basic Pod-to-Pod Restriction)",
+  "description": "Create a network security setup in namespace ||mars|| with the following components:\n\n**1. Three Pods:**\n- ||web-pod||: nginx:1.21 with label ||tier=web||\n- ||api-pod||: nginx:1.21 with label ||tier=api||\n- ||db-pod||: nginx:1.21 with label ||tier=database||\n\n**2. NetworkPolicy named ||api-network-policy|| that:**\n- Applies to pods with label ||tier=api||\n- **Ingress rules:** Only allow traffic from pods with label ||tier=web|| on port ||80||\n- **Egress rules:** Only allow traffic to pods with label ||tier=database|| on port ||80||\n- Deny all other traffic\n\n**3. NetworkPolicy named ||db-network-policy|| that:**\n- Applies to pods with label ||tier=database||\n- **Ingress rules:** Only allow traffic from pods with label ||tier=api|| on port ||80||\n- Deny all other ingress traffic\n\nVerify the network policies are correctly restricting communication between pods.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Network Security",
+  "tags": [
+    "network-policy",
+    "ingress-rules",
+    "egress-rules",
+    "pod-communication",
+    "security",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "pods",
+      "networkpolicies"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create web pod:",
+      "   kubectl run web-pod --image=nginx:1.21 --labels=tier=web -n mars",
+      "2. Create api pod:",
+      "   kubectl run api-pod --image=nginx:1.21 --labels=tier=api -n mars",
+      "3. Create database pod:",
+      "   kubectl run db-pod --image=nginx:1.21 --labels=tier=database -n mars",
+      "4. Create API NetworkPolicy:",
+      "   cat <<EOF > api-network-policy.yaml",
+      "   apiVersion: networking.k8s.io/v1",
+      "   kind: NetworkPolicy",
+      "   metadata:",
+      "     name: api-network-policy",
+      "     namespace: mars",
+      "   spec:",
+      "     podSelector:",
+      "       matchLabels:",
+      "         tier: api",
+      "     policyTypes:",
+      "     - Ingress",
+      "     - Egress",
+      "     ingress:",
+      "     - from:",
+      "       - podSelector:",
+      "           matchLabels:",
+      "             tier: web",
+      "       ports:",
+      "       - protocol: TCP",
+      "         port: 80",
+      "     egress:",
+      "     - to:",
+      "       - podSelector:",
+      "           matchLabels:",
+      "             tier: database",
+      "       ports:",
+      "       - protocol: TCP",
+      "         port: 80",
+      "   EOF",
+      "5. Apply API NetworkPolicy:",
+      "   kubectl apply -f api-network-policy.yaml",
+      "6. Create Database NetworkPolicy:",
+      "   cat <<EOF > db-network-policy.yaml",
+      "   apiVersion: networking.k8s.io/v1",
+      "   kind: NetworkPolicy",
+      "   metadata:",
+      "     name: db-network-policy",
+      "     namespace: mars",
+      "   spec:",
+      "     podSelector:",
+      "       matchLabels:",
+      "         tier: database",
+      "     policyTypes:",
+      "     - Ingress",
+      "     ingress:",
+      "     - from:",
+      "       - podSelector:",
+      "           matchLabels:",
+      "             tier: api",
+      "       ports:",
+      "       - protocol: TCP",
+      "         port: 80",
+      "   EOF",
+      "7. Apply Database NetworkPolicy:",
+      "   kubectl apply -f db-network-policy.yaml",
+      "8. Wait for pods to be ready:",
+      "   kubectl wait --for=condition=Ready pod --all -n mars --timeout=60s",
+      "9. Verify network policies:",
+      "   kubectl get networkpolicy -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod web-pod -n mars -o jsonpath='{.metadata.labels.tier}'",
+      "expected": "web",
+      "points": 1,
+      "description": "Web pod should have tier=web label"
+    },
+    {
+      "command": "kubectl get pod api-pod -n mars -o jsonpath='{.metadata.labels.tier}'",
+      "expected": "api",
+      "points": 1,
+      "description": "API pod should have tier=api label"
+    },
+    {
+      "command": "kubectl get pod db-pod -n mars -o jsonpath='{.metadata.labels.tier}'",
+      "expected": "database",
+      "points": 1,
+      "description": "Database pod should have tier=database label"
+    },
+    {
+      "command": "kubectl get networkpolicy api-network-policy -n mars -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expected": "api",
+      "points": 1,
+      "description": "API NetworkPolicy should target api tier pods"
+    },
+    {
+      "command": "kubectl get networkpolicy api-network-policy -n mars -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expected": "web",
+      "points": 1,
+      "description": "API NetworkPolicy should allow ingress from web tier"
+    },
+    {
+      "command": "kubectl get networkpolicy api-network-policy -n mars -o jsonpath='{.spec.egress[0].to[0].podSelector.matchLabels.tier}'",
+      "expected": "database",
+      "points": 1,
+      "description": "API NetworkPolicy should allow egress to database tier"
+    },
+    {
+      "command": "kubectl get networkpolicy db-network-policy -n mars -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expected": "database",
+      "points": 1,
+      "description": "Database NetworkPolicy should target database tier pods"
+    },
+    {
+      "command": "kubectl get networkpolicy db-network-policy -n mars -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expected": "api",
+      "points": 1,
+      "description": "Database NetworkPolicy should allow ingress from api tier only"
+    }
+  ]
+}

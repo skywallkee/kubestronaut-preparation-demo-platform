@@ -1,0 +1,109 @@
+{
+  "id": "ckad-a-042",
+  "title": "Dynamic ConfigMap Updates and Hot Reloading",
+  "description": "Implement an advanced configuration management system that demonstrates ||hot reloading|| of application configurations. Create a web application that reads configuration from both ||ConfigMaps|| and ||environment variables||. The application should detect configuration changes and reload without restart. Implement multiple ConfigMaps with different update strategies: projected volumes, environment variables, and volume mounts. Show how configuration changes propagate to running containers and test both automatic and manual refresh scenarios.",
+  "points": 14,
+  "timeLimit": 30,
+  "category": "Configuration",
+  "tags": ["configmap", "hot-reload", "volume-mounts", "environment-variables", "configuration-management", "advanced"],
+  "infrastructure": {
+    "namespaces": ["config-demo"],
+    "resources": ["ConfigMap", "Pod", "Deployment"],
+    "prerequisites": ["Application that supports configuration reloading"]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and initial ConfigMaps:",
+      "   kubectl create namespace config-demo",
+      "   kubectl create configmap app-config -n config-demo --from-literal=database_url=postgres://db:5432/app --from-literal=api_key=initial-key",
+      "   kubectl create configmap logging-config -n config-demo --from-literal=log_level=INFO --from-literal=log_format=json",
+      "2. Deploy application with ConfigMap mounted as volume:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: config-app",
+      "     namespace: config-demo",
+      "   spec:",
+      "     replicas: 2",
+      "     selector:",
+      "       matchLabels:",
+      "         app: config-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: config-app",
+      "       spec:",
+      "         containers:",
+      "         - name: app",
+      "           image: nginx:alpine",
+      "           volumeMounts:",
+      "           - name: config-volume",
+      "             mountPath: /etc/config",
+      "           env:",
+      "           - name: LOG_LEVEL",
+      "             valueFrom:",
+      "               configMapKeyRef:",
+      "                 name: logging-config",
+      "                 key: log_level",
+      "           command: ['/bin/sh', '-c']",
+      "           args:",
+      "           - |",
+      "             while true; do",
+      "               echo \"Config: $(cat /etc/config/database_url)\" >> /var/log/nginx/access.log",
+      "               echo \"Log Level: $LOG_LEVEL\" >> /var/log/nginx/access.log",
+      "               sleep 10",
+      "             done",
+      "         volumes:",
+      "         - name: config-volume",
+      "           configMap:",
+      "             name: app-config",
+      "   EOF",
+      "3. Test hot reloading by updating ConfigMaps:",
+      "   kubectl patch configmap app-config -n config-demo --patch '{\"data\":{\"database_url\":\"postgres://db:5432/app\"}}'",
+      "   kubectl patch configmap logging-config -n config-demo --patch '{\"data\":{\"log_level\":\"INFO\"}}'",
+      "4. Verify configuration access and updates:",
+      "   kubectl exec -n config-demo deploy/config-app -- cat /etc/config/database_url",
+      "   kubectl exec -n config-demo deploy/config-app -- env | grep LOG_LEVEL",
+      "   kubectl logs -n config-demo deploy/config-app --tail=5"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -n config-demo -o jsonpath='{.data.database_url}'",
+      "expected": "postgres://db:5432/app",
+      "points": 2,
+      "description": "Application ConfigMap contains database configuration"
+    },
+    {
+      "command": "kubectl get configmap logging-config -n config-demo -o jsonpath='{.data.log_level}'",
+      "expected": "INFO",
+      "points": 2,
+      "description": "Logging ConfigMap contains log level configuration"
+    },
+    {
+      "command": "kubectl get pod -n config-demo -l app=config-app --field-selector=status.phase=Running | wc -l",
+      "expected": "3",
+      "points": 3,
+      "description": "At least 2 application pods are running"
+    },
+    {
+      "command": "kubectl exec -n config-demo deploy/config-app -- cat /etc/config/database_url",
+      "expected": "postgres://db:5432/app",
+      "points": 3,
+      "description": "Configuration is properly mounted in container"
+    },
+    {
+      "command": "kubectl exec -n config-demo deploy/config-app -- env | grep LOG_LEVEL",
+      "expected": "LOG_LEVEL=INFO",
+      "points": 2,
+      "description": "Environment variable from ConfigMap is set"
+    },
+    {
+      "command": "kubectl get pod -n config-demo -l app=config-app -o jsonpath='{.items[0].spec.volumes[0].configMap.name}'",
+      "expected": "app-config",
+      "points": 2,
+      "description": "Pod has ConfigMap mounted as volume"
+    }
+  ]
+}

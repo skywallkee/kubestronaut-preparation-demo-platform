@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-046",
+  "title": "Container Image Management with Security Context and Resource Limits",
+  "description": "Deploy a containerized application in the saturn namespace using a private container registry. Configure security contexts to run with minimal privileges and implement strict resource limits. The application should use image pull secrets for registry authentication.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["container-images", "security-contexts", "resource-management", "configmaps-secrets", "jobs-cronjobs"],
+  "points": 9,
+  "timeMinutes": 16,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a Secret ||registry-secret|| of type ||kubernetes.io/dockerconfigjson|| for registry authentication"
+    },
+    {
+      "step": 2,
+      "description": "Create a Deployment using image from private registry ||myregistry.local/app:v1.2||"
+    },
+    {
+      "step": 3,
+      "description": "Configure security context with ||runAsNonRoot: true|| and ||runAsUser: 1000||"
+    },
+    {
+      "step": 4,
+      "description": "Set resource requests: CPU ||50m||, Memory ||64Mi|| and limits: CPU ||100m||, Memory ||128Mi||"
+    },
+    {
+      "step": 5,
+      "description": "Configure ||imagePullSecrets|| to use the registry secret"
+    },
+    {
+      "step": 6,
+      "description": "Set ||imagePullPolicy: Always|| to ensure latest image is always pulled"
+    },
+    {
+      "step": 7,
+      "description": "Verify the deployment pulls the image successfully with security constraints"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get secret registry-secret -n saturn -o jsonpath='{.type}'",
+      "expectedOutput": "kubernetes.io/dockerconfigjson",
+      "description": "Verify registry secret type",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment secure-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "myregistry.local/app:v1.2",
+      "description": "Verify deployment uses private registry image",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment secure-app -n saturn -o jsonpath='{.spec.template.spec.securityContext.runAsNonRoot}'",
+      "expectedOutput": "true",
+      "description": "Verify runAsNonRoot security setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment secure-app -n saturn -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "1000",
+      "description": "Verify runAsUser security setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment secure-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}'",
+      "expectedOutput": "100m",
+      "description": "Verify CPU resource limit",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment secure-app -n saturn -o jsonpath='{.spec.template.spec.imagePullSecrets[0].name}'",
+      "expectedOutput": "registry-secret",
+      "description": "Verify imagePullSecrets configuration",
+      "points": 2
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-051",
+  "title": "Helm Chart with Service Discovery and Security Context",
+  "description": "Create a Helm chart for a microservices application in the venus namespace that uses DNS service discovery for inter-service communication. Configure security contexts to run all services as non-root users and implement proper service mesh architecture with service accounts.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["helm-package-manager", "dns-service-discovery", "security-contexts", "service-accounts-rbac"],
+  "points": 12,
+  "timeMinutes": 25,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create Helm chart ||microservices|| with templates for frontend, backend, and auth services"
+    },
+    {
+      "step": 2,
+      "description": "Configure values.yaml with service discovery settings and security configurations"
+    },
+    {
+      "step": 3,
+      "description": "Create ServiceAccount templates for each service with appropriate RBAC"
+    },
+    {
+      "step": 4,
+      "description": "Configure security context: ||runAsUser: 1001||, ||runAsGroup: 1001||, ||runAsNonRoot: true||"
+    },
+    {
+      "step": 5,
+      "description": "Set up service discovery using environment variables with FQDN patterns"
+    },
+    {
+      "step": 6,
+      "description": "Deploy the chart with ||helm install microservices-app ./microservices|| in venus namespace"
+    },
+    {
+      "step": 7,
+      "description": "Verify inter-service communication and security context implementation"
+    }
+  ],
+  "validations": [
+    {
+      "command": "helm list -n venus | grep microservices-app",
+      "expectedOutput": "microservices-app",
+      "description": "Verify Helm release is deployed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get serviceaccount frontend-sa -n venus -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "frontend-sa",
+      "description": "Verify frontend ServiceAccount exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "1001",
+      "description": "Verify security context runAsUser",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.spec.securityContext.runAsNonRoot}'",
+      "expectedOutput": "true",
+      "description": "Verify runAsNonRoot security setting",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.spec.containers[0].env[0].value}' | grep backend.venus.svc.cluster.local",
+      "expectedOutput": "backend.venus.svc.cluster.local",
+      "description": "Verify service discovery FQDN configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment backend -n venus -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expectedOutput": "backend-sa",
+      "description": "Verify deployment uses correct ServiceAccount",
+      "points": 2
+    },
+    {
+      "command": "kubectl exec deployment/frontend -n venus -- nslookup backend.venus.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS service discovery works",
+      "points": 1
+    }
+  ]
+}

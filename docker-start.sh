@@ -45,7 +45,7 @@ print_default() {
 }
 
 # Step 1: Verify we're in the project root
-PROJECT_ROOT="/mnt/c/Users/ramaistroaie/OneDrive - ENDAVA/Documents/kubernetes-demo-platform"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ ! -f "$PROJECT_ROOT/Dockerfile" ]; then
     print_error "Dockerfile not found. Please run this script from the project root."
@@ -339,6 +339,10 @@ print_status "Starting Docker container with selected configuration..."
 DOCKER_CMD="docker run -d --name k8s-exam-simulator"
 DOCKER_CMD="$DOCKER_CMD $NETWORK_CONFIG"
 DOCKER_CMD="$DOCKER_CMD -e NODE_ENV=production -e PORT=8080"
+
+# Add host networking fix for Kubernetes cluster access
+# This allows the container to reach the host machine's services
+DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
 
 if [ -n "$KUBE_CONTEXT" ]; then
     DOCKER_CMD="$DOCKER_CMD -e KUBE_CONTEXT=$KUBE_CONTEXT"

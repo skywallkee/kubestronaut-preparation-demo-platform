@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-049",
+  "title": "Export Pod YAML",
+  "description": "Export the configuration of the ||labeled-pod|| to a file ||/opt/course/049/labeled-pod-export.yaml|| in the ||venus|| namespace.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "debugging-troubleshooting",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "labeled-pod exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Export pod yaml:",
+      "   kubectl get pod labeled-pod -n venus -o yaml",
+      "2. Save to file:",
+      "   kubectl get pod labeled-pod -n venus -o yaml > /opt/course/049/labeled-pod-export.yaml",
+      "3. Verify file:",
+      "   head /opt/course/049/labeled-pod-export.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/049/labeled-pod-export.yaml",
+      "expected": "0",
+      "points": 2,
+      "description": "Export file should exist"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-015",
+  "title": "Create Pod with Labels",
+  "description": "Create a Pod named ||labeled-pod|| using image ||nginx:1.20-alpine|| with labels ||app=web|| and ||version=1.0|| in the ||neptune|| namespace.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Design and Build",
+  "tags": [
+    "multi-container-pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "neptune"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod with labels:",
+      "   kubectl run labeled-pod --image=nginx:1.20-alpine --labels=app=web,version=1.0 -n neptune",
+      "2. Verify labels:",
+      "   kubectl get pod labeled-pod --show-labels -n neptune",
+      "3. Check specific label:",
+      "   kubectl get pod -l app=web -n neptune"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod labeled-pod -n neptune -o jsonpath='{.metadata.labels.app}'",
+      "expected": "web",
+      "points": 3,
+      "description": "Pod should have app=web label"
+    }
+  ]
+}

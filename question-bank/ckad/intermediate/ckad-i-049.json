@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-049",
+  "title": "Application Scaling with Volume Management and Ingress",
+  "description": "Deploy a scalable file processing application in the mars namespace that automatically scales based on queue length. Configure different volume types for input, processing, and output data. Expose the application through an Ingress controller with path-based routing.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["application-scaling", "volume-types", "ingress", "persistent-volumes-claims", "jobs-cronjobs", "service-accounts-rbac"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create PVC ||input-data-pvc|| with ||2Gi|| for input files"
+    },
+    {
+      "step": 2,
+      "description": "Create PVC ||output-data-pvc|| with ||3Gi|| for processed files"
+    },
+    {
+      "step": 3,
+      "description": "Deploy processing application with emptyDir volume for temporary processing"
+    },
+    {
+      "step": 4,
+      "description": "Configure HPA with custom metrics for queue length scaling (min: ||2||, max: ||8||)"
+    },
+    {
+      "step": 5,
+      "description": "Create Services for the processing application on port ||8080||"
+    },
+    {
+      "step": 6,
+      "description": "Configure Ingress with host ||fileprocessor.local|| and paths ||/upload||, ||/process||, ||/download||"
+    },
+    {
+      "step": 7,
+      "description": "Verify scaling behavior and volume mounting works correctly"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pvc input-data-pvc -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify input PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc output-data-pvc -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "3Gi",
+      "description": "Verify output PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment file-processor -n mars -o jsonpath='{.spec.template.spec.volumes[2].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify emptyDir volume for temporary processing",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa file-processor-hpa -n mars -o jsonpath='{.spec.minReplicas}'",
+      "expectedOutput": "2",
+      "description": "Verify HPA minimum replicas",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa file-processor-hpa -n mars -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "8",
+      "description": "Verify HPA maximum replicas",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service file-processor-svc -n mars -o jsonpath='{.spec.ports[0].port}'",
+      "expectedOutput": "8080",
+      "description": "Verify service port configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get ingress file-processor-ingress -n mars -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "fileprocessor.local",
+      "description": "Verify Ingress host configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get ingress file-processor-ingress -n mars -o jsonpath='{.spec.rules[0].http.paths[0].path}'",
+      "expectedOutput": "/upload",
+      "description": "Verify Ingress path configuration",
+      "points": 2
+    }
+  ]
+}

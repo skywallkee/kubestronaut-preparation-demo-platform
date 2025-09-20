@@ -1,0 +1,75 @@
+{
+  "id": "ckad-a-067",
+  "title": "Advanced CronJob and Job Management",
+  "description": "Design a sophisticated batch processing system using ||CronJobs|| and ||Jobs|| with advanced scheduling, retry logic, and failure handling. Create multiple CronJobs with different schedules, implement job dependencies, configure concurrent execution policies, and handle job failure scenarios. Include batch jobs with ||parallelism||, ||completions||, ||activeDeadlineSeconds||, and backoff limits. Demonstrate job monitoring, cleanup policies, and integration with external task scheduling systems.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Pod Design",
+  "tags": ["cronjob", "job", "batch-processing", "scheduling", "parallelism", "failure-handling", "advanced"],
+  "infrastructure": {
+    "namespaces": ["batch-processing"],
+    "resources": ["CronJob", "Job", "ConfigMap", "Secret"],
+    "prerequisites": ["Understanding of cron expressions and job lifecycle"]
+  },
+  "solution": {
+    "steps": [
+      "# Create batch-processing namespace\nkubectl create namespace batch-processing",
+
+      "# Create CronJob for daily backup\nkubectl apply -f - <<EOF\napiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: daily-backup\n  namespace: batch-processing\nspec:\n  schedule: \"0 2 * * *\"\n  timeZone: \"UTC\"\n  concurrencyPolicy: Forbid\n  successfulJobsHistoryLimit: 3\n  failedJobsHistoryLimit: 1\n  jobTemplate:\n    spec:\n      activeDeadlineSeconds: 3600\n      backoffLimit: 3\n      template:\n        spec:\n          restartPolicy: OnFailure\n          containers:\n          - name: backup\n            image: busybox:1.35\n            command:\n            - /bin/sh\n            - -c\n            - |\n              echo \"Starting daily backup at $(date)\"\n              echo \"Connecting to database...\"\n              sleep 5\n              echo \"Creating backup snapshot...\"\n              sleep 30\n              echo \"Compressing backup files...\"\n              sleep 10\n              echo \"Uploading to storage...\"\n              sleep 15\n              echo \"Daily backup completed successfully at $(date)\"\nEOF",
+
+      "# Create CronJob for hourly log processing\nkubectl apply -f - <<EOF\napiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: hourly-processing\n  namespace: batch-processing\nspec:\n  schedule: \"0 * * * *\"\n  concurrencyPolicy: Forbid\n  successfulJobsHistoryLimit: 5\n  failedJobsHistoryLimit: 2\n  jobTemplate:\n    spec:\n      activeDeadlineSeconds: 1800\n      template:\n        spec:\n          restartPolicy: OnFailure\n          containers:\n          - name: log-processor\n            image: python:3.9-slim\n            command:\n            - python3\n            - -c\n            - |\n              import time\n              import random\n              from datetime import datetime\n              \n              print(f\"Starting log processing at {datetime.now()}\")\n              \n              # Simulate log processing\n              for i in range(10):\n                  print(f\"Processing log batch {i+1}/10\")\n                  time.sleep(random.uniform(2, 5))\n              \n              print(f\"Log processing completed at {datetime.now()}\")\nEOF",
+
+      "# Create Job with parallelism for batch processing\nkubectl apply -f - <<EOF\napiVersion: batch/v1\nkind: Job\nmetadata:\n  name: batch-processor\n  namespace: batch-processing\n  labels:\n    app: batch-processor\nspec:\n  parallelism: 3\n  completions: 6\n  activeDeadlineSeconds: 3600\n  backoffLimit: 2\n  template:\n    spec:\n      restartPolicy: OnFailure\n      containers:\n      - name: processor\n        image: python:3.9-slim\n        env:\n        - name: JOB_COMPLETION_INDEX\n          valueFrom:\n            fieldRef:\n              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']\n        command:\n        - python3\n        - -c\n        - |\n          import os\n          import time\n          import random\n          from datetime import datetime\n          \n          job_index = os.getenv('JOB_COMPLETION_INDEX', '0')\n          pod_name = os.getenv('HOSTNAME', 'unknown')\n          \n          print(f\"Worker {job_index} ({pod_name}) started at {datetime.now()}\")\n          \n          # Simulate batch processing work\n          processing_time = random.uniform(30, 60)\n          print(f\"Worker {job_index} processing for {processing_time:.1f} seconds\")\n          time.sleep(processing_time)\n          \n          # Simulate occasional failures for testing\n          if random.random() < 0.1:\n              print(f\"Worker {job_index} failed during processing\")\n              exit(1)\n          \n          print(f\"Worker {job_index} completed successfully at {datetime.now()}\")\nEOF",
+
+      "# Create Job with init container dependency\nkubectl apply -f - <<EOF\napiVersion: batch/v1\nkind: Job\nmetadata:\n  name: dependent-job\n  namespace: batch-processing\nspec:\n  template:\n    spec:\n      restartPolicy: OnFailure\n      initContainers:\n      - name: dependency-check\n        image: busybox:1.35\n        command:\n        - /bin/sh\n        - -c\n        - |\n          echo \"Checking dependencies...\"\n          # Check if prerequisite job completed\n          sleep 10\n          echo \"Dependencies satisfied\"\n      containers:\n      - name: main-task\n        image: busybox:1.35\n        command:\n        - /bin/sh\n        - -c\n        - |\n          echo \"Starting main task after dependencies are met\"\n          sleep 20\n          echo \"Main task completed\"\nEOF",
+
+      "# Create ConfigMap for job configuration\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: job-config\n  namespace: batch-processing\ndata:\n  batch-size: \"1000\"\n  max-retries: \"3\"\n  timeout: \"3600\"\nEOF",
+
+      "# Create Secret for job credentials\nkubectl create secret generic job-credentials \\\n    --from-literal=database-url=\"postgresql://user:pass@db:5432/jobs\" \\\n    --from-literal=api-key=\"secret-api-key\" \\\n    -n batch-processing",
+
+      "# Wait for jobs to start\necho \"Waiting for jobs to start...\"\nsleep 30",
+
+      "# Monitor job status\necho \"Monitoring job status...\"\nkubectl get jobs -n batch-processing\necho\necho \"CronJob status:\"\nkubectl get cronjobs -n batch-processing\necho\necho \"Job details:\"\nkubectl describe job batch-processor -n batch-processing",
+
+      "# Test manual job trigger\necho \"Testing manual CronJob trigger...\"\nkubectl create job manual-backup --from=cronjob/daily-backup -n batch-processing\necho \"Manual job created from CronJob template\""
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get cronjob daily-backup -n batch-processing -o jsonpath='{.spec.schedule}'",
+      "expected": "0 2 * * *",
+      "points": 2,
+      "description": "Daily backup CronJob has correct schedule"
+    },
+    {
+      "command": "kubectl get cronjob hourly-processing -n batch-processing -o jsonpath='{.spec.concurrencyPolicy}'",
+      "expected": "Forbid",
+      "points": 2,
+      "description": "Hourly CronJob forbids concurrent executions"
+    },
+    {
+      "command": "kubectl get job -n batch-processing -l app=batch-processor -o jsonpath='{.items[0].spec.parallelism}'",
+      "expected": "3",
+      "points": 3,
+      "description": "Batch job configured with parallelism"
+    },
+    {
+      "command": "kubectl get job -n batch-processing -l app=batch-processor -o jsonpath='{.items[0].spec.activeDeadlineSeconds}'",
+      "expected": "3600",
+      "points": 2,
+      "description": "Job has active deadline configured"
+    },
+    {
+      "command": "kubectl get cronjob daily-backup -n batch-processing -o jsonpath='{.spec.successfulJobsHistoryLimit}'",
+      "expected": "3",
+      "points": 2,
+      "description": "CronJob has job history limit configured"
+    },
+    {
+      "command": "kubectl get jobs -n batch-processing --field-selector=status.successful=1 | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Some jobs have completed successfully"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "ckad-e-053",
+  "title": "Create Basic Ingress",
+  "description": "Create an Ingress named ||web-ingress|| in Namespace ||default|| that routes traffic from ||example.com|| to service ||web-svc|| on port ||80||.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Services and Networking",
+  "tags": [
+    "ingress",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "ingress"
+    ],
+    "prerequisites": [
+      "web-svc service exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create Ingress YAML:",
+      "   kubectl create ingress web-ingress --rule=\"example.com/*=web-svc:80\" --dry-run=client -o yaml > web-ingress.yaml",
+      "2. Apply the Ingress:",
+      "   kubectl apply -f web-ingress.yaml",
+      "3. Verify Ingress:",
+      "   kubectl get ingress web-ingress"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get ingress web-ingress -o jsonpath='{.spec.rules[0].host}'",
+      "expected": "example.com",
+      "points": 2,
+      "description": "Ingress should route traffic from example.com"
+    },
+    {
+      "command": "kubectl get ingress web-ingress -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}'",
+      "expected": "web-svc",
+      "points": 1,
+      "description": "Ingress should route to web-svc service"
+    },
+    {
+      "command": "kubectl get ingress web-ingress -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.port.number}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Ingress should route to port 80"
+    }
+  ]
+}

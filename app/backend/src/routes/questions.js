@@ -46,10 +46,13 @@ router.get('/current', async (req, res) => {
         points: currentQuestion.points,
         flagged: currentQuestion.flagged || false,
         completed: currentQuestion.completed || false,
-        viewed: currentQuestion.viewed || false
+        viewed: currentQuestion.viewed || false,
+        solution: exam.practiceMode ? currentQuestion.solution : undefined,
+        validations: exam.practiceMode ? currentQuestion.validations : undefined
       },
       currentIndex: exam.currentQuestionIndex,
       totalQuestions: exam.questions.length,
+      practiceMode: exam.practiceMode || false,
       progress: {
         completed: exam.questions.filter(q => q.completed).length,
         flagged: exam.questions.filter(q => q.flagged && !q.completed).length,
@@ -172,6 +175,49 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error getting question stats:', error);
     res.status(500).json({ error: 'Failed to get question statistics' });
+  }
+});
+
+// Get question details with solution (for review mode)
+router.get('/:questionId/details', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const exam = ExamService.getCurrentExam();
+
+    if (!exam) {
+      return res.status(404).json({ error: 'No active exam found' });
+    }
+
+    // Find the question in the exam
+    const question = exam.questions.find(q => q.originalId === questionId || q.id === questionId);
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    // Load the full question data with solution and validations
+    const questionFile = question.originalId || question.id;
+    const fullQuestionData = await QuestionService.getQuestionById(questionFile, exam.type);
+
+    if (!fullQuestionData) {
+      return res.status(404).json({ error: 'Question details not found' });
+    }
+
+    res.json({
+      id: question.id,
+      originalId: question.originalId,
+      title: fullQuestionData.title,
+      description: fullQuestionData.description,
+      points: fullQuestionData.points,
+      category: fullQuestionData.category,
+      timeLimit: fullQuestionData.timeLimit,
+      solution: fullQuestionData.solution || { steps: [] },
+      validations: fullQuestionData.validations || [],
+      tags: fullQuestionData.tags || [],
+      infrastructure: fullQuestionData.infrastructure || {}
+    });
+  } catch (error) {
+    console.error('Error getting question details:', error);
+    res.status(500).json({ error: 'Failed to get question details' });
   }
 });
 

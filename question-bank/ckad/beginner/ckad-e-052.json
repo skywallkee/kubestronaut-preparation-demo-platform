@@ -1,0 +1,45 @@
+{
+  "id": "ckad-e-052",
+  "title": "Scale a ReplicaSet",
+  "description": "Scale the existing ReplicaSet ||app-rs|| in Namespace ||production|| to ||5|| replicas.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Design and Build",
+  "tags": [
+    "replicasets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "replicasets"
+    ],
+    "prerequisites": [
+      "app-rs ReplicaSet exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Scale the ReplicaSet:",
+      "   kubectl scale replicaset app-rs --replicas=5 -n production",
+      "2. Verify scaling:",
+      "   kubectl get replicaset app-rs -n production"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get replicaset app-rs -n production -o jsonpath='{.spec.replicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "ReplicaSet should be scaled to 5 replicas"
+    },
+    {
+      "command": "kubectl get replicaset app-rs -n production -o jsonpath='{.status.readyReplicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "All 5 replicas should be ready"
+    }
+  ]
+}

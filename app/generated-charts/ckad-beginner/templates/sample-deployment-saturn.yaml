@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-deployment-saturn
+  namespace: saturn
+  labels:
+    app: sample-app-saturn
+    exam-resource: "true"
+    planet: saturn
+    type: "sample"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app-saturn
+  template:
+    metadata:
+      labels:
+        app: sample-app-saturn
+        planet: saturn
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

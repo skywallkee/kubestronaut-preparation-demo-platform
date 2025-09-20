@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deploy
+  namespace: jupiter
+  labels:
+    app: web-deploy
+    exam-resource: "true"
+    type: "prerequisite"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-deploy
+  template:
+    metadata:
+      labels:
+        app: web-deploy
+        tier: frontend
+    spec:
+      containers:
+      - name: web
+        image: nginx:1.20-alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

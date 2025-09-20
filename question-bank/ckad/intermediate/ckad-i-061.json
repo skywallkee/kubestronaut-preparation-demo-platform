@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-061",
+  "title": "Volume Types with Logging and Container Image Management",
+  "description": "Deploy a log aggregation system in the mars namespace that collects logs from multiple sources using different volume types. Manage container images with specific versions and implement proper image pull strategies for the logging infrastructure components.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["volume-types", "logging-monitoring", "container-images", "multi-container-pods"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy log collector using ||fluentd:v1.14|| image with ||Always|| pull policy"
+    },
+    {
+      "step": 2,
+      "description": "Deploy log processor using ||logstash:7.17.0|| image with ||IfNotPresent|| pull policy"
+    },
+    {
+      "step": 3,
+      "description": "Configure hostPath volume ||/var/log|| for system log collection"
+    },
+    {
+      "step": 4,
+      "description": "Configure emptyDir volume ||processing-temp|| for temporary log processing"
+    },
+    {
+      "step": 5,
+      "description": "Configure PVC ||log-storage|| with ||10Gi|| for persistent log storage"
+    },
+    {
+      "step": 6,
+      "description": "Create multi-container pod with log collector, processor, and monitoring containers"
+    },
+    {
+      "step": 7,
+      "description": "Verify log flow through different volume types and container updates"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment log-collector -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "fluentd:v1.14",
+      "description": "Verify log collector image version",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-processor -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "logstash:7.17.0",
+      "description": "Verify log processor image version",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-collector -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "Always",
+      "description": "Verify collector image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment log-processor -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "IfNotPresent",
+      "description": "Verify processor image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n mars -o jsonpath='{.spec.volumes[0].hostPath.path}'",
+      "expectedOutput": "/var/log",
+      "description": "Verify hostPath volume for system logs",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n mars -o jsonpath='{.spec.volumes[1].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify emptyDir volume for processing",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc log-storage -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "10Gi",
+      "description": "Verify log storage PVC size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n mars -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "3",
+      "description": "Verify multi-container pod has 3 containers",
+      "points": 1
+    }
+  ]
+}

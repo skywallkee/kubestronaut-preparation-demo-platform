@@ -1,0 +1,96 @@
+{
+  "id": "cka-i-004",
+  "title": "Service Accounts and RBAC",
+  "description": "Set up Role-Based Access Control (RBAC) for a development team. Your tasks are:\n\n1. Create a new service account named ||dev-team|| in namespace ||pluto||\n2. Create a Role named ||pod-manager|| in namespace ||pluto|| with permissions to:\n   - Create, get, list, update, delete pods\n   - Get, list services\n   - Get, list configmaps and secrets\n3. Create a RoleBinding named ||dev-team-binding|| that grants the ||pod-manager|| role to the ||dev-team|| service account\n4. Create a pod named ||test-rbac|| that uses the ||dev-team|| service account\n5. Verify the service account has the correct permissions by testing kubectl commands from within the pod",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Security and RBAC",
+  "tags": [
+    "rbac",
+    "service-accounts",
+    "roles",
+    "rolebindings",
+    "security",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create service account:",
+      "   kubectl create serviceaccount dev-team -n pluto",
+      "2. Create Role with required permissions:",
+      "   kubectl create role pod-manager \\",
+      "     --verb=create,get,list,update,delete \\",
+      "     --resource=pods \\",
+      "     -n pluto",
+      "   kubectl patch role pod-manager -n pluto --type='merge' -p='{\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"pods\"],\"verbs\":[\"create\",\"get\",\"list\",\"update\",\"delete\"]},{\"apiGroups\":[\"\"],\"resources\":[\"services\",\"configmaps\",\"secrets\"],\"verbs\":[\"get\",\"list\"]}]}'",
+      "3. Create RoleBinding:",
+      "   kubectl create rolebinding dev-team-binding \\",
+      "     --role=pod-manager \\",
+      "     --serviceaccount=pluto:dev-team \\",
+      "     -n pluto",
+      "4. Create test pod with service account:",
+      "   kubectl run test-rbac --image=nginx --serviceaccount=dev-team -n pluto",
+      "5. Verify permissions by exec into pod:",
+      "   kubectl exec -it test-rbac -n pluto -- sh",
+      "6. Test kubectl commands from within pod:",
+      "   kubectl auth can-i create pods --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "   kubectl auth can-i get services --as=system:serviceaccount:pluto:dev-team -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount dev-team -n pluto",
+      "expected": "dev-team.*1.*[0-9]+[a-z]",
+      "points": 1,
+      "description": "Service account dev-team should exist in pluto namespace"
+    },
+    {
+      "command": "kubectl get role pod-manager -n pluto -o jsonpath='{.rules[0].verbs[*]}'",
+      "expected": ".*create.*get.*list.*update.*delete.*",
+      "points": 2,
+      "description": "Role should have correct verbs for pods"
+    },
+    {
+      "command": "kubectl get role pod-manager -n pluto -o jsonpath='{.rules[1].resources[*]}'",
+      "expected": ".*services.*configmaps.*secrets.*",
+      "points": 2,
+      "description": "Role should have permissions for services, configmaps, and secrets"
+    },
+    {
+      "command": "kubectl get rolebinding dev-team-binding -n pluto -o jsonpath='{.subjects[0].name}'",
+      "expected": "dev-team",
+      "points": 1,
+      "description": "RoleBinding should reference dev-team service account"
+    },
+    {
+      "command": "kubectl get pod test-rbac -n pluto -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "dev-team",
+      "points": 1,
+      "description": "Test pod should use dev-team service account"
+    },
+    {
+      "command": "kubectl auth can-i create pods --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "expected": "yes",
+      "points": 1,
+      "description": "Service account should have permission to create pods"
+    },
+    {
+      "command": "kubectl auth can-i delete pods --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "expected": "yes",
+      "points": 1,
+      "description": "Service account should have permission to delete pods"
+    }
+  ]
+}

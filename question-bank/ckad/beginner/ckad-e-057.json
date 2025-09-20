@@ -1,0 +1,45 @@
+{
+  "id": "ckad-e-057",
+  "title": "Create Basic Network Policy",
+  "description": "Create a NetworkPolicy named ||deny-all|| in Namespace ||production|| that denies all ingress traffic to pods with label ||app=database||.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Services and Networking",
+  "tags": [
+    "network-policies",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "networkpolicies"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create NetworkPolicy YAML:",
+      "   Create YAML with podSelector matching app=database and empty ingress rules",
+      "2. Apply the NetworkPolicy:",
+      "   kubectl apply -f deny-all.yaml -n production",
+      "3. Verify NetworkPolicy:",
+      "   kubectl get networkpolicy deny-all -n production"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get networkpolicy deny-all -n production -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+      "expected": "database",
+      "points": 2,
+      "description": "NetworkPolicy should target pods with app=database"
+    },
+    {
+      "command": "kubectl get networkpolicy deny-all -n production -o jsonpath='{.spec.policyTypes[0]}'",
+      "expected": "Ingress",
+      "points": 2,
+      "description": "NetworkPolicy should be of type Ingress"
+    }
+  ]
+}

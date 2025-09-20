@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-050",
+  "title": "Create Namespace and Pod",
+  "description": "Create a new namespace named ||test-ns|| and create a Pod named ||final-pod|| using image ||nginx:1.20-alpine|| in this namespace.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "multi-container-pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "namespaces",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace:",
+      "   kubectl create namespace test-ns",
+      "2. Create pod in namespace:",
+      "   kubectl run final-pod --image=nginx:1.20-alpine --namespace=test-ns",
+      "3. Verify pod:",
+      "   kubectl get pod final-pod -n test-ns"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod final-pod -n test-ns -o jsonpath='{.metadata.namespace}'",
+      "expected": "test-ns",
+      "points": 4,
+      "description": "Pod should be in test-ns namespace"
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "id": "cks-i-003",
+  "title": "RBAC and Service Account Security",
+  "description": "Configure Role-Based Access Control (RBAC) for a development team with least privilege access:\n\n1. Create a ServiceAccount named ||dev-team|| in ||pluto|| namespace\n2. Create a Role named ||pod-manager|| in ||pluto|| namespace with the following permissions:\n   - ||get||, ||list||, ||watch|| pods\n   - ||create||, ||update||, ||patch|| pods\n   - ||get||, ||list|| pod logs\n   - ||create|| pod/exec (for debugging)\n3. Create a RoleBinding named ||dev-team-binding|| to bind the ||dev-team|| ServiceAccount to the ||pod-manager|| Role\n4. Create a pod named ||rbac-test|| that uses the ||dev-team|| ServiceAccount\n5. Test the RBAC configuration by verifying the ServiceAccount can manage pods but not secrets\n\nEnsure the pod can authenticate and has the correct permissions within the namespace.",
+  "points": 8,
+  "timeLimit": 16,
+  "category": "Access Control",
+  "tags": [
+    "rbac",
+    "service-account",
+    "role",
+    "rolebinding",
+    "least-privilege",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "pods"
+    ],
+    "prerequisites": [
+      "RBAC enabled Kubernetes cluster"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount dev-team -n pluto",
+      "2. Create Role with pod management permissions:",
+      "   cat > pod-manager-role.yaml << EOF",
+      "   apiVersion: rbac.authorization.k8s.io/v1",
+      "   kind: Role",
+      "   metadata:",
+      "     namespace: pluto",
+      "     name: pod-manager",
+      "   rules:",
+      "   - apiGroups: ['']",
+      "     resources: ['pods']",
+      "     verbs: ['get', 'list', 'watch', 'create', 'update', 'patch']",
+      "   - apiGroups: ['']",
+      "     resources: ['pods/log']",
+      "     verbs: ['get', 'list']",
+      "   - apiGroups: ['']",
+      "     resources: ['pods/exec']",
+      "     verbs: ['create']",
+      "   EOF",
+      "3. Apply the Role:",
+      "   kubectl apply -f pod-manager-role.yaml",
+      "4. Create RoleBinding:",
+      "   cat > dev-team-rolebinding.yaml << EOF",
+      "   apiVersion: rbac.authorization.k8s.io/v1",
+      "   kind: RoleBinding",
+      "   metadata:",
+      "     name: dev-team-binding",
+      "     namespace: pluto",
+      "   subjects:",
+      "   - kind: ServiceAccount",
+      "     name: dev-team",
+      "     namespace: pluto",
+      "   roleRef:",
+      "     kind: Role",
+      "     name: pod-manager",
+      "     apiGroup: rbac.authorization.k8s.io",
+      "   EOF",
+      "5. Apply the RoleBinding:",
+      "   kubectl apply -f dev-team-rolebinding.yaml",
+      "6. Create test pod with the ServiceAccount:",
+      "   cat > rbac-test-pod.yaml << EOF",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: rbac-test",
+      "     namespace: pluto",
+      "   spec:",
+      "     serviceAccountName: dev-team",
+      "     containers:",
+      "     - name: test",
+      "       image: alpine:latest",
+      "       command: ['sleep', '3600']",
+      "   EOF",
+      "7. Apply the test pod:",
+      "   kubectl apply -f rbac-test-pod.yaml",
+      "8. Verify RBAC configuration:",
+      "   kubectl auth can-i get pods --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "   kubectl auth can-i create secrets --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "9. Check pod is running with correct ServiceAccount:",
+      "   kubectl get pod rbac-test -n pluto -o jsonpath='{.spec.serviceAccountName}'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount dev-team -n pluto -o jsonpath='{.metadata.name}'",
+      "expected": "dev-team",
+      "points": 1,
+      "description": "ServiceAccount dev-team should exist in pluto namespace"
+    },
+    {
+      "command": "kubectl get role pod-manager -n pluto -o jsonpath='{.metadata.name}'",
+      "expected": "pod-manager",
+      "points": 2,
+      "description": "Role pod-manager should exist in pluto namespace"
+    },
+    {
+      "command": "kubectl get rolebinding dev-team-binding -n pluto -o jsonpath='{.metadata.name}'",
+      "expected": "dev-team-binding",
+      "points": 2,
+      "description": "RoleBinding dev-team-binding should exist"
+    },
+    {
+      "command": "kubectl get pod rbac-test -n pluto -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "dev-team",
+      "points": 1,
+      "description": "Pod should use dev-team ServiceAccount"
+    },
+    {
+      "command": "kubectl auth can-i get pods --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "expected": "yes",
+      "points": 1,
+      "description": "ServiceAccount should be able to get pods"
+    },
+    {
+      "command": "kubectl auth can-i create secrets --as=system:serviceaccount:pluto:dev-team -n pluto",
+      "expected": "no",
+      "points": 1,
+      "description": "ServiceAccount should NOT be able to create secrets"
+    }
+  ]
+}

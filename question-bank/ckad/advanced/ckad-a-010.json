@@ -1,0 +1,104 @@
+{
+  "id": "ckad-a-010",
+  "title": "Advanced Pod Configuration and Security Contexts",
+  "description": "Create a highly configured Pod with advanced security and resource management in namespace ||mars||:\n\n1. Create a Pod ||secure-app|| using ||alpine:3.16|| that:\n   - Runs as non-root user (UID 1000, GID 2000)\n   - Has read-only root filesystem\n   - Drops all capabilities except ||NET_BIND_SERVICE|| and ||SETUID||\n   - Uses security context with ||runAsNonRoot: true||\n   - Has no privilege escalation (||allowPrivilegeEscalation: false||)\n\n2. Configure resource management:\n   - CPU requests: 250m, limits: 500m\n   - Memory requests: 256Mi, limits: 512Mi\n   - Ephemeral storage requests: 1Gi, limits: 2Gi\n\n3. Add advanced pod features:\n   - Node affinity requiring nodes with label ||env=production||\n   - Pod anti-affinity to avoid co-location with pods having label ||app=database||\n   - Toleration for taint ||special=gpu:NoSchedule||\n   - Priority class ||high-priority|| (create if needed)\n   - Termination grace period: 45 seconds\n\n4. Mount configurations:\n   - EmptyDir volume ||tmp|| at ||/tmp|| (memory-backed)\n   - ConfigMap volume from ||app-config|| at ||/etc/config|| (create simple ConfigMap)\n   - Service account ||secure-sa|| (create with limited permissions)\n\n5. Add startup command: ||sleep 3600||\n\nVerify the pod is scheduled and all security configurations are applied correctly.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Core Concepts",
+  "tags": [
+    "security-contexts",
+    "node-affinity",
+    "resource-management",
+    "pod-configuration",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "pods",
+      "configmaps",
+      "serviceaccounts",
+      "priorityclasses"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create required supporting resources:",
+      "   kubectl create configmap app-config --from-literal=config.yaml='app: secure-app' -n mars",
+      "   kubectl create serviceaccount secure-sa -n mars",
+      "   kubectl create priorityclass high-priority --value=1000 --description='High priority class'",
+      "2. Create the pod YAML with advanced configuration:",
+      "   kubectl run secure-app --image=alpine:3.16 --command sleep 3600 -n mars --dry-run=client -o yaml > secure-app.yaml",
+      "3. Edit YAML to add:",
+      "   - Security context with user/group IDs, capabilities, read-only filesystem",
+      "   - Resource requests and limits including ephemeral storage",
+      "   - Node affinity and pod anti-affinity rules",
+      "   - Tolerations and priority class",
+      "   - Volume mounts and service account",
+      "4. Apply the pod:",
+      "   kubectl apply -f secure-app.yaml",
+      "5. Verify pod security and scheduling:",
+      "   kubectl describe pod secure-app -n mars",
+      "   kubectl get pod secure-app -n mars -o yaml | grep -A 10 securityContext"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.securityContext.runAsUser}'",
+      "expected": "1000",
+      "points": 1,
+      "description": "Pod should run as user 1000"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.securityContext.runAsGroup}'",
+      "expected": "2000",
+      "points": 1,
+      "description": "Pod should run as group 2000"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.containers[0].securityContext.readOnlyRootFilesystem}'",
+      "expected": "true",
+      "points": 1,
+      "description": "Container should have read-only root filesystem"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.containers[0].securityContext.allowPrivilegeEscalation}'",
+      "expected": "false",
+      "points": 1,
+      "description": "Should not allow privilege escalation"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.containers[0].resources.requests.cpu}'",
+      "expected": "250m",
+      "points": 1,
+      "description": "Should have 250m CPU request"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.containers[0].resources.limits.memory}'",
+      "expected": "512Mi",
+      "points": 1,
+      "description": "Should have 512Mi memory limit"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]}'",
+      "expected": "production",
+      "points": 1,
+      "description": "Should have node affinity for env=production"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.priorityClassName}'",
+      "expected": "high-priority",
+      "points": 1,
+      "description": "Should use high-priority priority class"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.terminationGracePeriodSeconds}'",
+      "expected": "45",
+      "points": 1,
+      "description": "Should have 45 seconds termination grace period"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-035",
+  "title": "Create ConfigMap from File",
+  "description": "Create a file ||/tmp/app.conf|| with content ||'server.port=8080'|| and create a ConfigMap named ||file-config|| from this file in the ||mars|| namespace.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "configmaps-secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "configmaps"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create file:",
+      "   echo 'server.port=8080' > /tmp/app.conf",
+      "2. Create ConfigMap from file:",
+      "   kubectl create configmap file-config --from-file=/tmp/app.conf -n mars",
+      "3. Verify ConfigMap:",
+      "   kubectl get configmap file-config -n mars -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap file-config -n mars -o jsonpath='{.data.app\\.conf}'",
+      "expected": "server.port=8080",
+      "points": 4,
+      "description": "ConfigMap should contain file content"
+    }
+  ]
+}

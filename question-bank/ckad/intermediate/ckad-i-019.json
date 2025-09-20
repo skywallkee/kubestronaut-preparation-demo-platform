@@ -1,0 +1,142 @@
+{
+  "id": "ckad-i-019",
+  "title": "Storage Classes with Dynamic Provisioning",
+  "description": "Create a custom StorageClass named ||fast-ssd|| in namespace ||saturn|| with the following configuration:\n\n**StorageClass:**\n- Provisioner: ||kubernetes.io/no-provisioner||\n- Volume binding mode: ||WaitForFirstConsumer||\n- Reclaim policy: ||Retain||\n- Allow volume expansion: ||true||\n\n**PersistentVolume:**\n- Name: ||fast-volume||\n- Capacity: ||2Gi||\n- Access mode: ||ReadWriteOnce||\n- Storage class: ||fast-ssd||\n- Host path: ||/mnt/fast-storage||\n\n**Application:**\n- Create a Pod named ||db-app|| using image ||postgres:13||\n- Create a PVC named ||db-data|| requesting ||1Gi|| from the ||fast-ssd|| storage class\n- Mount the volume at ||/var/lib/postgresql/data||\n- Set environment variable ||POSTGRES_PASSWORD|| to ||mypassword||\n\nVerify the storage class, PV, PVC binding and pod functionality.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Storage",
+  "tags": [
+    "storage-classes",
+    "persistent-volumes-claims",
+    "volume-types",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "storageclasses",
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create StorageClass:",
+      "   cat <<EOF > fast-ssd-sc.yaml",
+      "   apiVersion: storage.k8s.io/v1",
+      "   kind: StorageClass",
+      "   metadata:",
+      "     name: fast-ssd",
+      "   provisioner: kubernetes.io/no-provisioner",
+      "   volumeBindingMode: WaitForFirstConsumer",
+      "   reclaimPolicy: Retain",
+      "   allowVolumeExpansion: true",
+      "   EOF",
+      "2. Create PersistentVolume:",
+      "   cat <<EOF > fast-volume-pv.yaml",
+      "   apiVersion: v1",
+      "   kind: PersistentVolume",
+      "   metadata:",
+      "     name: fast-volume",
+      "   spec:",
+      "     capacity:",
+      "       storage: 2Gi",
+      "     accessModes:",
+      "     - ReadWriteOnce",
+      "     storageClassName: fast-ssd",
+      "     hostPath:",
+      "       path: /mnt/fast-storage",
+      "   EOF",
+      "3. Create PVC and Pod:",
+      "   cat <<EOF > db-app.yaml",
+      "   apiVersion: v1",
+      "   kind: PersistentVolumeClaim",
+      "   metadata:",
+      "     name: db-data",
+      "     namespace: saturn",
+      "   spec:",
+      "     accessModes:",
+      "     - ReadWriteOnce",
+      "     storageClassName: fast-ssd",
+      "     resources:",
+      "       requests:",
+      "         storage: 1Gi",
+      "   ---",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: db-app",
+      "     namespace: saturn",
+      "   spec:",
+      "     containers:",
+      "     - name: postgres",
+      "       image: postgres:13",
+      "       env:",
+      "       - name: POSTGRES_PASSWORD",
+      "         value: mypassword",
+      "       volumeMounts:",
+      "       - name: postgres-storage",
+      "         mountPath: /var/lib/postgresql/data",
+      "     volumes:",
+      "     - name: postgres-storage",
+      "       persistentVolumeClaim:",
+      "         claimName: db-data",
+      "   EOF",
+      "4. Apply all resources:",
+      "   kubectl apply -f fast-ssd-sc.yaml",
+      "   kubectl apply -f fast-volume-pv.yaml",
+      "   kubectl apply -f db-app.yaml",
+      "5. Verify binding and functionality:",
+      "   kubectl get pvc db-data -n saturn",
+      "   kubectl wait --for=condition=Ready pod/db-app -n saturn --timeout=120s"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.provisioner}'",
+      "expected": "kubernetes.io/no-provisioner",
+      "points": 1,
+      "description": "StorageClass should have correct provisioner"
+    },
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.volumeBindingMode}'",
+      "expected": "WaitForFirstConsumer",
+      "points": 1,
+      "description": "StorageClass should have WaitForFirstConsumer binding mode"
+    },
+    {
+      "command": "kubectl get pv fast-volume -o jsonpath='{.spec.storageClassName}'",
+      "expected": "fast-ssd",
+      "points": 1,
+      "description": "PV should reference the correct storage class"
+    },
+    {
+      "command": "kubectl get pvc db-data -n saturn -o jsonpath='{.status.phase}'",
+      "expected": "Bound",
+      "points": 2,
+      "description": "PVC should be bound to the PV"
+    },
+    {
+      "command": "kubectl get pod db-app -n saturn -o jsonpath='{.spec.volumes[0].persistentVolumeClaim.claimName}'",
+      "expected": "db-data",
+      "points": 1,
+      "description": "Pod should reference the correct PVC"
+    },
+    {
+      "command": "kubectl exec -n saturn db-app -- sh -c 'echo $POSTGRES_PASSWORD'",
+      "expected": "mypassword",
+      "points": 1,
+      "description": "Environment variable should be set correctly"
+    },
+    {
+      "command": "kubectl exec -n saturn db-app -- df -h /var/lib/postgresql/data | grep -c 'fast-volume'",
+      "expected": "1",
+      "points": 1,
+      "description": "Volume should be mounted correctly"
+    }
+  ]
+}

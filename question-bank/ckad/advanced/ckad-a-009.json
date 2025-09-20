@@ -1,0 +1,107 @@
+{
+  "id": "ckad-a-009",
+  "title": "Advanced Deployment Strategies and Rolling Updates",
+  "description": "Create a sophisticated deployment with rolling update configuration in namespace ||pluto||:\n\n1. Create a Deployment ||web-server|| with:\n   - 6 replicas using ||nginx:1.20|| initially\n   - Rolling update strategy with ||maxUnavailable: 1|| and ||maxSurge: 2||\n   - Labels: ||app=web-server||, ||version=v1||, ||env=production||\n   - Resource requests: cpu=150m, memory=200Mi\n   - Resource limits: cpu=300m, memory=400Mi\n   - Pod disruption budget allowing maximum 2 unavailable pods\n\n2. Configure advanced deployment settings:\n   - Revision history limit: ||5||\n   - Progress deadline: ||300 seconds||\n   - Add environment variable ||VERSION=v1||\n   - Include readiness probe (port 80, delay 5s, timeout 3s)\n\n3. Perform a rolling update to ||nginx:1.21|| with ||VERSION=v2||\n\n4. Create a HorizontalPodAutoscaler ||web-hpa|| that:\n   - Targets the web-server deployment\n   - Scales between 3-10 replicas\n   - Target CPU utilization: 70%\n\n5. Verify the rollout was successful and check deployment history\n\nAll resources should be properly configured for production resilience.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Pod Design",
+  "tags": [
+    "deployments",
+    "rolling-updates",
+    "autoscaling",
+    "pod-disruption-budget",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "poddisruptionbudgets",
+      "horizontalpodautoscalers"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create initial deployment:",
+      "   kubectl create deployment web-server --image=nginx:1.20 --replicas=6 -n pluto --dry-run=client -o yaml > web-server.yaml",
+      "2. Edit YAML to add rolling update strategy, resource limits, probes, and environment variables",
+      "3. Apply the deployment:",
+      "   kubectl apply -f web-server.yaml",
+      "4. Create Pod Disruption Budget:",
+      "   kubectl create poddisruptionbudget web-pdb --selector=app=web-server --max-unavailable=2 -n pluto",
+      "5. Perform rolling update:",
+      "   kubectl set image deployment/web-server nginx=nginx:1.21 -n pluto",
+      "   kubectl set env deployment/web-server VERSION=v2 -n pluto",
+      "6. Create HPA:",
+      "   kubectl autoscale deployment web-server --cpu-percent=70 --min=3 --max=10 -n pluto --name=web-hpa",
+      "7. Monitor rollout:",
+      "   kubectl rollout status deployment/web-server -n pluto",
+      "   kubectl rollout history deployment/web-server -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.replicas}'",
+      "expected": "6",
+      "points": 1,
+      "description": "Deployment should have 6 replicas"
+    },
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have maxUnavailable=1 in rolling update strategy"
+    },
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.strategy.rollingUpdate.maxSurge}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Should have maxSurge=2 in rolling update strategy"
+    },
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.revisionHistoryLimit}'",
+      "expected": "5",
+      "points": 1,
+      "description": "Should have revision history limit of 5"
+    },
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21",
+      "points": 1,
+      "description": "Should be updated to nginx:1.21"
+    },
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"VERSION\")].value}'",
+      "expected": "v2",
+      "points": 1,
+      "description": "Should have VERSION=v2 environment variable"
+    },
+    {
+      "command": "kubectl get pdb web-pdb -n pluto -o jsonpath='{.spec.maxUnavailable}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Pod disruption budget should allow max 2 unavailable"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n pluto -o jsonpath='{.spec.targetCPUUtilizationPercentage}'",
+      "expected": "70",
+      "points": 1,
+      "description": "HPA should target 70% CPU utilization"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n pluto -o jsonpath='{.spec.minReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "HPA should have minimum 3 replicas"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n pluto -o jsonpath='{.spec.maxReplicas}'",
+      "expected": "10",
+      "points": 1,
+      "description": "HPA should have maximum 10 replicas"
+    }
+  ]
+}

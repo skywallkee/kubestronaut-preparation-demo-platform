@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-072",
+  "title": "Service Discovery with ConfigMaps and Rolling Updates",
+  "description": "Deploy a microservices architecture in the pluto namespace where services dynamically discover each other using DNS and ConfigMaps. Implement rolling updates with zero-downtime deployment while maintaining service discovery functionality throughout the update process.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["dns-service-discovery", "configmaps-secrets", "deployments-rolling-updates", "services"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ConfigMap ||service-registry|| with service discovery endpoints and configurations"
+    },
+    {
+      "step": 2,
+      "description": "Deploy ||frontend||, ||api||, and ||database|| services with proper DNS-based discovery"
+    },
+    {
+      "step": 3,
+      "description": "Configure rolling update strategy: ||maxUnavailable: 1||, ||maxSurge: 1||"
+    },
+    {
+      "step": 4,
+      "description": "Set up environment variables for service discovery using FQDN patterns"
+    },
+    {
+      "step": 5,
+      "description": "Perform rolling update from ||v1.0|| to ||v2.0|| images while maintaining connectivity"
+    },
+    {
+      "step": 6,
+      "description": "Update ConfigMap to reflect new service configurations during rollout"
+    },
+    {
+      "step": 7,
+      "description": "Verify continuous service discovery and zero-downtime deployment"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get configmap service-registry -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "service-registry",
+      "description": "Verify service registry ConfigMap exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment frontend -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}' | grep v2.0",
+      "expectedOutput": "v2.0",
+      "description": "Verify frontend updated to v2.0",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment api -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}' | grep v2.0",
+      "expectedOutput": "v2.0",
+      "description": "Verify API updated to v2.0",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment frontend -n pluto -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}'",
+      "expectedOutput": "1",
+      "description": "Verify rolling update maxUnavailable",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment frontend -n pluto -o jsonpath='{.spec.template.spec.containers[0].env[0].value}' | grep api.pluto.svc.cluster.local",
+      "expectedOutput": "api.pluto.svc.cluster.local",
+      "description": "Verify DNS-based service discovery configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service frontend -n pluto -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify frontend service exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service api -n pluto -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify API service exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl exec deployment/frontend -n pluto -- nslookup api.pluto.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS service discovery works post-update",
+      "points": 2
+    }
+  ]
+}

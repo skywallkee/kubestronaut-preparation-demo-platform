@@ -1,0 +1,107 @@
+{
+  "id": "ckad-a-002",
+  "title": "Advanced ConfigMap and Secret Configuration",
+  "description": "Create a complex configuration setup in namespace ||venus||:\n\n1. Create a ConfigMap ||app-config|| with:\n   - ||database.properties|| containing \"host=db.venus.svc.cluster.local\\nport=5432\\nname=appdb\"\n   - ||app.json|| containing valid JSON: {\"debug\": true, \"log_level\": \"info\", \"max_connections\": 100}\n   - Key-value pair ||ENVIRONMENT=production||\n\n2. Create a Secret ||app-secrets|| with:\n   - ||DB_PASSWORD|| (base64 encoded): \"supersecret\"\n   - ||API_KEY|| (base64 encoded): \"abc123xyz\"\n\n3. Create a Deployment ||web-app|| with 2 replicas using ||nginx:1.21|| that:\n   - Mounts ConfigMap as volume at ||/etc/config||\n   - Uses ENVIRONMENT as environment variable from ConfigMap\n   - Uses both secrets as environment variables\n   - Has resource requests: cpu=100m, memory=128Mi\n   - Has resource limits: cpu=200m, memory=256Mi",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Configuration",
+  "tags": [
+    "configmap",
+    "secret",
+    "deployment",
+    "environment-variables",
+    "volume-mounts",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "configmaps",
+      "secrets",
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMap with multiple data types:",
+      "   kubectl create configmap app-config -n venus \\",
+      "     --from-literal=ENVIRONMENT=production \\",
+      "     --from-literal=database.properties='host=db.venus.svc.cluster.local\\nport=5432\\nname=appdb' \\",
+      "     --from-literal=app.json='{\"debug\": true, \"log_level\": \"info\", \"max_connections\": 100}'",
+      "2. Create Secret with encoded values:",
+      "   kubectl create secret generic app-secrets -n venus \\",
+      "     --from-literal=DB_PASSWORD=supersecret \\",
+      "     --from-literal=API_KEY=abc123xyz",
+      "3. Create Deployment YAML with all requirements:",
+      "   kubectl create deployment web-app --image=nginx:1.21 --replicas=2 -n venus --dry-run=client -o yaml > web-app.yaml",
+      "4. Edit YAML to add ConfigMap/Secret references, volume mounts, and resource requirements",
+      "5. Apply the deployment:",
+      "   kubectl apply -f web-app.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -n venus -o jsonpath='{.data.ENVIRONMENT}'",
+      "expected": "production",
+      "points": 1,
+      "description": "ConfigMap should contain ENVIRONMENT=production"
+    },
+    {
+      "command": "kubectl get configmap app-config -n venus -o jsonpath='{.data.database\\.properties}' | grep -c 'host=db.venus.svc.cluster.local'",
+      "expected": "1",
+      "points": 1,
+      "description": "ConfigMap should contain database properties"
+    },
+    {
+      "command": "kubectl get secret app-secrets -n venus -o jsonpath='{.data.DB_PASSWORD}' | base64 -d",
+      "expected": "supersecret",
+      "points": 1,
+      "description": "Secret should contain correct DB_PASSWORD"
+    },
+    {
+      "command": "kubectl get secret app-secrets -n venus -o jsonpath='{.data.API_KEY}' | base64 -d",
+      "expected": "abc123xyz",
+      "points": 1,
+      "description": "Secret should contain correct API_KEY"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 replicas"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Should have correct CPU request"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "256Mi",
+      "points": 1,
+      "description": "Should have correct memory limit"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.volumes[*].configMap.name}' | grep -c app-config",
+      "expected": "1",
+      "points": 1,
+      "description": "Should mount ConfigMap as volume"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.containers[0].env[*].valueFrom.configMapKeyRef.name}' | grep -c app-config",
+      "expected": "1",
+      "points": 1,
+      "description": "Should reference ConfigMap in environment variables"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.containers[0].env[*].valueFrom.secretKeyRef.name}' | grep -c app-secrets",
+      "expected": "1",
+      "points": 1,
+      "description": "Should reference Secret in environment variables"
+    }
+  ]
+}

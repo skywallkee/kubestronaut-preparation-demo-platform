@@ -1,0 +1,59 @@
+{
+  "id": "ckad-e-054",
+  "title": "Create Path-based Ingress",
+  "description": "Create an Ingress named ||api-ingress|| in Namespace ||default|| that routes traffic from ||api.example.com/v1|| to service ||api-svc|| on port ||8080||.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Services and Networking",
+  "tags": [
+    "ingress",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "ingress"
+    ],
+    "prerequisites": [
+      "api-svc service exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create Ingress YAML:",
+      "   kubectl create ingress api-ingress --rule=\"api.example.com/v1/*=api-svc:8080\" --dry-run=client -o yaml > api-ingress.yaml",
+      "2. Apply the Ingress:",
+      "   kubectl apply -f api-ingress.yaml",
+      "3. Verify Ingress:",
+      "   kubectl get ingress api-ingress"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get ingress api-ingress -o jsonpath='{.spec.rules[0].host}'",
+      "expected": "api.example.com",
+      "points": 1,
+      "description": "Ingress should route traffic from api.example.com"
+    },
+    {
+      "command": "kubectl get ingress api-ingress -o jsonpath='{.spec.rules[0].http.paths[0].path}'",
+      "expected": "/v1",
+      "points": 1,
+      "description": "Ingress should route traffic from /v1 path"
+    },
+    {
+      "command": "kubectl get ingress api-ingress -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}'",
+      "expected": "api-svc",
+      "points": 1,
+      "description": "Ingress should route to api-svc service"
+    },
+    {
+      "command": "kubectl get ingress api-ingress -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.port.number}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Ingress should route to port 8080"
+    }
+  ]
+}

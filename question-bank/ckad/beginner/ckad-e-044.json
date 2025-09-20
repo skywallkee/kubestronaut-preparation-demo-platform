@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-044",
+  "title": "Get Events in Namespace",
+  "description": "Get all events in the ||mercury|| namespace and save them to ||/opt/course/044/events.txt||.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "debugging-troubleshooting",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "events"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Get events:",
+      "   kubectl get events -n mercury",
+      "2. Save to file:",
+      "   kubectl get events -n mercury > /opt/course/044/events.txt",
+      "3. Verify file:",
+      "   cat /opt/course/044/events.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/044/events.txt",
+      "expected": "0",
+      "points": 2,
+      "description": "Events file should exist"
+    }
+  ]
+}

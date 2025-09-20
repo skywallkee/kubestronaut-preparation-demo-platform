@@ -1,0 +1,68 @@
+{
+  "id": "ckad-i-035",
+  "title": "CronJob with ConfigMap and Resource Management",
+  "description": "Create a CronJob in the venus namespace that runs every 5 minutes to process data. Configure the job to use a ConfigMap for application settings and implement proper resource requests and limits. The job should create a backup of application data and clean up old backups.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "configmaps-secrets", "resource-management", "debugging-troubleshooting"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a ConfigMap named ||backup-config|| with backup settings"
+    },
+    {
+      "step": 2,
+      "description": "Create a CronJob YAML file with schedule ||*/5 * * * *|| (every 5 minutes)"
+    },
+    {
+      "step": 3,
+      "description": "Configure the job template to mount the ConfigMap as environment variables"
+    },
+    {
+      "step": 4,
+      "description": "Set resource requests: CPU ||100m||, Memory ||128Mi|| and limits: CPU ||200m||, Memory ||256Mi||"
+    },
+    {
+      "step": 5,
+      "description": "Apply the ConfigMap and CronJob to the venus namespace"
+    },
+    {
+      "step": 6,
+      "description": "Verify the CronJob is scheduled and test job execution"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get configmap backup-config -n venus -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "backup-config",
+      "description": "Verify ConfigMap exists",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob data-backup-job -n venus -o jsonpath='{.spec.schedule}'",
+      "expectedOutput": "*/5 * * * *",
+      "description": "Verify CronJob schedule is every 5 minutes",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob data-backup-job -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expectedOutput": "100m",
+      "description": "Verify CPU request is set",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob data-backup-job -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expectedOutput": "256Mi",
+      "description": "Verify memory limit is set",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob data-backup-job -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].envFrom[0].configMapRef.name}'",
+      "expectedOutput": "backup-config",
+      "description": "Verify ConfigMap is mounted as environment variables",
+      "points": 3
+    }
+  ]
+}

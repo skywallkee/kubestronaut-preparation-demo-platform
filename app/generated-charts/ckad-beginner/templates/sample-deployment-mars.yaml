@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-deployment-mars
+  namespace: mars
+  labels:
+    app: sample-app-mars
+    exam-resource: "true"
+    planet: mars
+    type: "sample"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app-mars
+  template:
+    metadata:
+      labels:
+        app: sample-app-mars
+        planet: mars
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

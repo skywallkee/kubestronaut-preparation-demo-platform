@@ -1,0 +1,51 @@
+{
+  "id": "ckad-e-008",
+  "title": "Create a Secret",
+  "description": "Create a Secret named ||db-secret|| with username ||'admin'|| and password ||'secret123'|| in the ||saturn|| namespace.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "configmaps-secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Secret:",
+      "   kubectl create secret generic db-secret --from-literal=username=admin --from-literal=password=secret123 -n saturn",
+      "2. Verify Secret:",
+      "   kubectl get secret db-secret -n saturn",
+      "3. Check data (base64 encoded):",
+      "   kubectl get secret db-secret -n saturn -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get secret db-secret -n saturn",
+      "expected": "0",
+      "points": 1,
+      "description": "Secret should exist in saturn namespace"
+    },
+    {
+      "command": "kubectl get secret db-secret -n saturn -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "admin",
+      "points": 1,
+      "description": "Secret should contain correct username"
+    },
+    {
+      "command": "kubectl get secret db-secret -n saturn -o jsonpath='{.data.password}' | base64 -d",
+      "expected": "secret123",
+      "points": 1,
+      "description": "Secret should contain correct password"
+    }
+  ]
+}

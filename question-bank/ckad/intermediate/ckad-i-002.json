@@ -1,0 +1,70 @@
+{
+  "id": "ckad-i-002",
+  "title": "Service and Pod Communication",
+  "description": "Create a Pod named ||backend|| in namespace ||venus|| running ||httpd:2.4|| on port 80.\n\nCreate a ClusterIP Service named ||backend-service|| that exposes the pod on port 8080 (mapping to pod's port 80).\n\nCreate another Pod named ||client|| running ||busybox|| that can successfully communicate with the backend service. Test the connection using ||wget||.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Services & Networking",
+  "tags": [
+    "pods",
+    "services",
+    "networking",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the backend pod:",
+      "   kubectl run backend --image=httpd:2.4 --port=80 -n venus",
+      "2. Create the service:",
+      "   kubectl expose pod backend --name=backend-service --port=8080 --target-port=80 -n venus",
+      "3. Create client pod:",
+      "   kubectl run client --image=busybox --restart=Never -n venus -- sleep 3600",
+      "4. Test connectivity:",
+      "   kubectl exec client -n venus -- wget -qO- backend-service:8080",
+      "5. Verify service is working:",
+      "   kubectl exec client -n venus -- nslookup backend-service"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod backend -n venus -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Backend pod should be running"
+    },
+    {
+      "command": "kubectl get service backend-service -n venus -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Service should expose port 8080"
+    },
+    {
+      "command": "kubectl get service backend-service -n venus -o jsonpath='{.spec.ports[0].targetPort}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should target port 80"
+    },
+    {
+      "command": "kubectl get pod client -n venus -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Client pod should be running"
+    },
+    {
+      "command": "kubectl exec client -n venus -- wget -qO- --timeout=5 backend-service:8080 | grep -q 'It works'",
+      "expected": "0",
+      "points": 2,
+      "description": "Client should be able to communicate with backend service"
+    }
+  ]
+}

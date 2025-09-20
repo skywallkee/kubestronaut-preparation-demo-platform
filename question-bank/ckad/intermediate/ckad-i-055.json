@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-055",
+  "title": "Multi-Container Pod with ConfigMaps and Application Scaling",
+  "description": "Deploy a multi-container monitoring stack in the venus namespace with Prometheus, Grafana, and AlertManager containers. Configure each container using ConfigMaps for their respective configurations and implement horizontal pod autoscaling based on custom metrics.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["multi-container-pods", "configmaps-secrets", "application-scaling", "logging-monitoring", "container-images"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ConfigMaps: ||prometheus-config||, ||grafana-config||, and ||alertmanager-config||"
+    },
+    {
+      "step": 2,
+      "description": "Create multi-container pod ||monitoring-stack|| with three containers"
+    },
+    {
+      "step": 3,
+      "description": "Configure Prometheus container with ||prom/prometheus|| image and ConfigMap volume"
+    },
+    {
+      "step": 4,
+      "description": "Configure Grafana container with ||grafana/grafana|| image and dashboard configs"
+    },
+    {
+      "step": 5,
+      "description": "Configure AlertManager container with ||prom/alertmanager|| image"
+    },
+    {
+      "step": 6,
+      "description": "Create HPA with custom metrics targeting ||prometheus_requests_per_second|| > ||100||"
+    },
+    {
+      "step": 7,
+      "description": "Verify all containers start and HPA scaling works with metrics"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get configmap prometheus-config -n venus -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "prometheus-config",
+      "description": "Verify Prometheus ConfigMap exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get configmap grafana-config -n venus -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "grafana-config",
+      "description": "Verify Grafana ConfigMap exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod monitoring-stack -n venus -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "3",
+      "description": "Verify pod has 3 containers",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod monitoring-stack -n venus -o jsonpath='{.spec.containers[0].image}' | grep prometheus",
+      "expectedOutput": "prometheus",
+      "description": "Verify Prometheus container image",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod monitoring-stack -n venus -o jsonpath='{.spec.containers[1].image}' | grep grafana",
+      "expectedOutput": "grafana",
+      "description": "Verify Grafana container image",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod monitoring-stack -n venus -o jsonpath='{.spec.containers[2].image}' | grep alertmanager",
+      "expectedOutput": "alertmanager",
+      "description": "Verify AlertManager container image",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa monitoring-stack-hpa -n venus -o jsonpath='{.spec.metrics[0].pods.metric.name}'",
+      "expectedOutput": "prometheus_requests_per_second",
+      "description": "Verify HPA uses custom metric",
+      "points": 3
+    },
+    {
+      "command": "kubectl get pod monitoring-stack -n venus -o jsonpath='{.spec.volumes[0].configMap.name}'",
+      "expectedOutput": "prometheus-config",
+      "description": "Verify ConfigMap volume mounting",
+      "points": 2
+    }
+  ]
+}

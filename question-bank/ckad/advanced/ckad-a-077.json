@@ -1,0 +1,75 @@
+{
+  "id": "ckad-a-077",
+  "title": "StatefulSet Data Management and Ordering",
+  "description": "Design a comprehensive ||StatefulSet|| deployment with sophisticated data management, pod ordering, and scaling strategies. Create a distributed database cluster that requires ||ordered deployment||, ||persistent storage|| per pod, ||stable network identities||, and coordinated startup/shutdown sequences. Implement ||partition updates||, ||rolling updates|| with data consistency checks, and demonstrate how StatefulSets handle ||scaling operations||, ||pod replacement||, and ||storage management||. Include scenarios with data replication, cluster membership management, and split-brain prevention.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "State Persistence",
+  "tags": ["statefulset", "ordered-deployment", "stable-identity", "partition-updates", "data-consistency", "advanced"],
+  "infrastructure": {
+    "namespaces": ["stateful-apps"],
+    "resources": ["StatefulSet", "Service", "PersistentVolumeClaim", "ConfigMap"],
+    "prerequisites": ["Dynamic volume provisioning"]
+  },
+  "solution": {
+    "steps": [
+      "# Create stateful-apps namespace\nkubectl create namespace stateful-apps",
+
+      "# Create headless service for stable network identity\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: database-headless\n  namespace: stateful-apps\n  labels:\n    app: database-cluster\nspec:\n  clusterIP: None\n  selector:\n    app: database-cluster\n  ports:\n  - port: 5432\n    targetPort: 5432\n    name: postgres\nEOF",
+
+      "# Create ConfigMap for cluster configuration\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: database-config\n  namespace: stateful-apps\ndata:\n  init.sql: |\n    CREATE TABLE IF NOT EXISTS cluster_info (\n      node_id INTEGER PRIMARY KEY,\n      hostname VARCHAR(255),\n      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n    );\n  setup.sh: |\n    #!/bin/bash\n    NODE_ID=${HOSTNAME##*-}\n    echo \"node-$NODE_ID\" > /data/node-id\n    echo \"Initializing node $NODE_ID on $(hostname)\"\nEOF",
+
+      "# Deploy StatefulSet with volume claim templates\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: database-cluster\n  namespace: stateful-apps\n  labels:\n    app: database-cluster\nspec:\n  serviceName: database-headless\n  replicas: 3\n  updateStrategy:\n    type: RollingUpdate\n    rollingUpdate:\n      partition: 2\n  selector:\n    matchLabels:\n      app: database-cluster\n  template:\n    metadata:\n      labels:\n        app: database-cluster\n    spec:\n      initContainers:\n      - name: setup\n        image: busybox:1.35\n        command: [\"sh\", \"/config/setup.sh\"]\n        volumeMounts:\n        - name: data\n          mountPath: /data\n        - name: config\n          mountPath: /config\n      containers:\n      - name: postgres\n        image: postgres:13\n        ports:\n        - containerPort: 5432\n          name: postgres\n        env:\n        - name: POSTGRES_DB\n          value: cluster\n        - name: POSTGRES_USER\n          value: postgres\n        - name: POSTGRES_PASSWORD\n          value: password\n        - name: PGDATA\n          value: /data/pgdata\n        - name: POD_NAME\n          valueFrom:\n            fieldRef:\n              fieldPath: metadata.name\n        readinessProbe:\n          exec:\n            command:\n            - /bin/sh\n            - -c\n            - pg_isready -U postgres\n          initialDelaySeconds: 10\n          periodSeconds: 5\n        livenessProbe:\n          exec:\n            command:\n            - /bin/sh\n            - -c\n            - pg_isready -U postgres\n          initialDelaySeconds: 30\n          periodSeconds: 10\n        volumeMounts:\n        - name: data\n          mountPath: /data\n        - name: config\n          mountPath: /docker-entrypoint-initdb.d\n      volumes:\n      - name: config\n        configMap:\n          name: database-config\n          defaultMode: 0755\n  volumeClaimTemplates:\n  - metadata:\n      name: data\n    spec:\n      accessModes: [\"ReadWriteOnce\"]\n      resources:\n        requests:\n          storage: 5Gi\nEOF",
+
+      "# Wait for StatefulSet to be ready\necho \"Waiting for StatefulSet to be ready...\"\nkubectl wait --for=condition=ready --timeout=300s pod -l app=database-cluster -n stateful-apps",
+
+      "# Test pod ordering and stable identity\necho \"Testing pod ordering and stable identity...\"\nkubectl get pods -n stateful-apps -l app=database-cluster\necho\necho \"Node identities:\"\nfor i in 0 1 2; do\n  echo \"database-cluster-$i:$\"\n  kubectl exec database-cluster-$i -n stateful-apps -- cat /data/node-id 2>/dev/null || echo \"  Node not ready yet\"\ndone",
+
+      "# Scale the StatefulSet to test ordering\necho \"Scaling StatefulSet to 4 replicas...\"\nkubectl scale statefulset database-cluster --replicas=4 -n stateful-apps\necho \"Waiting for new pod to be ready...\"\nsleep 60\nkubectl get pods -n stateful-apps -l app=database-cluster",
+
+      "# Test partition update (only update pods > partition)\necho \"Testing partition update strategy...\"\necho \"Current partition: 2 (only pods 0 and 1 will be updated)\"\nkubectl patch statefulset database-cluster -n stateful-apps -p '{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"version\":\"updated\"}}}}}'\necho \"Waiting for partition update...\"\nsleep 30\nkubectl get pods -n stateful-apps -l app=database-cluster --show-labels",
+
+      "# Update partition to allow all pods to update\necho \"Updating partition to 0 to allow all pods to update...\"\nkubectl patch statefulset database-cluster -n stateful-apps -p '{\"spec\":{\"updateStrategy\":{\"rollingUpdate\":{\"partition\":0}}}}'\necho \"Waiting for all pods to update...\"\nsleep 60\nkubectl get pods -n stateful-apps -l app=database-cluster --show-labels",
+
+      "# Verify persistent storage across pod restarts\necho \"Testing data persistence...\"\nkubectl delete pod database-cluster-0 -n stateful-apps\necho \"Waiting for pod to restart...\"\nkubectl wait --for=condition=ready --timeout=180s pod database-cluster-0 -n stateful-apps\necho \"Verifying node identity persisted:\"\nkubectl exec database-cluster-0 -n stateful-apps -- cat /data/node-id"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get statefulset database-cluster -n stateful-apps -o jsonpath='{.spec.updateStrategy.rollingUpdate.partition}'",
+      "expected": "2",
+      "points": 3,
+      "description": "StatefulSet has partition update strategy configured"
+    },
+    {
+      "command": "kubectl get service database-headless -n stateful-apps -o jsonpath='{.spec.clusterIP}'",
+      "expected": "None",
+      "points": 2,
+      "description": "Headless service provides stable network identity"
+    },
+    {
+      "command": "kubectl get pod database-cluster-0 -n stateful-apps -o jsonpath='{.metadata.name}'",
+      "expected": "database-cluster-0",
+      "points": 2,
+      "description": "StatefulSet pods have ordinal naming"
+    },
+    {
+      "command": "kubectl get pvc -n stateful-apps | grep database-cluster | wc -l",
+      "expected": "3",
+      "points": 3,
+      "description": "StatefulSet creates persistent volume claims per pod"
+    },
+    {
+      "command": "kubectl exec database-cluster-0 -n stateful-apps -- cat /data/node-id",
+      "expected": "node-0",
+      "points": 2,
+      "description": "Each pod maintains stable identity in persistent storage"
+    },
+    {
+      "command": "kubectl get pod -n stateful-apps -l app=database-cluster --field-selector=status.phase=Running | wc -l",
+      "expected": "4",
+      "points": 2,
+      "description": "All StatefulSet pods are running successfully"
+    }
+  ]
+}

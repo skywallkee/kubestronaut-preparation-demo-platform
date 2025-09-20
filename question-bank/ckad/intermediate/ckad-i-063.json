@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-063",
+  "title": "DNS Service Discovery with Persistent Volumes and Debugging",
+  "description": "Build a distributed cache system in the venus namespace where cache nodes discover each other using DNS. Implement persistent storage for cache data and include comprehensive debugging tools to troubleshoot cache synchronization and network connectivity issues.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["dns-service-discovery", "persistent-volumes-claims", "debugging-troubleshooting", "network-policies"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy Redis cache cluster with ||3|| nodes using StatefulSet"
+    },
+    {
+      "step": 2,
+      "description": "Configure headless service ||redis-cluster|| for DNS-based peer discovery"
+    },
+    {
+      "step": 3,
+      "description": "Create PVC template with ||2Gi|| storage for each cache node"
+    },
+    {
+      "step": 4,
+      "description": "Configure cache nodes to discover peers using ||redis-cluster-0.redis-cluster.venus.svc.cluster.local|| pattern"
+    },
+    {
+      "step": 5,
+      "description": "Deploy debug pod with Redis tools and network diagnostics"
+    },
+    {
+      "step": 6,
+      "description": "Create NetworkPolicy allowing inter-cluster communication on port ||6379||"
+    },
+    {
+      "step": 7,
+      "description": "Verify DNS resolution, cache clustering, and persistent storage"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get statefulset redis-cluster -n venus -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "3",
+      "description": "Verify Redis cluster has 3 nodes",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service redis-cluster -n venus -o jsonpath='{.spec.clusterIP}'",
+      "expectedOutput": "None",
+      "description": "Verify headless service for DNS discovery",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc -n venus -l app=redis-cluster | wc -l",
+      "expectedOutput": "4",
+      "description": "Verify PVCs exist for each cache node (including header)",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc redis-data-redis-cluster-0 -n venus -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl exec redis-cluster-0 -n venus -- nslookup redis-cluster-1.redis-cluster.venus.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS-based peer discovery",
+      "points": 3
+    },
+    {
+      "command": "kubectl get pod redis-debug -n venus -o jsonpath='{.spec.containers[0].image}' | grep redis",
+      "expectedOutput": "redis",
+      "description": "Verify debug pod with Redis tools",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy redis-cluster-policy -n venus -o jsonpath='{.spec.ingress[0].ports[0].port}'",
+      "expectedOutput": "6379",
+      "description": "Verify NetworkPolicy allows Redis port access",
+      "points": 2
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "id": "ckad-i-016",
+  "title": "ServiceAccount and RBAC Configuration",
+  "description": "Create a ServiceAccount with specific RBAC permissions in namespace ||saturn||:\n\n1. Create a ServiceAccount named ||app-service-account||\n\n2. Create a Role named ||pod-reader|| with permissions to:\n   - ||get||, ||list||, and ||watch|| pods\n   - ||get|| and ||list|| services\n   - ||create|| and ||update|| configmaps\n\n3. Create a RoleBinding named ||app-binding|| that:\n   - Binds the ||pod-reader|| role to ||app-service-account||\n\n4. Create a Pod named ||rbac-test-pod|| that:\n   - Uses the ServiceAccount ||app-service-account||\n   - Image: ||bitnami/kubectl:1.28||\n   - Command: ||sleep 3600|| (to keep it running)\n\n5. Test the RBAC permissions by executing kubectl commands inside the pod\n\n6. Verify the pod can list pods and services but cannot delete them",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Security",
+  "tags": [
+    "service-accounts-rbac",
+    "rbac",
+    "security",
+    "pod",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount app-service-account -n saturn",
+      "2. Create Role with specific permissions:",
+      "   kubectl create role pod-reader --verb=get,list,watch --resource=pods --verb=get,list --resource=services --verb=create,update --resource=configmaps -n saturn",
+      "3. Create RoleBinding:",
+      "   kubectl create rolebinding app-binding --role=pod-reader --serviceaccount=saturn:app-service-account -n saturn",
+      "4. Create Pod with ServiceAccount:",
+      "   kubectl run rbac-test-pod --image=bitnami/kubectl:1.28 --serviceaccount=app-service-account --command -- sleep 3600 -n saturn",
+      "5. Test permissions - list pods (should work):",
+      "   kubectl exec rbac-test-pod -n saturn -- kubectl get pods",
+      "6. Test permissions - list services (should work):",
+      "   kubectl exec rbac-test-pod -n saturn -- kubectl get services",
+      "7. Test permissions - delete pods (should fail):",
+      "   kubectl exec rbac-test-pod -n saturn -- kubectl delete pod test-pod || echo 'Expected: permission denied'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount app-service-account -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "app-service-account",
+      "points": 1,
+      "description": "ServiceAccount should be created with correct name"
+    },
+    {
+      "command": "kubectl get role pod-reader -n saturn -o jsonpath='{.rules[0].verbs[0]}'",
+      "expected": "get",
+      "points": 1,
+      "description": "Role should have get permission for pods"
+    },
+    {
+      "command": "kubectl get role pod-reader -n saturn -o jsonpath='{.rules[0].resources[0]}'",
+      "expected": "pods",
+      "points": 1,
+      "description": "Role should apply to pods resource"
+    },
+    {
+      "command": "kubectl get rolebinding app-binding -n saturn -o jsonpath='{.subjects[0].name}'",
+      "expected": "app-service-account",
+      "points": 1,
+      "description": "RoleBinding should reference the ServiceAccount"
+    },
+    {
+      "command": "kubectl get rolebinding app-binding -n saturn -o jsonpath='{.roleRef.name}'",
+      "expected": "pod-reader",
+      "points": 1,
+      "description": "RoleBinding should reference the Role"
+    },
+    {
+      "command": "kubectl get pod rbac-test-pod -n saturn -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "app-service-account",
+      "points": 1,
+      "description": "Pod should use the ServiceAccount"
+    },
+    {
+      "command": "kubectl exec rbac-test-pod -n saturn -- kubectl get pods --no-headers | wc -l",
+      "expected": ".*[0-9].*",
+      "points": 1,
+      "description": "Pod should be able to list pods using ServiceAccount permissions"
+    },
+    {
+      "command": "kubectl auth can-i get pods --as=system:serviceaccount:saturn:app-service-account -n saturn",
+      "expected": "yes",
+      "points": 1,
+      "description": "ServiceAccount should have permission to get pods"
+    }
+  ]
+}

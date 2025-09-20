@@ -1,0 +1,68 @@
+{
+  "id": "ckad-e-016",
+  "title": "Create Pod with LivenessProbe",
+  "description": "Create a Pod named ||liveness-pod|| using image ||nginx:1.20-alpine|| with a liveness probe that checks HTTP GET on port ||80|| and path ||'/'|| in the ||saturn|| namespace.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "health-probes",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run liveness-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > liveness-pod.yaml",
+      "2. Add livenessProbe section:",
+      "   livenessProbe:",
+      "     httpGet:",
+      "       path: /",
+      "       port: 80",
+      "     initialDelaySeconds: 10",
+      "     periodSeconds: 5",
+      "3. Apply pod:",
+      "   kubectl apply -f liveness-pod.yaml -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod liveness-pod -n saturn -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 2,
+      "description": "Pod should be running"
+    },
+    {
+      "command": "kubectl get pod liveness-pod -n saturn -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "nginx:1.20-alpine",
+      "points": 0.5,
+      "description": "Pod should use correct image"
+    },
+    {
+      "command": "kubectl get pod liveness-pod -n saturn -o jsonpath='{.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expected": "/",
+      "points": 1,
+      "description": "LivenessProbe should check path '/'"
+    },
+    {
+      "command": "kubectl get pod liveness-pod -n saturn -o jsonpath='{.spec.containers[0].livenessProbe.httpGet.port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "LivenessProbe should check port 80"
+    },
+    {
+      "command": "kubectl describe pod liveness-pod -n saturn | grep -q 'Liveness:'",
+      "expected": "0",
+      "points": 0.5,
+      "description": "Pod should have liveness probe configured"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-deployment-mercury
+  namespace: mercury
+  labels:
+    app: sample-app-mercury
+    exam-resource: "true"
+    planet: mercury
+    type: "sample"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app-mercury
+  template:
+    metadata:
+      labels:
+        app: sample-app-mercury
+        planet: mercury
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

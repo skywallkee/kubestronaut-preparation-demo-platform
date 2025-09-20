@@ -1,0 +1,97 @@
+{
+  "id": "ckad-a-025",
+  "title": "Custom Resource Definition (CRD) and Operator Basics",
+  "description": "Create and manage Custom Resource Definitions (CRDs) with basic operator patterns in namespace ||saturn|| for extending Kubernetes functionality:\n\n1. **Custom Resource Definition Creation**:\n   Create a comprehensive CRD ||WebApplication|| (plural: ||webapplications||) with the following specification:\n   - **API Version**: ||apiVersion: apps.example.com/v1||\n   - **Kind**: ||WebApplication||\n   - **Scope**: Namespaced\n   - **Schema Properties**:\n     - ||spec.image|| (string, required): Container image to deploy\n     - ||spec.replicas|| (integer, default: 1): Number of replicas\n     - ||spec.port|| (integer, default: 80): Service port\n     - ||spec.domain|| (string): Custom domain for ingress\n     - ||spec.resources|| (object): CPU/memory resource specifications\n     - ||spec.env|| (array): Environment variables\n   - **Status Fields**:\n     - ||status.phase|| (string): Current phase (Pending, Running, Failed)\n     - ||status.replicas|| (integer): Current number of replicas\n     - ||status.conditions|| (array): Condition history\n\n2. **Custom Resource Management**:\n   Create multiple WebApplication custom resources:\n   - ||frontend-app||: nginx:1.21, 3 replicas, port 80, domain: frontend.saturn.local\n   - ||api-service||: httpd:2.4, 2 replicas, port 8080, domain: api.saturn.local\n   - ||admin-panel||: nginx:alpine, 1 replica, port 80, domain: admin.saturn.local\n\n3. **Operator Controller Logic (Basic Implementation)**:\n   Create a Job ||webapp-controller|| that implements basic controller logic:\n   - **Reconciliation Loop**: Watch for WebApplication resource changes\n   - **Deployment Creation**: Automatically create Deployment based on CR spec\n   - **Service Creation**: Create corresponding Service for each WebApplication\n   - **Ingress Creation**: Generate Ingress resources for specified domains\n   - **Status Updates**: Update WebApplication status based on underlying resources\n\n4. **Resource Validation and Admission Control**:\n   - Add OpenAPI schema validation to the CRD:\n     - Validate image format (must contain valid registry/image:tag)\n     - Ensure replicas is between 1 and 10\n     - Validate port is between 1024 and 65535\n     - Required fields validation\n   - Create ValidatingAdmissionWebhook (basic) for custom business logic\n   - Add resource naming conventions and label requirements\n\n5. **Custom Resource Operations**:\n   - **CRUD Operations**: Create, read, update, delete WebApplication resources\n   - **Scaling Operations**: Update replicas field and verify scaling\n   - **Configuration Updates**: Modify environment variables and resource limits\n   - **Status Reporting**: Track and update resource status conditions\n\n6. **Operator Lifecycle Management**:\n   - **Controller Deployment**: Deploy the controller as a Deployment with proper RBAC\n   - **Service Account**: Create ||webapp-operator|| service account with necessary permissions\n   - **RBAC Configuration**: Role and RoleBinding for CRD management\n     - GET, LIST, WATCH, CREATE, UPDATE, PATCH on webapplications\n     - GET, LIST, WATCH, CREATE, UPDATE, PATCH on deployments, services, ingresses\n   - **Leader Election**: Basic leader election for controller high availability\n\n7. **Event Handling and Observability**:\n   - Generate Kubernetes Events for WebApplication lifecycle changes\n   - Add logging for controller operations and decisions\n   - Create metrics endpoints for controller performance monitoring\n   - Implement health checks for the controller itself\n\n8. **Error Handling and Recovery**:\n   - Handle resource creation failures gracefully\n   - Implement retry logic with exponential backoff\n   - Add resource cleanup on WebApplication deletion (finalizers)\n   - Status condition updates for error states\n\n9. **Advanced Features (Basic Implementation)**:\n   - **Subresources**: Implement scale and status subresources\n   - **Printer Columns**: Add custom columns for kubectl output\n   - **Finalizers**: Proper cleanup using finalizers\n   - **Conversion Webhooks**: Basic version conversion (if multiple versions)\n\n10. **Testing and Validation**:\n    - Create Job ||crd-tester|| that validates:\n      - CRD installation and schema validation\n      - Custom resource CRUD operations\n      - Controller reconciliation logic\n      - Generated Kubernetes resources\n      - Status updates and condition tracking\n    - Test error scenarios and recovery\n    - Validate RBAC permissions and security\n\n11. **Integration Scenarios**:\n    - Integrate with existing Kubernetes resources (ConfigMaps, Secrets)\n    - Cross-reference with other custom resources\n    - Implement dependency management between WebApplications\n    - Add hooks for external system integration\n\nEnsure proper CRD implementation with basic operator functionality, validation, and comprehensive testing.",
+  "points": 6,
+  "timeLimit": 15,
+  "category": "Custom Resources",
+  "tags": [
+    "crd",
+    "custom-resources",
+    "operator-basics",
+    "kubernetes-api",
+    "extension",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "customresourcedefinitions",
+      "deployments",
+      "services",
+      "ingress",
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "jobs",
+      "configmaps"
+    ],
+    "prerequisites": [
+      "api-server-access"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create CRD definition with OpenAPI schema:",
+      "   kubectl create -f webapplication-crd.yaml",
+      "   Define spec and status fields with proper validation",
+      "2. Create RBAC for controller:",
+      "   kubectl create serviceaccount webapp-operator -n saturn",
+      "   kubectl create role webapp-controller --verb=get,list,watch,create,update,patch,delete --resource=webapplications,deployments,services,ingresses -n saturn",
+      "   kubectl create rolebinding webapp-controller-binding --role=webapp-controller --serviceaccount=saturn:webapp-operator -n saturn",
+      "3. Create WebApplication custom resources:",
+      "   kubectl create -f frontend-app-webapp.yaml",
+      "   kubectl create -f api-service-webapp.yaml",
+      "   kubectl create -f admin-panel-webapp.yaml",
+      "4. Deploy basic controller:",
+      "   kubectl create -f webapp-controller-deployment.yaml",
+      "   Implement reconciliation logic for managing underlying resources",
+      "5. Verify controller functionality:",
+      "   Check that Deployments, Services, and Ingresses are created",
+      "   Validate status updates on WebApplication resources",
+      "6. Test CRUD operations and validation:",
+      "   kubectl patch webapplication frontend-app --type='merge' -p='{\"spec\":{\"replicas\":5}}' -n saturn",
+      "   Verify validation rules and error handling"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get crd webapplications.apps.example.com -o jsonpath='{.metadata.name}'",
+      "expected": "webapplications.apps.example.com",
+      "points": 1,
+      "description": "WebApplication CRD should be created"
+    },
+    {
+      "command": "kubectl get webapplication frontend-app -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Frontend app should have 3 replicas"
+    },
+    {
+      "command": "kubectl get webapplication api-service -n saturn -o jsonpath='{.spec.port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "API service should be configured on port 8080"
+    },
+    {
+      "command": "kubectl get deployment frontend-app -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Controller should create deployment with correct replicas"
+    },
+    {
+      "command": "kubectl get service api-service -n saturn -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Controller should create service with correct port"
+    },
+    {
+      "command": "kubectl get job crd-tester -n saturn -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "CRD validation test should complete successfully"
+    }
+  ]
+}

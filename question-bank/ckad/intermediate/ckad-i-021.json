@@ -1,0 +1,161 @@
+{
+  "id": "ckad-i-021",
+  "title": "Multi-Container Pod with Logging Sidecar",
+  "description": "Create a logging solution in namespace ||pluto|| with a multi-container pod:\n\n**Main Application Container:**\n- Name: ||web-app||\n- Image: ||nginx:1.21||\n- Generate access logs to ||/var/log/nginx/access.log||\n- Custom nginx config to log to file\n\n**Logging Sidecar Container:**\n- Name: ||log-shipper||\n- Image: ||busybox:1.35||\n- Command: ||tail -f /shared-logs/access.log||\n- Read logs from shared volume and output to stdout\n\n**Shared Volume Configuration:**\n- Volume type: ||emptyDir||\n- Mount in web-app at ||/var/log/nginx||\n- Mount in log-shipper at ||/shared-logs||\n\n**Service:**\n- Name: ||web-service||\n- Type: ||ClusterIP||\n- Port: ||80|| -> target port ||80||\n\n**ConfigMap for nginx config:**\n- Name: ||nginx-config||\n- Configure nginx to log all requests to access.log\n\nVerify logs are visible in the sidecar container and test with sample requests.",
+  "points": 9,
+  "timeLimit": 15,
+  "category": "Multi-container",
+  "tags": [
+    "multi-container-pods",
+    "logging-monitoring",
+    "configmaps-secrets",
+    "volume-types",
+    "services",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "pods",
+      "configmaps",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create nginx ConfigMap:",
+      "   cat <<EOF > nginx-config.yaml",
+      "   apiVersion: v1",
+      "   kind: ConfigMap",
+      "   metadata:",
+      "     name: nginx-config",
+      "     namespace: pluto",
+      "   data:",
+      "     nginx.conf: |",
+      "       events {}",
+      "       http {",
+      "         access_log /var/log/nginx/access.log;",
+      "         server {",
+      "           listen 80;",
+      "           location / {",
+      "             root /usr/share/nginx/html;",
+      "             index index.html;",
+      "           }",
+      "         }",
+      "       }",
+      "   EOF",
+      "2. Create multi-container Pod with sidecar:",
+      "   cat <<EOF > logging-pod.yaml",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: web-logging-pod",
+      "     namespace: pluto",
+      "     labels:",
+      "       app: web-logging",
+      "   spec:",
+      "     containers:",
+      "     - name: web-app",
+      "       image: nginx:1.21",
+      "       ports:",
+      "       - containerPort: 80",
+      "       volumeMounts:",
+      "       - name: nginx-config-vol",
+      "         mountPath: /etc/nginx/nginx.conf",
+      "         subPath: nginx.conf",
+      "       - name: log-volume",
+      "         mountPath: /var/log/nginx",
+      "     - name: log-shipper",
+      "       image: busybox:1.35",
+      "       command: ['tail', '-f', '/shared-logs/access.log']",
+      "       volumeMounts:",
+      "       - name: log-volume",
+      "         mountPath: /shared-logs",
+      "     volumes:",
+      "     - name: nginx-config-vol",
+      "       configMap:",
+      "         name: nginx-config",
+      "     - name: log-volume",
+      "       emptyDir: {}",
+      "   EOF",
+      "3. Create Service:",
+      "   cat <<EOF > web-service.yaml",
+      "   apiVersion: v1",
+      "   kind: Service",
+      "   metadata:",
+      "     name: web-service",
+      "     namespace: pluto",
+      "   spec:",
+      "     selector:",
+      "       app: web-logging",
+      "     ports:",
+      "     - port: 80",
+      "       targetPort: 80",
+      "     type: ClusterIP",
+      "   EOF",
+      "4. Apply all resources:",
+      "   kubectl apply -f nginx-config.yaml",
+      "   kubectl apply -f logging-pod.yaml",
+      "   kubectl apply -f web-service.yaml",
+      "5. Wait for pod readiness:",
+      "   kubectl wait --for=condition=Ready pod/web-logging-pod -n pluto --timeout=60s",
+      "6. Test logging by making requests:",
+      "   kubectl exec -n pluto web-logging-pod -c web-app -- curl localhost",
+      "7. Verify logs in sidecar:",
+      "   kubectl logs web-logging-pod -c log-shipper -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap nginx-config -n pluto -o jsonpath='{.data}' | grep -c 'access_log'",
+      "expected": "1",
+      "points": 1,
+      "description": "ConfigMap should contain nginx configuration with access log"
+    },
+    {
+      "command": "kubectl get pod web-logging-pod -n pluto -o jsonpath='{.spec.containers[*].name}' | tr ' ' '\n' | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Pod should have 2 containers"
+    },
+    {
+      "command": "kubectl get pod web-logging-pod -n pluto -o jsonpath='{.spec.containers[0].name}'",
+      "expected": "web-app",
+      "points": 1,
+      "description": "First container should be named web-app"
+    },
+    {
+      "command": "kubectl get pod web-logging-pod -n pluto -o jsonpath='{.spec.containers[1].name}'",
+      "expected": "log-shipper",
+      "points": 1,
+      "description": "Second container should be named log-shipper"
+    },
+    {
+      "command": "kubectl get pod web-logging-pod -n pluto -o jsonpath='{.spec.volumes[*].emptyDir}' | grep -c '{}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Pod should use emptyDir volume for log sharing"
+    },
+    {
+      "command": "kubectl get service web-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl exec -n pluto web-logging-pod -c web-app -- curl -s localhost > /dev/null && echo 'success'",
+      "expected": "success",
+      "points": 1,
+      "description": "Web application should be accessible"
+    },
+    {
+      "command": "kubectl exec -n pluto web-logging-pod -c web-app -- curl -s localhost > /dev/null && sleep 2 && kubectl logs web-logging-pod -c log-shipper -n pluto --tail=1 | grep -c 'GET'",
+      "expected": "1",
+      "points": 2,
+      "description": "Sidecar should capture and display access logs"
+    }
+  ]
+}

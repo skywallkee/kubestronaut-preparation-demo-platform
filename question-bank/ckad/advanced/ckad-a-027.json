@@ -1,0 +1,92 @@
+{
+  "id": "ckad-a-027",
+  "title": "Pod Security Standards and Security Contexts",
+  "description": "Implement comprehensive pod security configurations in namespace ||security-zone|| with multiple security contexts and security standards:\n\n1. **Namespace Security Policy Setup**:\n   Configure namespace ||security-zone|| with:\n   - **Pod Security Standard**: ||restricted|| enforcement\n   - **Security Context Constraints**: Custom security policies\n   - **Network Policies**: Restricted network access\n   - **Resource Quotas**: Limited resource allocation\n\n2. **High-Security Application Pod**:\n   Deploy ||secure-app|| with restrictive security context:\n   - **Run as non-root user**: UID 1000, GID 3000\n   - **Read-only root filesystem**: readOnlyRootFilesystem: true\n   - **Drop all capabilities**: drop: [\"ALL\"]\n   - **Disable privilege escalation**: allowPrivilegeEscalation: false\n   - **Seccomp profile**: RuntimeDefault\n   - **AppArmor profile**: runtime/default\n\n3. **Database Pod with Specific Security Requirements**:\n   Deploy ||secure-postgres|| with:\n   - **File system group**: fsGroup: 999 (postgres group)\n   - **Run as specific user**: runAsUser: 999, runAsGroup: 999\n   - **Volume permissions**: fsGroupChangePolicy: \"OnRootMismatch\"\n   - **Supplemental groups**: supplementalGroups: [1000, 2000]\n   - **SELinux options**: Configure appropriate SELinux context\n\n4. **Privileged Container for System Operations**:\n   Deploy ||system-monitor|| with controlled privileges:\n   - **Specific capabilities**: Add only [\"SYS_TIME\", \"NET_ADMIN\"]\n   - **Host network access**: hostNetwork: true (with restrictions)\n   - **Host PID namespace**: hostPID: true for monitoring\n   - **Security context**: Minimal required privileges\n\n5. **Multi-Container Pod with Different Security Contexts**:\n   Deploy ||webapp-with-sidecar|| containing:\n   - **Main container**: Standard restricted security context\n   - **Sidecar container**: Different UID/GID for log processing\n   - **Init container**: Elevated privileges for initialization only\n   - **Shared volume**: Proper ownership and permissions\n\n6. **Security Context Inheritance and Overrides**:\n   Test security context inheritance:\n   - **Pod-level security context**: Default settings for all containers\n   - **Container-level overrides**: Specific containers with different settings\n   - **Validation**: Ensure proper precedence and inheritance\n\n7. **Secret and ConfigMap Security**:\n   Deploy resources with secure secret handling:\n   - **File permissions**: defaultMode for secrets and configmaps\n   - **Projected volumes**: Combined secret and configmap projections\n   - **RBAC**: Minimal permissions for secret access\n\n8. **Testing and Validation**:\n   Create comprehensive security tests:\n   - **Security Scanner Job**: Validate all security configurations\n   - **Penetration Test**: Attempt privilege escalation and access violations\n   - **Compliance Check**: Verify adherence to security standards\n   - **Audit**: Generate security audit report\n\nEnsure robust pod security with proper contexts, standards, and access controls.",
+  "points": 10,
+  "timeLimit": 22,
+  "category": "Core Concepts",
+  "tags": [
+    "security-contexts",
+    "pod-security-standards",
+    "rbac",
+    "capabilities",
+    "seccomp",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "security-zone"
+    ],
+    "resources": [
+      "pods",
+      "deployments",
+      "secrets",
+      "configmaps",
+      "networkpolicies",
+      "resourcequotas",
+      "jobs"
+    ],
+    "prerequisites": [
+      "pod-security-standards",
+      "seccomp-profiles"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Configure namespace with pod security standards:",
+      "   kubectl label namespace security-zone pod-security.kubernetes.io/enforce=restricted",
+      "   kubectl label namespace security-zone pod-security.kubernetes.io/audit=restricted",
+      "   kubectl label namespace security-zone pod-security.kubernetes.io/warn=restricted",
+      "2. Create pod with restrictive security context:",
+      "   securityContext: runAsNonRoot: true, runAsUser: 1000, readOnlyRootFilesystem: true",
+      "   Drop all capabilities and disable privilege escalation",
+      "3. Deploy database with file system security:",
+      "   Configure fsGroup, runAsUser, runAsGroup for proper permissions",
+      "   Set supplementalGroups and fsGroupChangePolicy",
+      "4. Create privileged container with minimal required capabilities:",
+      "   Add only necessary capabilities like SYS_TIME, NET_ADMIN",
+      "   Configure hostNetwork and hostPID with restrictions",
+      "5. Deploy multi-container pod with different security contexts:",
+      "   Pod-level and container-level security context configurations",
+      "6. Test security configurations with validation jobs"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod secure-app -n security-zone -o jsonpath='{.spec.securityContext.runAsUser}'",
+      "expected": "1000",
+      "points": 1,
+      "description": "Secure app should run as user 1000"
+    },
+    {
+      "command": "kubectl get pod secure-app -n security-zone -o jsonpath='{.spec.securityContext.readOnlyRootFilesystem}'",
+      "expected": "true",
+      "points": 1,
+      "description": "Secure app should have read-only root filesystem"
+    },
+    {
+      "command": "kubectl get pod secure-postgres -n security-zone -o jsonpath='{.spec.securityContext.fsGroup}'",
+      "expected": "999",
+      "points": 1,
+      "description": "Postgres should have fsGroup set to 999"
+    },
+    {
+      "command": "kubectl get pod system-monitor -n security-zone -o jsonpath='{.spec.containers[0].securityContext.capabilities.add[0]}'",
+      "expected": "SYS_TIME",
+      "points": 1,
+      "description": "System monitor should have SYS_TIME capability"
+    },
+    {
+      "command": "kubectl get pod webapp-with-sidecar -n security-zone -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expected": "2",
+      "points": 1,
+      "description": "Multi-container pod should have 2 containers"
+    },
+    {
+      "command": "kubectl get job security-scanner -n security-zone -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Security validation should complete successfully"
+    }
+  ]
+}

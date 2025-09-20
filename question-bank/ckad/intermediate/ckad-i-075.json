@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-075",
+  "title": "Storage Classes with Security Context and Health Probes",
+  "description": "Deploy a secure file storage service in the venus namespace using multiple storage classes for different access tiers. Configure security contexts for enhanced protection and implement health probes to monitor storage performance and accessibility across different storage tiers.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["storage-classes", "security-contexts", "health-probes", "persistent-volumes-claims"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create StorageClasses: ||secure-ssd|| for sensitive data and ||standard-hdd|| for general files"
+    },
+    {
+      "step": 2,
+      "description": "Deploy file storage service with security context: ||runAsUser: 2000||, ||fsGroup: 2000||"
+    },
+    {
+      "step": 3,
+      "description": "Configure security settings: ||allowPrivilegeEscalation: false||, ||readOnlyRootFilesystem: true||"
+    },
+    {
+      "step": 4,
+      "description": "Create PVCs: ||secure-files|| (secure-ssd, 5Gi) and ||general-files|| (standard-hdd, 20Gi)"
+    },
+    {
+      "step": 5,
+      "description": "Implement health probes: liveness on ||/health||, readiness on ||/ready||, startup on ||/start||"
+    },
+    {
+      "step": 6,
+      "description": "Configure probe timeouts and failure thresholds for storage monitoring"
+    },
+    {
+      "step": 7,
+      "description": "Verify secure file access, storage performance, and health monitoring"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get storageclass secure-ssd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "secure-ssd",
+      "description": "Verify secure-ssd StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass standard-hdd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "standard-hdd",
+      "description": "Verify standard-hdd StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment file-storage -n venus -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "2000",
+      "description": "Verify security context runAsUser",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment file-storage -n venus -o jsonpath='{.spec.template.spec.securityContext.fsGroup}'",
+      "expectedOutput": "2000",
+      "description": "Verify security context fsGroup",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment file-storage -n venus -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}'",
+      "expectedOutput": "false",
+      "description": "Verify allowPrivilegeEscalation is disabled",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc secure-files -n venus -o jsonpath='{.spec.storageClassName}'",
+      "expectedOutput": "secure-ssd",
+      "description": "Verify secure files use secure-ssd storage",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc general-files -n venus -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "20Gi",
+      "description": "Verify general files storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment file-storage -n venus -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify liveness probe configuration",
+      "points": 2
+    }
+  ]
+}

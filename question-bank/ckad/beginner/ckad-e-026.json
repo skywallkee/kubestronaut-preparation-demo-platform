@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-026",
+  "title": "Create Pod in Specific Namespace",
+  "description": "Create a Pod named ||ns-pod|| using image ||busybox:1.31.0|| in the ||kube-system|| namespace with command ||'sleep 3600'||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Design and Build",
+  "tags": [
+    "multi-container-pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod in namespace:",
+      "   kubectl run ns-pod --image=busybox:1.31.0 --namespace=kube-system -- sleep 3600",
+      "2. Verify pod:",
+      "   kubectl get pod ns-pod -n kube-system",
+      "3. Check namespace:",
+      "   kubectl get pod ns-pod -n kube-system -o jsonpath='{.metadata.namespace}'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod ns-pod -n kube-system -o jsonpath='{.metadata.namespace}'",
+      "expected": "kube-system",
+      "points": 3,
+      "description": "Pod should be in kube-system namespace"
+    }
+  ]
+}

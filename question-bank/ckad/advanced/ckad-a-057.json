@@ -1,0 +1,69 @@
+{
+  "id": "ckad-a-057",
+  "title": "Application Metrics and Prometheus Integration",
+  "description": "Implement a comprehensive ||application metrics|| system with ||Prometheus|| integration. Create applications that expose custom business metrics, system metrics, and performance indicators through ||/metrics|| endpoints. Design a metrics collection architecture with proper metric types (counters, gauges, histograms, summaries), implement metric labeling strategies, and create custom Prometheus exporters. Include alert rules, recording rules, and demonstrate how to build effective monitoring dashboards from application metrics.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Observability",
+  "tags": ["metrics", "prometheus", "monitoring", "exporters", "alerting", "performance", "advanced"],
+  "infrastructure": {
+    "namespaces": ["metrics-demo"],
+    "resources": ["Pod", "Deployment", "Service", "ServiceMonitor"],
+    "prerequisites": ["Prometheus operator or instance"]
+  },
+  "solution": {
+    "steps": [
+      "# Create metrics-demo namespace\nkubectl create namespace metrics-demo",
+
+      "# Create application deployment with Prometheus metrics\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: metrics-app\n  namespace: metrics-demo\n  labels:\n    app: metrics-app\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: metrics-app\n  template:\n    metadata:\n      labels:\n        app: metrics-app\n    spec:\n      containers:\n      - name: metrics-app\n        image: prom/node-exporter:latest\n        ports:\n        - containerPort: 8080\n          name: http-metrics\n        env:\n        - name: ENVIRONMENT\n          value: \"production\"\n        - name: APP_VERSION\n          value: \"v1.2.3\"\n        command:\n        - /bin/sh\n        - -c\n        - |\n          cat > /tmp/metrics.py << 'SCRIPT'\n          #!/usr/bin/env python3\n          import http.server\n          import socketserver\n          import time\n          import random\n          \n          class MetricsHandler(http.server.BaseHTTPRequestHandler):\n              def do_GET(self):\n                  if self.path == '/metrics':\n                      metrics = self.generate_metrics()\n                      self.send_response(200)\n                      self.send_header('Content-Type', 'text/plain')\n                      self.end_headers()\n                      self.wfile.write(metrics.encode())\n                  else:\n                      self.send_response(404)\n                      self.end_headers()\n              \n              def generate_metrics(self):\n                  timestamp = int(time.time() * 1000)\n                  environment = 'production'\n                  version = 'v1.2.3'\n                  \n                  return f'''# HELP http_requests_total Total number of HTTP requests\n# TYPE http_requests_total counter\nhttp_requests_total{{method=\"GET\",status=\"200\",environment=\"{environment}\"}} {random.randint(1000, 5000)}\nhttp_requests_total{{method=\"POST\",status=\"200\",environment=\"{environment}\"}} {random.randint(500, 2000)}\nhttp_requests_total{{method=\"GET\",status=\"404\",environment=\"{environment}\"}} {random.randint(10, 100)}\n\n# HELP response_time_histogram Response time histogram\n# TYPE response_time_histogram histogram\nresponse_time_histogram_bucket{{le=\"0.1\",environment=\"{environment}\"}} {random.randint(100, 500)}\nresponse_time_histogram_bucket{{le=\"0.5\",environment=\"{environment}\"}} {random.randint(500, 1000)}\nresponse_time_histogram_bucket{{le=\"1.0\",environment=\"{environment}\"}} {random.randint(800, 1200)}\nresponse_time_histogram_bucket{{le=\"+Inf\",environment=\"{environment}\"}} {random.randint(1000, 1500)}\nresponse_time_histogram_sum{{environment=\"{environment}\"}} {random.randint(100, 1000)}\nresponse_time_histogram_count{{environment=\"{environment}\"}} {random.randint(1000, 2000)}\n\n# HELP business_orders_total Total business orders processed\n# TYPE business_orders_total counter\nbusiness_orders_total{{environment=\"{environment}\",region=\"us-east\"}} {random.randint(100, 1000)}\nbusiness_orders_total{{environment=\"{environment}\",region=\"eu-west\"}} {random.randint(50, 500)}\n\n# HELP business_revenue_dollars Total revenue in dollars\n# TYPE business_revenue_dollars gauge\nbusiness_revenue_dollars{{environment=\"{environment}\",currency=\"USD\"}} {random.randint(10000, 50000)}\n\n# HELP app_cpu_usage_percent Current CPU usage percentage\n# TYPE app_cpu_usage_percent gauge\napp_cpu_usage_percent{{environment=\"{environment}\",version=\"{version}\"}} {random.randint(20, 80)}\n\n# HELP app_memory_usage_bytes Current memory usage in bytes\n# TYPE app_memory_usage_bytes gauge\napp_memory_usage_bytes{{environment=\"{environment}\",version=\"{version}\"}} {random.randint(100000000, 500000000)}\n\n# HELP request_latency_seconds Request latency in seconds\n# TYPE request_latency_seconds summary\nrequest_latency_seconds{{quantile=\"0.5\",environment=\"{environment}\"}} {random.uniform(0.1, 0.5)}\nrequest_latency_seconds{{quantile=\"0.9\",environment=\"{environment}\"}} {random.uniform(0.5, 1.0)}\nrequest_latency_seconds{{quantile=\"0.99\",environment=\"{environment}\"}} {random.uniform(1.0, 2.0)}\nrequest_latency_seconds_sum{{environment=\"{environment}\"}} {random.randint(100, 1000)}\nrequest_latency_seconds_count{{environment=\"{environment}\"}} {random.randint(1000, 5000)}\n\n# HELP database_connections_active Current active database connections\n# TYPE database_connections_active gauge\ndatabase_connections_active{{environment=\"{environment}\",pool=\"main\"}} {random.randint(5, 20)}\n\n# HELP cache_hit_ratio Cache hit ratio percentage\n# TYPE cache_hit_ratio gauge\ncache_hit_ratio{{environment=\"{environment}\",cache=\"redis\"}} {random.uniform(0.8, 0.99)}\n'''\n          \n          with socketserver.TCPServer((\"\", 8080), MetricsHandler) as httpd:\n              print(\"Metrics server running on port 8080\")\n              httpd.serve_forever()\n          SCRIPT\n          \n          python3 /tmp/metrics.py\nEOF",
+
+      "# Create service with Prometheus annotations\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: metrics-app\n  namespace: metrics-demo\n  annotations:\n    prometheus.io/scrape: \"true\"\n    prometheus.io/port: \"8080\"\n    prometheus.io/path: \"/metrics\"\n  labels:\n    app: metrics-app\nspec:\n  selector:\n    app: metrics-app\n  ports:\n  - name: http-metrics\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\nEOF",
+
+      "# Create ServiceMonitor for Prometheus Operator\nkubectl apply -f - <<EOF\napiVersion: monitoring.coreos.com/v1\nkind: ServiceMonitor\nmetadata:\n  name: metrics-app-monitor\n  namespace: metrics-demo\n  labels:\n    app: metrics-app\nspec:\n  selector:\n    matchLabels:\n      app: metrics-app\n  endpoints:\n  - port: http-metrics\n    interval: 30s\n    path: /metrics\n    honorLabels: true\nEOF",
+
+      "# Create Prometheus recording rules\nkubectl apply -f - <<EOF\napiVersion: monitoring.coreos.com/v1\nkind: PrometheusRule\nmetadata:\n  name: metrics-app-rules\n  namespace: metrics-demo\n  labels:\n    app: metrics-app\nspec:\n  groups:\n  - name: metrics-app.rules\n    rules:\n    - record: http:request_rate_5m\n      expr: rate(http_requests_total[5m])\n    - record: http:error_rate_5m\n      expr: rate(http_requests_total{status=~\"4..|5..\"}[5m]) / rate(http_requests_total[5m])\n    - record: business:revenue_per_order\n      expr: business_revenue_dollars / business_orders_total\n    - alert: HighErrorRate\n      expr: http:error_rate_5m > 0.1\n      for: 5m\n      labels:\n        severity: warning\n      annotations:\n        summary: \"High error rate detected\"\n        description: \"Error rate is {{ $value }} for {{ $labels.environment }}\"\nEOF",
+
+      "# Verify deployment and wait for pods to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/metrics-app -n metrics-demo",
+
+      "# Test metrics endpoint\nkubectl exec -n metrics-demo deploy/metrics-app -- curl -s localhost:8080/metrics | head -20"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service metrics-app -n metrics-demo -o jsonpath='{.metadata.annotations.prometheus\\.io/scrape}'",
+      "expected": "true",
+      "points": 2,
+      "description": "Service has Prometheus scraping annotations"
+    },
+    {
+      "command": "kubectl exec -n metrics-demo deploy/metrics-app -- curl -s localhost:8080/metrics | grep -c '^# HELP'",
+      "expected": "10",
+      "points": 3,
+      "description": "Application exposes multiple metrics with help text"
+    },
+    {
+      "command": "kubectl exec -n metrics-demo deploy/metrics-app -- curl -s localhost:8080/metrics | grep 'http_requests_total'",
+      "expected": "counter-metric",
+      "points": 3,
+      "description": "Application exposes HTTP request counter metric"
+    },
+    {
+      "command": "kubectl exec -n metrics-demo deploy/metrics-app -- curl -s localhost:8080/metrics | grep 'response_time_histogram'",
+      "expected": "histogram-metric",
+      "points": 3,
+      "description": "Application exposes response time histogram"
+    },
+    {
+      "command": "kubectl get servicemonitor -n metrics-demo metrics-app-monitor -o jsonpath='{.spec.endpoints[0].port}'",
+      "expected": "http-metrics",
+      "points": 2,
+      "description": "ServiceMonitor configured for metrics collection"
+    },
+    {
+      "command": "kubectl exec -n metrics-demo deploy/metrics-app -- curl -s localhost:8080/metrics | grep -c 'environment='",
+      "expected": "5",
+      "points": 1,
+      "description": "Metrics include environment labels"
+    }
+  ]
+}

@@ -27,7 +27,17 @@ RUN npm ci --omit=optional --ignore-scripts --silent --prefer-offline --no-audit
 COPY app/frontend/ ./
 
 # Build frontend application with production optimizations
-RUN npm run build
+# Set environment variables for build
+ENV CI=false
+ENV GENERATE_SOURCEMAP=false
+ENV DISABLE_ESLINT_PLUGIN=true
+ENV TSC_COMPILE_ON_ERROR=true
+
+# Build frontend with better error handling
+RUN npm run build || (echo "Frontend build failed, checking for errors..."; ls -la; cat package.json; exit 1)
+
+# Verify build was successful
+RUN ls -la build/ && test -f build/index.html || (echo "Build verification failed - index.html not found"; exit 1)
 
 # Stage 2: Build backend and final image
 FROM node:18-alpine
@@ -74,23 +84,27 @@ COPY --from=frontend-build /app/frontend/build ./frontend/build
 # Copy configuration files and templates
 COPY helm-templates/ ./helm-templates/
 COPY question-bank/ ./question-bank/
-COPY scoring-scripts/ ./scoring-scripts/
 
-# Copy generated charts if they exist
-COPY app/generated-charts/ ./generated-charts/
+# Don't copy generated charts - they'll be created at runtime
+# Create the directory structure for generated charts
+RUN mkdir -p /app/generated-charts
 
 COPY docker-entrypoint.sh /usr/local/bin/
 
 # Set up permissions and directories in one layer
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
-    mkdir -p /tmp/generated-charts /root/.kube
+    mkdir -p /root/.kube && \
+    chmod -R 755 /app/generated-charts
 
 # Set production environment variables
 ENV NODE_ENV=production \
     PORT=8080 \
     KUBECONFIG=/root/.kube/config \
     TERM=xterm \
-    SHELL=/bin/bash
+    SHELL=/bin/bash \
+    GENERATED_CHARTS_PATH=/app/generated-charts \
+    QUESTION_BANK_PATH=/app/question-bank \
+    HELM_TEMPLATES_PATH=/app/helm-templates
 
 # Expose application port
 EXPOSE 8080

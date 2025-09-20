@@ -1,0 +1,46 @@
+{
+  "id": "ckad-e-060",
+  "title": "Create ServiceAccount",
+  "description": "Create a ServiceAccount named ||app-sa|| in Namespace ||production|| and create a Pod named ||sa-pod|| that uses this ServiceAccount.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount app-sa -n production",
+      "2. Create Pod with ServiceAccount:",
+      "   kubectl run sa-pod --image=nginx:1.21 --serviceaccount=app-sa -n production --dry-run=client -o yaml > sa-pod.yaml",
+      "3. Apply the Pod:",
+      "   kubectl apply -f sa-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount app-sa -n production -o jsonpath='{.metadata.name}'",
+      "expected": "app-sa",
+      "points": 1.5,
+      "description": "ServiceAccount app-sa should exist"
+    },
+    {
+      "command": "kubectl get pod sa-pod -n production -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "app-sa",
+      "points": 1.5,
+      "description": "Pod should use app-sa ServiceAccount"
+    }
+  ]
+}

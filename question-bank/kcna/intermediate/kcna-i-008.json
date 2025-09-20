@@ -1,0 +1,131 @@
+{
+  "id": "kcna-i-008",
+  "title": "Basic Observability and Monitoring",
+  "description": "Demonstrate understanding of observability and monitoring concepts in cloud-native environments:\n\n1. Create a monitoring setup in namespace ||mars|| with:\n   - Application: Deployment ||web-app|| with ||nginx:1.21|| image\n   - Monitoring sidecar: Add ||busybox:1.35|| container for log collection\n   - Resource monitoring: Configure resource requests/limits\n\n2. Implement observability practices:\n   - Add labels for monitoring: ||app=web||, ||version=v1.0||, ||environment=production||\n   - Configure logging: Redirect nginx logs to stdout\n   - Add health checks with custom endpoints\n   - Set up resource monitoring\n\n3. Create monitoring resources:\n   - ServiceMonitor for Prometheus (if available)\n   - Custom metrics endpoint\n   - Log aggregation configuration\n\n4. Demonstrate observability:\n   - View application logs\n   - Monitor resource usage\n   - Check health status\n   - Verify metrics collection\n\n5. Simulate and respond to issues:\n   - Create a failing pod scenario\n   - Show how to diagnose using logs and events\n   - Demonstrate recovery procedures",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Observability",
+  "tags": [
+    "monitoring",
+    "logging",
+    "observability",
+    "metrics"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create application with monitoring labels:",
+      "   cat > monitoring-app.yaml << EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: web-app",
+      "     namespace: mars",
+      "     labels:",
+      "       app: web",
+      "       version: v1.0",
+      "       environment: production",
+      "   spec:",
+      "     replicas: 2",
+      "     selector:",
+      "       matchLabels:",
+      "         app: web",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: web",
+      "           version: v1.0",
+      "           environment: production",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:1.21",
+      "           ports:",
+      "           - containerPort: 80",
+      "           resources:",
+      "             requests:",
+      "               cpu: 100m",
+      "               memory: 128Mi",
+      "             limits:",
+      "               cpu: 200m",
+      "               memory: 256Mi",
+      "           readinessProbe:",
+      "             httpGet:",
+      "               path: /",
+      "               port: 80",
+      "           livenessProbe:",
+      "             httpGet:",
+      "               path: /",
+      "               port: 80",
+      "         - name: log-collector",
+      "           image: busybox:1.35",
+      "           command: [\"sh\", \"-c\", \"tail -f /var/log/nginx/access.log\"]",
+      "           volumeMounts:",
+      "           - name: nginx-logs",
+      "             mountPath: /var/log/nginx",
+      "         volumes:",
+      "         - name: nginx-logs",
+      "           emptyDir: {}",
+      "   EOF",
+      "   kubectl apply -f monitoring-app.yaml",
+      "2. Create service for monitoring:",
+      "   kubectl expose deployment web-app --port=80 --name=web-service -n mars",
+      "3. Monitor logs:",
+      "   kubectl logs deployment/web-app -n mars -c nginx",
+      "4. Check resource usage:",
+      "   kubectl top pods -n mars",
+      "5. View events for troubleshooting:",
+      "   kubectl get events -n mars --sort-by='.lastTimestamp'",
+      "6. Monitor pod status:",
+      "   kubectl get pods -l app=web -n mars -o wide"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.metadata.labels.environment}'",
+      "expected": "production",
+      "points": 1,
+      "description": "Deployment should have environment label for monitoring"
+    },
+    {
+      "command": "kubectl get pods -l app=web -n mars -o jsonpath='{.items[0].spec.containers[1].name}'",
+      "expected": "log-collector",
+      "points": 1,
+      "description": "Should have log collector sidecar container"
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Should have CPU resource requests for monitoring"
+    },
+    {
+      "command": "kubectl get deployment web-app -n mars -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expected": "/",
+      "points": 1,
+      "description": "Should have readiness probe for health monitoring"
+    },
+    {
+      "command": "kubectl get service web-service -n mars -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Should have service for metrics exposure"
+    },
+    {
+      "command": "kubectl get pods -l app=web -n mars --no-headers | grep Running | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "All monitored pods should be running"
+    }
+  ]
+}

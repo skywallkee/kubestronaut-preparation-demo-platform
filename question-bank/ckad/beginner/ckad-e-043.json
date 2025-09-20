@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-043",
+  "title": "Create Pod with Host Network",
+  "description": "Create a Pod named ||host-network-pod|| using image ||nginx:1.20-alpine|| that uses the host network in the ||mars|| namespace.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Services and Networking",
+  "tags": [
+    "network-policies",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run host-network-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > host-network-pod.yaml",
+      "2. Add hostNetwork:",
+      "   hostNetwork: true",
+      "3. Apply pod:",
+      "   kubectl apply -f host-network-pod.yaml -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod host-network-pod -n mars -o jsonpath='{.spec.hostNetwork}'",
+      "expected": "true",
+      "points": 3,
+      "description": "Pod should use host network"
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "id": "ckad-a-023",
+  "title": "Multi-Namespace Operations with RBAC and Service Discovery",
+  "description": "Implement a complex multi-namespace application architecture with proper RBAC controls and cross-namespace service discovery using namespaces ||saturn||, ||venus||, and ||mars||:\n\n1. **Multi-Namespace Application Architecture**:\n   - **Production Namespace (saturn)**: Deploy production services\n     - ||prod-frontend|| (3 replicas) - nginx:1.21 serving production traffic\n     - ||prod-api|| (2 replicas) - httpd:2.4 handling production API requests\n     - ||prod-database|| (1 replica) - postgres:13 with production data\n   - **Staging Namespace (venus)**: Deploy staging environment\n     - ||staging-frontend|| (2 replicas) - nginx:1.21 for testing\n     - ||staging-api|| (1 replica) - httpd:2.4 for API testing\n     - ||shared-cache|| (1 replica) - redis:6.2 shared across environments\n   - **Monitoring Namespace (mars)**: Deploy monitoring and management tools\n     - ||prometheus|| (1 replica) - monitoring all namespaces\n     - ||grafana|| (1 replica) - dashboards for all environments\n     - ||log-aggregator|| (1 replica) - centralized logging\n\n2. **RBAC Configuration**:\n   - **Production Team**: ServiceAccount ||prod-team|| with Role ||prod-admin||\n     - Full access to saturn namespace (get, list, create, update, delete all resources)\n     - Read-only access to venus namespace (get, list pods, services, deployments)\n     - No access to mars namespace\n   - **Development Team**: ServiceAccount ||dev-team|| with Role ||dev-user||\n     - Full access to venus namespace\n     - Read-only access to saturn namespace (get, list pods, services)\n     - No access to mars namespace\n   - **SRE Team**: ServiceAccount ||sre-team|| with ClusterRole ||sre-admin||\n     - Full access to mars namespace\n     - Monitoring access to all namespaces (get, list pods, services, metrics)\n     - Emergency access to saturn and venus for troubleshooting\n\n3. **Cross-Namespace Service Discovery**:\n   - Configure DNS-based service discovery between namespaces\n   - Create ExternalName services for cross-namespace communication:\n     - ||saturn-api-proxy|| in venus pointing to prod-api.saturn.svc.cluster.local\n     - ||shared-cache-proxy|| in saturn pointing to shared-cache.venus.svc.cluster.local\n   - Implement service mesh or ingress for controlled cross-namespace traffic\n   - Add service discovery validation and health checks\n\n4. **Network Policies for Namespace Isolation**:\n   - **Production Isolation**: NetworkPolicy ||prod-isolation|| in saturn\n     - Allow ingress from venus namespace only on specific ports\n     - Allow egress to venus shared-cache on port 6379\n     - Deny all other cross-namespace traffic\n   - **Staging Access**: NetworkPolicy ||staging-access|| in venus\n     - Allow ingress from saturn for monitoring\n     - Allow egress to saturn for production data access (read-only)\n   - **Monitoring Access**: NetworkPolicy ||monitoring-access|| in mars\n     - Allow ingress from all namespaces on metrics ports\n     - Allow egress to all namespaces for data collection\n\n5. **Resource Quotas and Limits**:\n   - **Saturn (Production)**: ResourceQuota with higher limits\n     - CPU: 4 cores, Memory: 8Gi, Pods: 20, Services: 10\n   - **Venus (Staging)**: ResourceQuota with moderate limits\n     - CPU: 2 cores, Memory: 4Gi, Pods: 10, Services: 5\n   - **Mars (Monitoring)**: ResourceQuota for monitoring workloads\n     - CPU: 1 core, Memory: 2Gi, Pods: 5, Services: 3\n\n6. **Secret and ConfigMap Sharing**:\n   - Create shared Secret ||database-credentials|| accessible across namespaces\n   - Implement ConfigMap ||app-config|| with environment-specific overrides\n   - Configure TLS certificates for cross-namespace communication\n   - Add secret rotation and access auditing\n\n7. **Service Account Token Management**:\n   - Configure service account token projection for secure authentication\n   - Implement token rotation and lifecycle management\n   - Add service account impersonation for debugging\n   - Configure OIDC/JWT token validation\n\n8. **Cross-Namespace Monitoring and Logging**:\n   - Configure Prometheus to scrape metrics from all namespaces\n   - Set up centralized logging with namespace-aware log routing\n   - Implement cross-namespace alerting and notification\n   - Add audit logging for cross-namespace access\n\n9. **Testing and Validation**:\n   - Create Job ||rbac-tester|| that validates all RBAC configurations\n   - Test cross-namespace service discovery and communication\n   - Verify network policy enforcement\n   - Validate resource quota limits and access controls\n\nEnsure secure, controlled communication between namespaces with proper access controls and monitoring.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Multi-Namespace Operations",
+  "tags": [
+    "rbac",
+    "multi-namespace",
+    "service-discovery",
+    "network-policies",
+    "cross-namespace-communication",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn",
+      "venus",
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "clusterroles",
+      "clusterrolebindings",
+      "networkpolicies",
+      "resourcequotas",
+      "secrets",
+      "configmaps",
+      "jobs"
+    ],
+    "prerequisites": [
+      "network-policy-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespaces and set up RBAC:",
+      "   kubectl create namespace saturn venus mars",
+      "   kubectl create serviceaccount prod-team -n saturn",
+      "   kubectl create serviceaccount dev-team -n venus",
+      "   kubectl create serviceaccount sre-team -n mars",
+      "2. Create Roles and RoleBindings:",
+      "   kubectl create role prod-admin --verb=* --resource=* -n saturn",
+      "   kubectl create role dev-user --verb=* --resource=* -n venus",
+      "   kubectl create clusterrole sre-admin --verb=get,list --resource=pods,services,deployments",
+      "   kubectl create rolebinding prod-team-binding --role=prod-admin --serviceaccount=saturn:prod-team -n saturn",
+      "3. Deploy applications in each namespace:",
+      "   Production apps in saturn, staging apps in venus, monitoring in mars",
+      "4. Create cross-namespace services:",
+      "   ExternalName services for service discovery",
+      "5. Configure ResourceQuotas for each namespace:",
+      "   Different limits for production, staging, and monitoring",
+      "6. Create NetworkPolicies for namespace isolation:",
+      "   Control cross-namespace traffic with specific allow rules",
+      "7. Set up shared secrets and configmaps:",
+      "   Cross-namespace secret sharing with proper RBAC",
+      "8. Deploy and test cross-namespace communication"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount prod-team -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "prod-team",
+      "points": 1,
+      "description": "Should have prod-team service account in saturn"
+    },
+    {
+      "command": "kubectl get role prod-admin -n saturn -o jsonpath='{.rules[0].verbs[0]}'",
+      "expected": "*",
+      "points": 1,
+      "description": "Prod-admin role should have full permissions"
+    },
+    {
+      "command": "kubectl get deployment prod-frontend -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Production frontend should have 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment staging-frontend -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Staging frontend should have 2 replicas"
+    },
+    {
+      "command": "kubectl get service saturn-api-proxy -n venus -o jsonpath='{.spec.type}'",
+      "expected": "ExternalName",
+      "points": 1,
+      "description": "Should have ExternalName service for cross-namespace discovery"
+    },
+    {
+      "command": "kubectl get networkpolicy prod-isolation -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "prod-isolation",
+      "points": 1,
+      "description": "Should have network policy for production isolation"
+    },
+    {
+      "command": "kubectl get resourcequota -n saturn -o jsonpath='{.items[0].spec.hard.requests\\.cpu}'",
+      "expected": "4",
+      "points": 1,
+      "description": "Saturn should have 4 CPU cores quota"
+    },
+    {
+      "command": "kubectl get resourcequota -n venus -o jsonpath='{.items[0].spec.hard.requests\\.cpu}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Venus should have 2 CPU cores quota"
+    },
+    {
+      "command": "kubectl get deployment prometheus -n mars -o jsonpath='{.status.readyReplicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Prometheus should be running in mars namespace"
+    },
+    {
+      "command": "kubectl get clusterrole sre-admin -o jsonpath='{.rules[0].verbs[0]}'",
+      "expected": "get",
+      "points": 1,
+      "description": "SRE admin should have monitoring permissions"
+    },
+    {
+      "command": "kubectl get job rbac-tester -n mars -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "RBAC tester should complete successfully"
+    },
+    {
+      "command": "kubectl get secret database-credentials -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "database-credentials",
+      "points": 1,
+      "description": "Should have shared database credentials secret"
+    }
+  ]
+}

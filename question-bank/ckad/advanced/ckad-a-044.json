@@ -1,0 +1,118 @@
+{
+  "id": "ckad-a-044",
+  "title": "Projected Volumes and Configuration Aggregation",
+  "description": "Create a sophisticated configuration management system using ||projected volumes|| to aggregate multiple configuration sources. Combine ||ConfigMaps||, ||Secrets||, ||ServiceAccount tokens||, and ||downward API|| information into a single mounted volume. The application should access unified configuration data from different sources through a single mount point. Demonstrate how projected volumes handle updates, conflicts, and provide a consolidated view of heterogeneous configuration data. Include custom path mappings and mode settings for different configuration types.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "Configuration",
+  "tags": ["projected-volumes", "configmap", "secrets", "downward-api", "serviceaccount", "advanced"],
+  "infrastructure": {
+    "namespaces": ["projection-demo"],
+    "resources": ["ConfigMap", "Secret", "Pod", "ServiceAccount"],
+    "prerequisites": ["Understanding of projected volume capabilities"]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and basic resources:",
+      "   kubectl create namespace projection-demo",
+      "   kubectl create serviceaccount config-sa -n projection-demo",
+      "2. Create ConfigMap and Secret for projection:",
+      "   kubectl create configmap app-settings -n projection-demo --from-literal=database=postgres --from-literal=port=5432",
+      "   kubectl create secret generic api-secrets -n projection-demo --from-literal=api-key=secret123 --from-literal=token=abc123xyz",
+      "3. Create pod with projected volume combining all sources:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: config-aggregator",
+      "     namespace: projection-demo",
+      "   spec:",
+      "     serviceAccountName: config-sa",
+      "     containers:",
+      "     - name: app",
+      "       image: busybox:latest",
+      "       command: ['/bin/sh', '-c']",
+      "       args:",
+      "       - |",
+      "         while true; do",
+      "           echo \"Checking projected volume contents...\"",
+      "           ls -la /etc/unified-config/",
+      "           sleep 30",
+      "         done",
+      "       volumeMounts:",
+      "       - name: unified-config",
+      "         mountPath: /etc/unified-config",
+      "         readOnly: true",
+      "     volumes:",
+      "     - name: unified-config",
+      "       projected:",
+      "         sources:",
+      "         - configMap:",
+      "             name: app-settings",
+      "             items:",
+      "             - key: database",
+      "               path: app-settings",
+      "         - secret:",
+      "             name: api-secrets",
+      "             items:",
+      "             - key: api-key",
+      "               path: api-key",
+      "               mode: 0600",
+      "         - serviceAccountToken:",
+      "             path: token",
+      "             expirationSeconds: 3600",
+      "         - downwardAPI:",
+      "             items:",
+      "             - path: pod-name",
+      "               fieldRef:",
+      "                 fieldPath: metadata.name",
+      "             - path: pod-namespace",
+      "               fieldRef:",
+      "                 fieldPath: metadata.namespace",
+      "   EOF",
+      "4. Verify projected volume contents and permissions:",
+      "   kubectl exec config-aggregator -n projection-demo -- ls -la /etc/unified-config/",
+      "   kubectl exec config-aggregator -n projection-demo -- cat /etc/unified-config/pod-name",
+      "   kubectl exec config-aggregator -n projection-demo -- cat /etc/unified-config/app-settings",
+      "   kubectl exec config-aggregator -n projection-demo -- ls -la /etc/unified-config/api-key"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod config-aggregator -n projection-demo -o jsonpath='{.spec.volumes[0].projected.sources}' | jq length",
+      "expected": "4",
+      "points": 3,
+      "description": "Projected volume has 4 sources (ConfigMap, Secret, SA token, downward API)"
+    },
+    {
+      "command": "kubectl exec config-aggregator -n projection-demo -- ls /etc/unified-config/",
+      "expected": "app-settings",
+      "points": 2,
+      "description": "ConfigMap data is available in projected volume"
+    },
+    {
+      "command": "kubectl exec config-aggregator -n projection-demo -- ls /etc/unified-config/",
+      "expected": "api-key",
+      "points": 2,
+      "description": "Secret data is available in projected volume"
+    },
+    {
+      "command": "kubectl exec config-aggregator -n projection-demo -- ls /etc/unified-config/",
+      "expected": "token",
+      "points": 2,
+      "description": "ServiceAccount token is available in projected volume"
+    },
+    {
+      "command": "kubectl exec config-aggregator -n projection-demo -- cat /etc/unified-config/pod-name",
+      "expected": "config-aggregator",
+      "points": 3,
+      "description": "Downward API pod name is available"
+    },
+    {
+      "command": "kubectl exec config-aggregator -n projection-demo -- ls -la /etc/unified-config/api-key | awk '{print $1}'",
+      "expected": "-rw-------",
+      "points": 3,
+      "description": "Secret file has correct permissions (600)"
+    }
+  ]
+}

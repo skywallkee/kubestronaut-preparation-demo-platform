@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-066",
+  "title": "Container Registry with Network Policies and Resource Management",
+  "description": "Set up a private container registry in the saturn namespace with strict network access controls. Configure resource quotas for registry operations, implement network policies for secure image pulls, and manage container images with proper versioning and cleanup policies.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["container-images", "network-policies", "resource-management", "configmaps-secrets"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy private registry using ||registry:2.8|| image with persistent storage"
+    },
+    {
+      "step": 2,
+      "description": "Create Secret ||registry-auth|| with basic authentication credentials"
+    },
+    {
+      "step": 3,
+      "description": "Configure ResourceQuota limiting registry CPU to ||1|| core and memory to ||2Gi||"
+    },
+    {
+      "step": 4,
+      "description": "Create NetworkPolicy allowing registry access only from pods with label ||registry-access=true||"
+    },
+    {
+      "step": 5,
+      "description": "Configure registry with ConfigMap for custom configuration and image cleanup policies"
+    },
+    {
+      "step": 6,
+      "description": "Deploy test application that pulls images from the private registry"
+    },
+    {
+      "step": 7,
+      "description": "Verify registry access controls and resource constraints work correctly"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment private-registry -n saturn -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "registry:2.8",
+      "description": "Verify registry image version",
+      "points": 1
+    },
+    {
+      "command": "kubectl get secret registry-auth -n saturn -o jsonpath='{.type}'",
+      "expectedOutput": "kubernetes.io/basic-auth",
+      "description": "Verify registry authentication secret",
+      "points": 2
+    },
+    {
+      "command": "kubectl get resourcequota registry-quota -n saturn -o jsonpath='{.spec.hard.\"requests.cpu\"}'",
+      "expectedOutput": "1",
+      "description": "Verify ResourceQuota CPU limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get resourcequota registry-quota -n saturn -o jsonpath='{.spec.hard.\"requests.memory\"}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify ResourceQuota memory limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get networkpolicy registry-access -n saturn -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+      "expectedOutput": "private-registry",
+      "description": "Verify NetworkPolicy targets registry",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy registry-access -n saturn -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.\"registry-access\"}'",
+      "expectedOutput": "true",
+      "description": "Verify NetworkPolicy access control",
+      "points": 2
+    },
+    {
+      "command": "kubectl get configmap registry-config -n saturn -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "registry-config",
+      "description": "Verify registry configuration ConfigMap",
+      "points": 1
+    }
+  ]
+}

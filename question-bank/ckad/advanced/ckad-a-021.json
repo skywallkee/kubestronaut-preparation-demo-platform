@@ -1,0 +1,123 @@
+{
+  "id": "ckad-a-021",
+  "title": "Observability Setup with Metrics and Health Monitoring",
+  "description": "Implement comprehensive observability and monitoring for a production application in namespace ||venus|| with metrics collection, health monitoring, and alerting:\n\n1. **Application Stack Deployment**:\n   - Deploy ||web-frontend|| (3 replicas) with nginx:1.21 serving web content\n   - Deploy ||api-backend|| (2 replicas) with httpd:2.4 providing REST API\n   - Deploy ||database|| (1 replica) with postgres:13 for data persistence\n   - Deploy ||message-queue|| (1 replica) with rabbitmq:3.9 for async processing\n\n2. **Metrics Collection Setup**:\n   - Deploy Prometheus server ||prometheus|| for metrics collection and storage\n   - Configure ServiceMonitor resources for each application component\n   - Set up custom metrics endpoints on applications (health, performance, business metrics)\n   - Add node-level metrics collection with node-exporter\n   - Configure metric retention policies and storage requirements\n\n3. **Health Monitoring Configuration**:\n   - **Liveness Probes**: Configure HTTP health checks for all services\n     - Web frontend: GET /health on port 80\n     - API backend: GET /api/health on port 8080\n     - Database: TCP socket check on port 5432\n     - Message queue: HTTP management interface on port 15672\n   - **Readiness Probes**: Configure readiness checks with appropriate delays\n   - **Startup Probes**: Add startup probes for slow-starting services\n\n4. **Monitoring and Alerting Rules**:\n   - Create PrometheusRule ||app-monitoring-rules|| with alerts for:\n     - High CPU/Memory usage (>80%)\n     - Pod restart frequency (>3 restarts in 10 minutes)\n     - Service endpoint availability (<95% uptime)\n     - Database connection failures\n     - Message queue length exceeding thresholds\n   - Configure alert severity levels (critical, warning, info)\n   - Add alert routing and notification channels\n\n5. **Dashboard and Visualization**:\n   - Deploy Grafana ||grafana|| for metrics visualization\n   - Create custom dashboards for:\n     - Application performance metrics\n     - Infrastructure resource utilization\n     - Service dependency maps\n     - Error rate and latency tracking\n   - Configure dashboard sharing and user access controls\n\n6. **Log Aggregation and Analysis**:\n   - Deploy log aggregation stack (Fluentd/Fluent Bit)\n   - Configure centralized logging for all application components\n   - Set up log parsing and structured logging\n   - Add log-based alerting for error patterns\n   - Implement log retention and archival policies\n\n7. **Distributed Tracing**:\n   - Deploy Jaeger ||jaeger|| for distributed tracing\n   - Configure trace collection from application services\n   - Add trace correlation across service boundaries\n   - Set up performance bottleneck identification\n   - Configure trace sampling and retention\n\n8. **Monitoring Validation and Testing**:\n   - Create Job ||monitoring-test|| that validates all monitoring components\n   - Generate synthetic load for testing alert triggers\n   - Verify metric collection and dashboard functionality\n   - Test alert notification delivery\n   - Validate log aggregation and trace collection\n\n9. **Performance and Resource Optimization**:\n   - Configure monitoring stack resource requests and limits\n   - Optimize metric collection intervals and retention\n   - Set up monitoring data archival and compression\n   - Add monitoring stack high availability configuration\n\nEnsure complete observability covering metrics, logs, traces, and health monitoring with automated alerting.",
+  "points": 10,
+  "timeLimit": 24,
+  "category": "Observability",
+  "tags": [
+    "prometheus",
+    "grafana",
+    "monitoring",
+    "health-checks",
+    "metrics",
+    "observability",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "servicemonitors",
+      "prometheusrules",
+      "configmaps",
+      "secrets",
+      "jobs",
+      "persistentvolumeclaims"
+    ],
+    "prerequisites": [
+      "prometheus-operator",
+      "grafana-operator"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Deploy application stack with health endpoints:",
+      "   kubectl create deployment web-frontend --image=nginx:1.21 --replicas=3 -n venus",
+      "   kubectl create deployment api-backend --image=httpd:2.4 --replicas=2 -n venus",
+      "   kubectl create deployment database --image=postgres:13 --replicas=1 -n venus",
+      "   kubectl create deployment message-queue --image=rabbitmq:3.9 --replicas=1 -n venus",
+      "2. Configure health probes for all deployments:",
+      "   Add liveness, readiness, and startup probes with appropriate endpoints",
+      "3. Deploy monitoring stack:",
+      "   kubectl create -f prometheus-deployment.yaml",
+      "   kubectl create -f grafana-deployment.yaml",
+      "   kubectl create -f jaeger-deployment.yaml",
+      "4. Create ServiceMonitors for metric collection:",
+      "   kubectl create -f web-frontend-servicemonitor.yaml",
+      "   kubectl create -f api-backend-servicemonitor.yaml",
+      "   kubectl create -f database-servicemonitor.yaml",
+      "5. Configure PrometheusRules for alerting:",
+      "   kubectl create -f app-monitoring-rules.yaml",
+      "6. Set up log aggregation:",
+      "   kubectl create -f fluentd-daemonset.yaml",
+      "7. Create Grafana dashboards and configure data sources",
+      "8. Deploy monitoring validation and testing jobs"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment prometheus -n venus -o jsonpath='{.status.readyReplicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Prometheus should be deployed and ready"
+    },
+    {
+      "command": "kubectl get deployment grafana -n venus -o jsonpath='{.status.readyReplicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Grafana should be deployed and ready"
+    },
+    {
+      "command": "kubectl get servicemonitor web-frontend-monitor -n venus -o jsonpath='{.metadata.name}'",
+      "expected": "web-frontend-monitor",
+      "points": 1,
+      "description": "Should have ServiceMonitor for web frontend"
+    },
+    {
+      "command": "kubectl get prometheusrule app-monitoring-rules -n venus -o jsonpath='{.metadata.name}'",
+      "expected": "app-monitoring-rules",
+      "points": 1,
+      "description": "Should have PrometheusRule for application monitoring"
+    },
+    {
+      "command": "kubectl get deployment web-frontend -n venus -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expected": "/health",
+      "points": 1,
+      "description": "Web frontend should have liveness probe on /health"
+    },
+    {
+      "command": "kubectl get deployment api-backend -n venus -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expected": "/api/health",
+      "points": 1,
+      "description": "API backend should have readiness probe on /api/health"
+    },
+    {
+      "command": "kubectl get deployment database -n venus -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.tcpSocket.port}'",
+      "expected": "5432",
+      "points": 1,
+      "description": "Database should have TCP liveness probe on port 5432"
+    },
+    {
+      "command": "kubectl get service grafana -n venus -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "3000",
+      "points": 1,
+      "description": "Grafana service should be exposed on port 3000"
+    },
+    {
+      "command": "kubectl get job monitoring-test -n venus -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Monitoring validation test should complete successfully"
+    },
+    {
+      "command": "kubectl get pods -n venus --field-selector=status.phase=Running --no-headers | wc -l",
+      "expected": "9",
+      "points": 1,
+      "description": "Should have 9 running pods (4 apps + monitoring stack)"
+    }
+  ]
+}

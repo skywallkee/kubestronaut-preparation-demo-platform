@@ -1,0 +1,68 @@
+{
+  "id": "ckad-i-037",
+  "title": "Container Image Management with Helm and Storage Classes",
+  "description": "Deploy a database application using Helm in the mars namespace. Create a custom storage class for fast SSD storage and configure the Helm chart to use a specific container image tag. Implement proper image pull policies and configure storage for database persistence.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["container-images", "helm-package-manager", "storage-classes", "persistent-volumes-claims"],
+  "points": 10,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a StorageClass named ||fast-ssd|| with provisioner ||kubernetes.io/no-provisioner||"
+    },
+    {
+      "step": 2,
+      "description": "Create a custom Helm chart named ||database-app|| for PostgreSQL deployment"
+    },
+    {
+      "step": 3,
+      "description": "Configure the chart to use PostgreSQL image ||postgres:13.8-alpine|| with ||IfNotPresent|| pull policy"
+    },
+    {
+      "step": 4,
+      "description": "Set up PVC template in the Helm chart to use the fast-ssd storage class"
+    },
+    {
+      "step": 5,
+      "description": "Deploy the Helm chart to the mars namespace with custom values"
+    },
+    {
+      "step": 6,
+      "description": "Verify the deployment uses the correct image and storage configuration"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get storageclass fast-ssd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "fast-ssd",
+      "description": "Verify StorageClass exists",
+      "points": 2
+    },
+    {
+      "command": "helm list -n mars | grep database-app",
+      "expectedOutput": "database-app",
+      "description": "Verify Helm release is deployed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment -n mars -o jsonpath='{.items[0].spec.template.spec.containers[0].image}' | grep postgres:13.8-alpine",
+      "expectedOutput": "postgres:13.8-alpine",
+      "description": "Verify correct PostgreSQL image is used",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment -n mars -o jsonpath='{.items[0].spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "IfNotPresent",
+      "description": "Verify image pull policy is set",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc -n mars -o jsonpath='{.items[0].spec.storageClassName}'",
+      "expectedOutput": "fast-ssd",
+      "description": "Verify PVC uses the fast-ssd storage class",
+      "points": 2
+    }
+  ]
+}

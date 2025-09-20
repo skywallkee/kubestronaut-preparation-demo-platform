@@ -1,0 +1,94 @@
+{
+  "id": "cka-i-002",
+  "title": "etcd Backup and Restore",
+  "description": "Your cluster's etcd database needs to be backed up and restored. Perform the following tasks:\n\n1. Create a backup of the etcd database and save it to ||/tmp/etcd-backup.db||\n2. Verify the backup file is created successfully\n3. Simulate a disaster scenario by deleting a namespace ||venus|| (create it first with some resources)\n4. Restore the etcd database from the backup\n5. Verify that the ||venus|| namespace and its resources are restored\n\nUse the etcd client tools and appropriate certificates for authentication. The etcd cluster is running on ||https://127.0.0.1:2379||.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Backup and Recovery",
+  "tags": [
+    "etcd",
+    "backup",
+    "restore",
+    "disaster-recovery",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "namespaces",
+      "deployments",
+      "services"
+    ],
+    "prerequisites": [
+      "etcd cluster running",
+      "etcd client tools available"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create test namespace and resources:",
+      "   kubectl create namespace venus",
+      "   kubectl create deployment test-app --image=nginx -n venus",
+      "   kubectl expose deployment test-app --port=80 -n venus",
+      "2. Find etcd certificates (usually in /etc/kubernetes/pki/etcd/):",
+      "   ls /etc/kubernetes/pki/etcd/",
+      "3. Create etcd backup:",
+      "   ETCDCTL_API=3 etcdctl snapshot save /tmp/etcd-backup.db \\",
+      "     --endpoints=https://127.0.0.1:2379 \\",
+      "     --cacert=/etc/kubernetes/pki/etcd/ca.crt \\",
+      "     --cert=/etc/kubernetes/pki/etcd/server.crt \\",
+      "     --key=/etc/kubernetes/pki/etcd/server.key",
+      "4. Verify backup:",
+      "   ETCDCTL_API=3 etcdctl snapshot status /tmp/etcd-backup.db",
+      "5. Delete namespace to simulate disaster:",
+      "   kubectl delete namespace venus",
+      "6. Stop etcd and kube-apiserver:",
+      "   sudo systemctl stop etcd",
+      "   sudo systemctl stop kube-apiserver",
+      "7. Restore from backup:",
+      "   ETCDCTL_API=3 etcdctl snapshot restore /tmp/etcd-backup.db \\",
+      "     --data-dir=/var/lib/etcd-restore",
+      "8. Update etcd configuration to use new data directory",
+      "9. Restart services:",
+      "   sudo systemctl start etcd",
+      "   sudo systemctl start kube-apiserver",
+      "10. Verify restoration:",
+      "    kubectl get namespace venus",
+      "    kubectl get deployment -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "ls -la /tmp/etcd-backup.db",
+      "expected": ".*etcd-backup\\.db.*",
+      "points": 2,
+      "description": "Backup file should exist at specified location"
+    },
+    {
+      "command": "ETCDCTL_API=3 etcdctl snapshot status /tmp/etcd-backup.db --write-out=json | jq '.totalSize'",
+      "expected": "[0-9]+",
+      "points": 2,
+      "description": "Backup file should be valid and contain data"
+    },
+    {
+      "command": "kubectl get namespace venus",
+      "expected": "venus.*Active",
+      "points": 3,
+      "description": "Venus namespace should exist after restore"
+    },
+    {
+      "command": "kubectl get deployment test-app -n venus",
+      "expected": "test-app.*1/1.*1.*1",
+      "points": 2,
+      "description": "Test deployment should be restored in venus namespace"
+    },
+    {
+      "command": "kubectl get service test-app -n venus",
+      "expected": "test-app.*ClusterIP",
+      "points": 1,
+      "description": "Test service should be restored in venus namespace"
+    }
+  ]
+}

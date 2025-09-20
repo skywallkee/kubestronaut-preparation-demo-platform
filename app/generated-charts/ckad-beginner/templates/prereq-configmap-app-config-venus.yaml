@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: venus
+  labels:
+    exam-resource: "true"
+    type: "prerequisite"
+data:
+  database_url: "mysql://localhost:3306/mydb"
+  app_config: |
+    debug=false
+    environment=exam
+    namespace=venus
+  config.yaml: |
+    server:
+      port: 8080
+      timeout: 30s

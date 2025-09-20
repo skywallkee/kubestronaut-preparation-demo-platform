@@ -12,6 +12,15 @@ interface Question {
   flagged: boolean;
   completed: boolean;
   viewed: boolean;
+  solution?: {
+    steps: string[];
+  };
+  validations?: Array<{
+    command: string;
+    expected: string;
+    points: number;
+    description: string;
+  }>;
 }
 
 interface ExamState {
@@ -20,6 +29,7 @@ interface ExamState {
   timeRemaining: number;
   examStarted: boolean;
   examCompleted: boolean;
+  practiceMode: boolean;
 }
 
 const ExamInterface: React.FC = () => {
@@ -28,11 +38,13 @@ const ExamInterface: React.FC = () => {
     questions: [],
     timeRemaining: 7200, // 2 hours in seconds
     examStarted: false,
-    examCompleted: false
+    examCompleted: false,
+    practiceMode: false
   });
 
   const [showResults, setShowResults] = useState(false);
   const [examResults, setExamResults] = useState<any>(null);
+  const [isReviewMode, setIsReviewMode] = useState(false);
 
   // Panel resizing state
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
@@ -94,7 +106,8 @@ const ExamInterface: React.FC = () => {
         setExamState(prev => ({
           ...prev,
           questions,
-          timeRemaining: response.data.duration || 7200
+          timeRemaining: response.data.duration || 7200,
+          practiceMode: response.data.practiceMode || false
         }));
       }
     } catch (error) {
@@ -237,6 +250,11 @@ const ExamInterface: React.FC = () => {
     submitExam();
   };
 
+  const handleGoHome = () => {
+    // Navigate back to exam selection
+    window.location.href = '/';
+  };
+
   if (showResults && examResults) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -245,31 +263,157 @@ const ExamInterface: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Exam Results</h1>
             
             <div className="mb-6">
-              <div className={`p-4 rounded-lg ${examResults.score >= 67 ? 'bg-green-50' : 'bg-red-50'}`}>
-                <h2 className={`text-xl font-semibold ${examResults.score >= 67 ? 'text-green-800' : 'text-red-800'}`}>
-                  Score: {examResults.score}/100
-                </h2>
-                <p className={`${examResults.score >= 67 ? 'text-green-700' : 'text-red-700'}`}>
-                  {examResults.score >= 67 ? 'PASSED' : 'FAILED'} (Passing score: 67/100)
-                </p>
+              <div className={`p-6 rounded-lg ${examResults.passed ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className={`text-2xl font-bold ${examResults.passed ? 'text-green-800' : 'text-red-800'}`}>
+                    {examResults.passed ? '🎉 PASSED' : '❌ FAILED'}
+                  </h2>
+                  <div className={`text-3xl font-bold ${examResults.passed ? 'text-green-800' : 'text-red-800'}`}>
+                    {examResults.totalScore}/100
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="bg-white bg-opacity-50 rounded p-3">
+                    <div className="font-medium text-gray-700">Questions Correct</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      {examResults.questionsCorrect}/{examResults.totalQuestions}
+                    </div>
+                  </div>
+                  <div className="bg-white bg-opacity-50 rounded p-3">
+                    <div className="font-medium text-gray-700">Questions Completed</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      {examResults.completedQuestions}/{examResults.totalQuestions}
+                    </div>
+                  </div>
+                  <div className="bg-white bg-opacity-50 rounded p-3">
+                    <div className="font-medium text-gray-700">Points Earned</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      {examResults.pointsEarned}/{examResults.totalPoints}
+                    </div>
+                  </div>
+                  <div className="bg-white bg-opacity-50 rounded p-3">
+                    <div className="font-medium text-gray-700">Passing Score</div>
+                    <div className="text-lg font-bold text-gray-900">67/100</div>
+                  </div>
+                </div>
+
+                {examResults.summary && (
+                  <div className="mt-4 p-4 bg-white bg-opacity-50 rounded">
+                    <h4 className="font-medium text-gray-800 mb-2">Performance Summary</h4>
+                    <div className="text-sm text-gray-700">
+                      <p><strong>Overall Performance:</strong> {examResults.summary.overallPerformance}</p>
+                      {examResults.summary.strengths && examResults.summary.strengths.length > 0 && (
+                        <div className="mt-2">
+                          <strong>Strengths:</strong>
+                          <ul className="list-disc list-inside ml-2">
+                            {examResults.summary.strengths.map((strength: string, index: number) => (
+                              <li key={index} className="text-green-700">{strength}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {examResults.summary.improvements && examResults.summary.improvements.length > 0 && (
+                        <div className="mt-2">
+                          <strong>Areas for Improvement:</strong>
+                          <ul className="list-disc list-inside ml-2">
+                            {examResults.summary.improvements.map((improvement: string, index: number) => (
+                              <li key={index} className="text-orange-700">{improvement}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {examResults.summary.nextSteps && examResults.summary.nextSteps.length > 0 && (
+                        <div className="mt-2">
+                          <strong>Next Steps:</strong>
+                          <ul className="list-disc list-inside ml-2">
+                            {examResults.summary.nextSteps.map((step: string, index: number) => (
+                              <li key={index} className="text-blue-700">{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Detailed Feedback</h3>
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-gray-900">Detailed Results</h3>
               {examResults.feedback && examResults.feedback.map((item: any, index: number) => (
-                <div key={index} className="border rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900">Question {index + 1}: {item.title}</h4>
-                  <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                  <div className="flex items-center space-x-4">
-                    <span className={`px-2 py-1 rounded text-xs ${item.correct ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {item.correct ? 'Correct' : 'Incorrect'}
-                    </span>
-                    <span className="text-sm text-gray-500">Points: {item.points}/{item.maxPoints}</span>
+                <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-900 text-lg">Question {index + 1}: {item.title}</h4>
+                    <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                    <div className="flex items-center space-x-4 mb-3">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${item.correct ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {item.correct ? '✅ PASSED' : '❌ FAILED'}
+                      </span>
+                      <span className="text-sm text-gray-600">
+                        <strong>Points:</strong> {item.points}/{item.maxPoints}
+                      </span>
+                      {item.category && (
+                        <span className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Validation Results */}
+                  {item.validationResults && item.validationResults.length > 0 && (
+                    <div className="mb-4">
+                      <h5 className="font-medium text-gray-800 mb-2">Validation Results:</h5>
+                      <div className="space-y-2">
+                        {item.validationResults.map((validation: any, vIndex: number) => (
+                          <div key={vIndex} className={`border rounded p-3 ${validation.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`text-sm font-medium ${validation.passed ? 'text-green-800' : 'text-red-800'}`}>
+                                {validation.passed ? '✅' : '❌'} {validation.description}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {validation.points} pts
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div><strong>Command:</strong> <code className="bg-gray-200 px-1 rounded">{validation.command}</code></div>
+                              <div><strong>Expected:</strong> <code className="bg-gray-200 px-1 rounded">{validation.expected}</code></div>
+                              <div><strong>Actual:</strong> <code className="bg-gray-200 px-1 rounded">{validation.actual}</code></div>
+                              {validation.error && (
+                                <div className="text-red-600"><strong>Error:</strong> {validation.error}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Solution Steps */}
+                  {item.solutionSteps && item.solutionSteps.length > 0 && (
+                    <div className="mb-4">
+                      <h5 className="font-medium text-gray-800 mb-2">Solution Steps:</h5>
+                      <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                        <ol className="text-sm text-blue-800 space-y-1">
+                          {item.solutionSteps.map((step: string, sIndex: number) => (
+                            <li key={sIndex} className="flex">
+                              <span className="font-medium mr-2">{sIndex + 1}.</span>
+                              <span className="font-mono text-xs bg-blue-100 px-1 rounded">{step}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detailed Explanation */}
                   {item.explanation && (
-                    <div className="mt-2 p-3 bg-blue-50 rounded">
-                      <p className="text-sm text-blue-800">{item.explanation}</p>
+                    <div className="mt-4">
+                      <h5 className="font-medium text-gray-800 mb-2">Explanation:</h5>
+                      <div className="bg-white border rounded p-3">
+                        <div className="text-sm text-gray-700 whitespace-pre-line">{item.explanation}</div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -284,7 +428,10 @@ const ExamInterface: React.FC = () => {
                 Take Another Exam
               </button>
               <button
-                onClick={() => setShowResults(false)}
+                onClick={() => {
+                  setShowResults(false);
+                  setIsReviewMode(true);
+                }}
                 className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700"
               >
                 Review Questions
@@ -321,12 +468,24 @@ const ExamInterface: React.FC = () => {
       <div className="bg-white shadow-sm border-b px-6 py-4">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold text-gray-900">
-            Kubernetes Certification Exam
+            {isReviewMode ? 'Exam Review - Browse Questions' : 'Kubernetes Certification Exam'}
           </h1>
-          <Timer
-            timeRemaining={examState.timeRemaining}
-            onTimeUp={handleTimeUp}
-          />
+          {!isReviewMode && !examState.practiceMode && (
+            <Timer
+              timeRemaining={examState.timeRemaining}
+              onTimeUp={handleTimeUp}
+            />
+          )}
+          {examState.practiceMode && (
+            <div className="text-sm text-gray-600 flex items-center space-x-2">
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full">🎯 Practice Mode - No Time Limit</span>
+            </div>
+          )}
+          {isReviewMode && (
+            <div className="text-sm text-gray-600 flex items-center space-x-2">
+              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">📖 Review Mode</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -372,6 +531,9 @@ const ExamInterface: React.FC = () => {
                 onGoToQuestion={goToQuestion}
                 onComplete={completeQuestion}
                 onSubmit={submitExam}
+                isReviewMode={isReviewMode}
+                onGoHome={handleGoHome}
+                practiceMode={examState.practiceMode}
               />
             ) : (
               <div className="h-full flex flex-col">

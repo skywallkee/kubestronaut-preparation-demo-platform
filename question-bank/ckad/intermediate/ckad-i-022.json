@@ -1,0 +1,189 @@
+{
+  "id": "ckad-i-022",
+  "title": "Health Probes with Rolling Updates",
+  "description": "Create a robust deployment in namespace ||mars|| with comprehensive health checks:\n\n**Deployment:**\n- Name: ||health-demo||\n- Image: ||nginx:1.20|| (initial version)\n- Replicas: ||3||\n- Rolling update strategy: max unavailable ||1||, max surge ||1||\n\n**Health Probes Configuration:**\n- **Startup Probe**: HTTP GET ||/||| on port ||80||, initial delay ||5s||, period ||2s||, failure threshold ||10||\n- **Readiness Probe**: HTTP GET ||/ready|| on port ||80||, period ||5s||, failure threshold ||3||\n- **Liveness Probe**: HTTP GET ||/health|| on port ||80||, period ||10s||, failure threshold ||3||\n\n**Custom nginx Configuration:**\n- Create ConfigMap ||nginx-health|| with custom config\n- Add ||/ready|| endpoint returning 200\n- Add ||/health|| endpoint returning 200\n- Mount config at ||/etc/nginx/nginx.conf||\n\n**Rolling Update Test:**\n- Update deployment to ||nginx:1.21||\n- Verify zero-downtime update with health checks\n- Check rollout status and history\n\nVerify all probes work correctly and rolling update maintains availability.",
+  "points": 10,
+  "timeLimit": 18,
+  "category": "Application Observability",
+  "tags": [
+    "health-probes",
+    "deployments-rolling-updates",
+    "configmaps-secrets",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "configmaps"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create nginx ConfigMap with health endpoints:",
+      "   cat <<EOF > nginx-health-config.yaml",
+      "   apiVersion: v1",
+      "   kind: ConfigMap",
+      "   metadata:",
+      "     name: nginx-health",
+      "     namespace: mars",
+      "   data:",
+      "     nginx.conf: |",
+      "       events {}",
+      "       http {",
+      "         server {",
+      "           listen 80;",
+      "           location / {",
+      "             root /usr/share/nginx/html;",
+      "             index index.html;",
+      "           }",
+      "           location /ready {",
+      "             access_log off;",
+      "             return 200 'Ready\\n';",
+      "             add_header Content-Type text/plain;",
+      "           }",
+      "           location /health {",
+      "             access_log off;",
+      "             return 200 'Healthy\\n';",
+      "             add_header Content-Type text/plain;",
+      "           }",
+      "         }",
+      "       }",
+      "   EOF",
+      "2. Create Deployment with health probes:",
+      "   cat <<EOF > health-demo-deployment.yaml",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: health-demo",
+      "     namespace: mars",
+      "   spec:",
+      "     replicas: 3",
+      "     strategy:",
+      "       type: RollingUpdate",
+      "       rollingUpdate:",
+      "         maxUnavailable: 1",
+      "         maxSurge: 1",
+      "     selector:",
+      "       matchLabels:",
+      "         app: health-demo",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: health-demo",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:1.20",
+      "           ports:",
+      "           - containerPort: 80",
+      "           volumeMounts:",
+      "           - name: nginx-config",
+      "             mountPath: /etc/nginx/nginx.conf",
+      "             subPath: nginx.conf",
+      "           startupProbe:",
+      "             httpGet:",
+      "               path: /",
+      "               port: 80",
+      "             initialDelaySeconds: 5",
+      "             periodSeconds: 2",
+      "             failureThreshold: 10",
+      "           readinessProbe:",
+      "             httpGet:",
+      "               path: /ready",
+      "               port: 80",
+      "             periodSeconds: 5",
+      "             failureThreshold: 3",
+      "           livenessProbe:",
+      "             httpGet:",
+      "               path: /health",
+      "               port: 80",
+      "             periodSeconds: 10",
+      "             failureThreshold: 3",
+      "         volumes:",
+      "         - name: nginx-config",
+      "           configMap:",
+      "             name: nginx-health",
+      "   EOF",
+      "3. Apply resources:",
+      "   kubectl apply -f nginx-health-config.yaml",
+      "   kubectl apply -f health-demo-deployment.yaml",
+      "4. Wait for initial deployment:",
+      "   kubectl rollout status deployment/health-demo -n mars --timeout=120s",
+      "5. Test health endpoints:",
+      "   kubectl exec -n mars deployment/health-demo -- curl -s localhost/ready",
+      "   kubectl exec -n mars deployment/health-demo -- curl -s localhost/health",
+      "6. Perform rolling update:",
+      "   kubectl set image deployment/health-demo nginx=nginx:1.21 -n mars",
+      "7. Monitor rollout:",
+      "   kubectl rollout status deployment/health-demo -n mars",
+      "8. Check rollout history:",
+      "   kubectl rollout history deployment/health-demo -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap nginx-health -n mars -o jsonpath='{.data.nginx\\.conf}' | grep -c '/ready'",
+      "expected": "1",
+      "points": 1,
+      "description": "ConfigMap should contain ready endpoint configuration"
+    },
+    {
+      "command": "kubectl get deployment health-demo -n mars -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Deployment should have 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment health-demo -n mars -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Deployment should have correct maxUnavailable setting"
+    },
+    {
+      "command": "kubectl get deployment health-demo -n mars -o jsonpath='{.spec.template.spec.containers[0].startupProbe.httpGet.path}'",
+      "expected": "/",
+      "points": 1,
+      "description": "Startup probe should be configured correctly"
+    },
+    {
+      "command": "kubectl get deployment health-demo -n mars -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expected": "/ready",
+      "points": 1,
+      "description": "Readiness probe should target /ready endpoint"
+    },
+    {
+      "command": "kubectl get deployment health-demo -n mars -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expected": "/health",
+      "points": 1,
+      "description": "Liveness probe should target /health endpoint"
+    },
+    {
+      "command": "kubectl exec -n mars deployment/health-demo -- curl -s localhost/ready",
+      "expected": "Ready",
+      "points": 1,
+      "description": "Ready endpoint should be accessible and return correct response"
+    },
+    {
+      "command": "kubectl exec -n mars deployment/health-demo -- curl -s localhost/health",
+      "expected": "Healthy",
+      "points": 1,
+      "description": "Health endpoint should be accessible and return correct response"
+    },
+    {
+      "command": "kubectl get deployment health-demo -n mars -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "All replicas should be ready"
+    },
+    {
+      "command": "kubectl rollout history deployment/health-demo -n mars | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Deployment should have rollout history (at least header + 1 revision)"
+    }
+  ]
+}

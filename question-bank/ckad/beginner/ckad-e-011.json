@@ -1,0 +1,47 @@
+{
+  "id": "ckad-e-011",
+  "title": "Scale a Deployment",
+  "description": "Scale the ||web-deploy|| Deployment to ||5|| replicas in the ||mars|| namespace.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Deployment",
+  "tags": [
+    "application-scaling",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Scale deployment:",
+      "   kubectl scale deployment web-deploy --replicas=5 -n mars",
+      "2. Verify scaling:",
+      "   kubectl get deployment web-deploy -n mars",
+      "3. Check pods:",
+      "   kubectl get pods -l app=web-deploy -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-deploy -n mars -o jsonpath='{.spec.replicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "Deployment should be configured for 5 replicas"
+    },
+    {
+      "command": "kubectl get deployment web-deploy -n mars -o jsonpath='{.status.readyReplicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "All 5 replicas should be ready"
+    }
+  ]
+}

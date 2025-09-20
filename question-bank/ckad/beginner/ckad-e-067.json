@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-067",
+  "title": "Create Pod with Readiness Probe",
+  "description": "Create a Pod named ||ready-pod|| in Namespace ||default|| using image ||nginx:1.21|| with a TCP readiness probe on port ||80|| with initial delay of ||10|| seconds.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "probes-health",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Pod YAML:",
+      "   kubectl run ready-pod --image=nginx:1.21 --dry-run=client -o yaml > ready-pod.yaml",
+      "2. Edit YAML to add readinessProbe with tcpSocket on port 80, initialDelaySeconds: 10",
+      "3. Apply the Pod:",
+      "   kubectl apply -f ready-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod ready-pod -o jsonpath='{.spec.containers[0].readinessProbe.tcpSocket.port}'",
+      "expected": "80",
+      "points": 1.5,
+      "description": "Pod should have readiness probe on port 80"
+    },
+    {
+      "command": "kubectl get pod ready-pod -o jsonpath='{.spec.containers[0].readinessProbe.initialDelaySeconds}'",
+      "expected": "10",
+      "points": 1.5,
+      "description": "Readiness probe should have 10 second initial delay"
+    }
+  ]
+}

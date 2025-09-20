@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-044",
+  "title": "Helm Chart with Storage Classes and Health Probes",
+  "description": "Create and deploy a custom Helm chart for a Redis cache cluster in the pluto namespace. Configure multiple storage classes for different performance requirements and implement comprehensive health checks for all Redis instances.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["helm-package-manager", "storage-classes", "health-probes", "deployments-rolling-updates"],
+  "points": 11,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a Helm chart named ||redis-cluster|| with proper directory structure"
+    },
+    {
+      "step": 2,
+      "description": "Create StorageClass ||redis-fast|| for SSD storage and ||redis-slow|| for HDD storage"
+    },
+    {
+      "step": 3,
+      "description": "Configure Helm templates for Redis master and slave deployments"
+    },
+    {
+      "step": 4,
+      "description": "Add liveness probe with ||redis-cli ping|| command and readiness probe with ||redis-cli info replication||"
+    },
+    {
+      "step": 5,
+      "description": "Configure PVC templates using different storage classes based on role"
+    },
+    {
+      "step": 6,
+      "description": "Set values for ||master.replicas: 1|| and ||slave.replicas: 2||"
+    },
+    {
+      "step": 7,
+      "description": "Deploy the Helm chart and verify health probe functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "helm list -n pluto | grep redis-cluster",
+      "expectedOutput": "redis-cluster",
+      "description": "Verify Helm release exists",
+      "points": 2
+    },
+    {
+      "command": "kubectl get storageclass redis-fast -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "redis-fast",
+      "description": "Verify redis-fast StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass redis-slow -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "redis-slow",
+      "description": "Verify redis-slow StorageClass exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment redis-master -n pluto -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.exec.command[2]}'",
+      "expectedOutput": "ping",
+      "description": "Verify Redis master liveness probe",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment redis-slave -n pluto -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.exec.command[2]}'",
+      "expectedOutput": "info",
+      "description": "Verify Redis slave readiness probe",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment redis-master -n pluto -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "1",
+      "description": "Verify Redis master replica count",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment redis-slave -n pluto -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "2",
+      "description": "Verify Redis slave replica count",
+      "points": 2
+    }
+  ]
+}

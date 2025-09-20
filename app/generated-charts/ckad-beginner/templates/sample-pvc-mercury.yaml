@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sample-pvc-mercury
+  namespace: mercury
+  labels:
+    exam-resource: "true"
+    planet: mercury
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

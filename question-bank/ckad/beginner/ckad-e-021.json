@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-021",
+  "title": "Get Pod Logs",
+  "description": "Get the logs from the ||liveness-pod|| in the ||jupiter|| namespace and save them to ||/opt/course/021/pod.log||.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "logging-monitoring",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "liveness-pod exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Get pod logs:",
+      "   kubectl logs liveness-pod -n jupiter",
+      "2. Save logs to file:",
+      "   kubectl logs liveness-pod -n jupiter > /opt/course/021/pod.log",
+      "3. Verify file:",
+      "   cat /opt/course/021/pod.log"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/021/pod.log",
+      "expected": "0",
+      "points": 2,
+      "description": "Log file should exist"
+    }
+  ]
+}

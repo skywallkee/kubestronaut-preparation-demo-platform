@@ -1,0 +1,78 @@
+{
+  "id": "ckad-i-040",
+  "title": "Logging and Monitoring with Secrets and Health Probes",
+  "description": "Set up a comprehensive logging and monitoring solution in the pluto namespace. Deploy a log aggregation service that uses Secrets for authentication credentials and configure health probes to monitor application health. Implement centralized logging for multiple application containers.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["logging-monitoring", "configmaps-secrets", "health-probes", "multi-container-pods"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create a Secret named ||log-credentials|| with username and password for log service authentication"
+    },
+    {
+      "step": 2,
+      "description": "Create a ConfigMap ||logging-config|| with log aggregation settings"
+    },
+    {
+      "step": 3,
+      "description": "Deploy a log aggregation pod with fluentd container and health check endpoints"
+    },
+    {
+      "step": 4,
+      "description": "Configure liveness probe on path ||/health|| and readiness probe on ||/ready||"
+    },
+    {
+      "step": 5,
+      "description": "Create application pods that write logs to shared volume monitored by fluentd"
+    },
+    {
+      "step": 6,
+      "description": "Mount the Secret as environment variables and ConfigMap as volume"
+    },
+    {
+      "step": 7,
+      "description": "Verify log collection and health probe functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get secret log-credentials -n pluto -o jsonpath='{.type}'",
+      "expectedOutput": "Opaque",
+      "description": "Verify Secret exists for log credentials",
+      "points": 2
+    },
+    {
+      "command": "kubectl get configmap logging-config -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "logging-config",
+      "description": "Verify ConfigMap for logging configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n pluto -o jsonpath='{.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify liveness probe configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n pluto -o jsonpath='{.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expectedOutput": "/ready",
+      "description": "Verify readiness probe configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n pluto -o jsonpath='{.spec.containers[0].envFrom[0].secretRef.name}'",
+      "expectedOutput": "log-credentials",
+      "description": "Verify Secret is mounted as environment variables",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod log-aggregator -n pluto -o jsonpath='{.spec.volumes[0].configMap.name}'",
+      "expectedOutput": "logging-config",
+      "description": "Verify ConfigMap is mounted as volume",
+      "points": 2
+    }
+  ]
+}

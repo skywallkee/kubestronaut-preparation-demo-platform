@@ -1,0 +1,98 @@
+{
+  "id": "ckad-a-008",
+  "title": "Application Observability and Logging Configuration",
+  "description": "Set up comprehensive observability for a microservice application in namespace ||venus||:\n\n1. Create a Deployment ||log-app|| with 3 replicas using ||nginx:1.21|| that:\n   - Has a sidecar container running ||busybox:1.35|| that generates logs to ||/var/log/app.log|| every 5 seconds\n   - Main nginx container serves custom access logs to ||/var/log/nginx/|| \n   - Both containers share an emptyDir volume ||logs|| mounted at ||/var/log||\n   - Include labels: ||app=log-app||, ||version=v1||, ||tier=frontend||\n\n2. Configure resource monitoring:\n   - CPU requests: 100m, limits: 200m\n   - Memory requests: 128Mi, limits: 256Mi\n   - Add readiness probe on nginx (port 80, path /, delay 5s, interval 10s)\n   - Add liveness probe on nginx (port 80, path /, delay 10s, interval 15s)\n\n3. Create a Service ||log-service|| exposing the deployment on port 80\n\n4. Create a Pod ||log-reader|| using ||busybox:1.35|| that:\n   - Runs ||sleep 3600|| command\n   - Has the same log volume configuration for log access\n   - Include label ||role=monitor||\n\nVerify all components are running and logs are being generated properly.",
+  "points": 8,
+  "timeLimit": 16,
+  "category": "Observability",
+  "tags": [
+    "logging",
+    "monitoring",
+    "probes",
+    "sidecar-logging",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "pods",
+      "volumes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the deployment with logging sidecar:",
+      "   kubectl create deployment log-app --image=nginx:1.21 --replicas=3 -n venus --dry-run=client -o yaml > log-app.yaml",
+      "2. Edit the YAML to add:",
+      "   - Sidecar busybox container with log generation",
+      "   - EmptyDir volume shared between containers",
+      "   - Resource requests and limits",
+      "   - Readiness and liveness probes",
+      "   - Proper labels",
+      "3. Apply the deployment:",
+      "   kubectl apply -f log-app.yaml",
+      "4. Create the service:",
+      "   kubectl expose deployment log-app --port=80 --name=log-service -n venus",
+      "5. Create log-reader pod:",
+      "   kubectl run log-reader --image=busybox:1.35 --command sleep 3600 -n venus --dry-run=client -o yaml > log-reader.yaml",
+      "6. Edit log-reader.yaml to add volume configuration and apply",
+      "7. Verify logs are being generated:",
+      "   kubectl logs deployment/log-app -c sidecar-logger -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment log-app -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Deployment should have 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment log-app -n venus -o jsonpath='{.spec.template.spec.containers[*].name}' | grep -o nginx | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have nginx main container"
+    },
+    {
+      "command": "kubectl get deployment log-app -n venus -o jsonpath='{.spec.template.spec.containers[*].name}' | grep -o busybox | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have busybox sidecar container"
+    },
+    {
+      "command": "kubectl get deployment log-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Should have correct CPU request"
+    },
+    {
+      "command": "kubectl get deployment log-app -n venus -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Should have readiness probe on port 80"
+    },
+    {
+      "command": "kubectl get deployment log-app -n venus -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Should have liveness probe on port 80"
+    },
+    {
+      "command": "kubectl get service log-service -n venus -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl get pod log-reader -n venus -o jsonpath='{.metadata.labels.role}'",
+      "expected": "monitor",
+      "points": 1,
+      "description": "Log reader pod should have role=monitor label"
+    }
+  ]
+}

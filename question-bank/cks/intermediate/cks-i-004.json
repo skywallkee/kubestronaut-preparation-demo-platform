@@ -1,0 +1,160 @@
+{
+  "id": "cks-i-004",
+  "title": "Secrets Management and Encryption",
+  "description": "Implement secure secrets management with encryption at rest:\n\n1. Create a Secret named ||db-credentials|| in ||mars|| namespace with the following data:\n   - ||username||: ||dbadmin||\n   - ||password||: ||SecureP@ssw0rd123||\n   - ||host||: ||database.mars.svc.cluster.local||\n\n2. Create a deployment named ||secure-app|| in ||mars|| namespace that:\n   - Uses image ||alpine:latest||\n   - Mounts the secret as environment variables with prefix ||DB_||\n   - Runs as non-root user ||1000||\n   - Has resource limits: CPU ||200m||, memory ||256Mi||\n\n3. Configure the secret to be mounted as a volume at ||/etc/db-config|| as well\n4. Ensure the secret data is not visible in pod specifications when queried\n5. Verify encryption at rest is enabled by checking etcd encryption status",
+  "points": 9,
+  "timeLimit": 15,
+  "category": "Secrets Management",
+  "tags": [
+    "secrets",
+    "encryption-at-rest",
+    "environment-variables",
+    "volume-mounts",
+    "security",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "secrets",
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": [
+      "Kubernetes cluster with encryption at rest configured"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create the secret:",
+      "   kubectl create secret generic db-credentials \\",
+      "     --from-literal=username=dbadmin \\",
+      "     --from-literal=password='SecureP@ssw0rd123' \\",
+      "     --from-literal=host=database.mars.svc.cluster.local \\",
+      "     -n mars",
+      "2. Create deployment with secret as env vars and volume:",
+      "   cat > secure-app-deployment.yaml << EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: secure-app",
+      "     namespace: mars",
+      "   spec:",
+      "     replicas: 1",
+      "     selector:",
+      "       matchLabels:",
+      "         app: secure-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: secure-app",
+      "       spec:",
+      "         securityContext:",
+      "           runAsUser: 1000",
+      "           runAsGroup: 1000",
+      "           fsGroup: 1000",
+      "         containers:",
+      "         - name: app",
+      "           image: alpine:latest",
+      "           command: ['sleep', '3600']",
+      "           env:",
+      "           - name: DB_USERNAME",
+      "             valueFrom:",
+      "               secretKeyRef:",
+      "                 name: db-credentials",
+      "                 key: username",
+      "           - name: DB_PASSWORD",
+      "             valueFrom:",
+      "               secretKeyRef:",
+      "                 name: db-credentials",
+      "                 key: password",
+      "           - name: DB_HOST",
+      "             valueFrom:",
+      "               secretKeyRef:",
+      "                 name: db-credentials",
+      "                 key: host",
+      "           volumeMounts:",
+      "           - name: db-config",
+      "             mountPath: /etc/db-config",
+      "             readOnly: true",
+      "           resources:",
+      "             limits:",
+      "               cpu: 200m",
+      "               memory: 256Mi",
+      "             requests:",
+      "               cpu: 100m",
+      "               memory: 128Mi",
+      "         volumes:",
+      "         - name: db-config",
+      "           secret:",
+      "             secretName: db-credentials",
+      "   EOF",
+      "3. Apply the deployment:",
+      "   kubectl apply -f secure-app-deployment.yaml",
+      "4. Verify secret is created:",
+      "   kubectl get secret db-credentials -n mars",
+      "5. Check that secret data is base64 encoded:",
+      "   kubectl get secret db-credentials -n mars -o yaml",
+      "6. Verify deployment is running:",
+      "   kubectl get deployment secure-app -n mars",
+      "7. Test environment variables in pod:",
+      "   kubectl exec -it deployment/secure-app -n mars -- env | grep DB_",
+      "8. Check mounted secret files:",
+      "   kubectl exec -it deployment/secure-app -n mars -- ls -la /etc/db-config",
+      "9. Verify encryption at rest (if accessible):",
+      "   kubectl get secrets -A -o json | grep -q 'k8s:enc:' || echo 'Secrets may not be encrypted at rest'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get secret db-credentials -n mars -o jsonpath='{.metadata.name}'",
+      "expected": "db-credentials",
+      "points": 1,
+      "description": "Secret db-credentials should exist in mars namespace"
+    },
+    {
+      "command": "kubectl get secret db-credentials -n mars -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "dbadmin",
+      "points": 1,
+      "description": "Secret should contain correct username"
+    },
+    {
+      "command": "kubectl get secret db-credentials -n mars -o jsonpath='{.data.password}' | base64 -d",
+      "expected": "SecureP@ssw0rd123",
+      "points": 1,
+      "description": "Secret should contain correct password"
+    },
+    {
+      "command": "kubectl get deployment secure-app -n mars -o jsonpath='{.metadata.name}'",
+      "expected": "secure-app",
+      "points": 1,
+      "description": "Deployment secure-app should exist"
+    },
+    {
+      "command": "kubectl get deployment secure-app -n mars -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expected": "1000",
+      "points": 1,
+      "description": "Pod should run as user 1000"
+    },
+    {
+      "command": "kubectl get deployment secure-app -n mars -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}'",
+      "expected": "200m",
+      "points": 1,
+      "description": "Container should have CPU limit of 200m"
+    },
+    {
+      "command": "kubectl get deployment secure-app -n mars -o jsonpath='{.spec.template.spec.volumes[0].secret.secretName}'",
+      "expected": "db-credentials",
+      "points": 2,
+      "description": "Secret should be mounted as volume"
+    },
+    {
+      "command": "kubectl get deployment secure-app -n mars -o jsonpath='{.status.readyReplicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Deployment should have 1 ready replica"
+    }
+  ]
+}

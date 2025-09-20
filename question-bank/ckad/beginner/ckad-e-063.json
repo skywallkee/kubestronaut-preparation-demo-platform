@@ -1,0 +1,53 @@
+{
+  "id": "ckad-e-063",
+  "title": "Create NodePort Service",
+  "description": "Create a NodePort Service named ||web-nodeport|| in Namespace ||default|| that exposes Pod ||web-pod|| on port ||80|| with NodePort ||30080||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "services"
+    ],
+    "prerequisites": [
+      "web-pod exists with appropriate labels"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create NodePort Service:",
+      "   kubectl expose pod web-pod --port=80 --type=NodePort --name=web-nodeport",
+      "2. Edit service to set nodePort: 30080:",
+      "   kubectl patch service web-nodeport -p '{\"spec\":{\"ports\":[{\"port\":80,\"nodePort\":30080}]}}'",
+      "3. Verify service:",
+      "   kubectl get service web-nodeport"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service web-nodeport -o jsonpath='{.spec.type}'",
+      "expected": "NodePort",
+      "points": 1,
+      "description": "Service should be of type NodePort"
+    },
+    {
+      "command": "kubectl get service web-nodeport -o jsonpath='{.spec.ports[0].nodePort}'",
+      "expected": "30080",
+      "points": 1,
+      "description": "Service should have NodePort 30080"
+    },
+    {
+      "command": "kubectl get service web-nodeport -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    }
+  ]
+}

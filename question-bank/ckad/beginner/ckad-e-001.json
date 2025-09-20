@@ -1,0 +1,61 @@
+{
+  "id": "ckad-e-001",
+  "title": "List All Namespaces",
+  "description": "Get the list of all Namespaces in the cluster and save it to ||/opt/course/001/namespaces||.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "debugging-troubleshooting",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "namespaces"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. List all namespaces:",
+      "   kubectl get namespaces",
+      "2. Save to file:",
+      "   kubectl get ns > /opt/course/001/namespaces"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/001/namespaces",
+      "expected": "0",
+      "points": 1,
+      "description": "File should exist with namespace list"
+    },
+    {
+      "command": "grep -q 'saturn' /opt/course/001/namespaces",
+      "expected": "0",
+      "points": 0.25,
+      "description": "File should contain saturn namespace"
+    },
+    {
+      "command": "grep -q 'venus' /opt/course/001/namespaces",
+      "expected": "0",
+      "points": 0.25,
+      "description": "File should contain venus namespace"
+    },
+    {
+      "command": "grep -q 'pluto' /opt/course/001/namespaces",
+      "expected": "0",
+      "points": 0.25,
+      "description": "File should contain pluto namespace"
+    },
+    {
+      "command": "grep -q 'mars' /opt/course/001/namespaces",
+      "expected": "0",
+      "points": 0.25,
+      "description": "File should contain mars namespace"
+    }
+  ]
+}

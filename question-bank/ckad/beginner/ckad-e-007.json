@@ -1,0 +1,45 @@
+{
+  "id": "ckad-e-007",
+  "title": "Create a ConfigMap",
+  "description": "Create a ConfigMap named ||app-config|| with key ||'database_url'|| and value ||'mysql://localhost:3306/mydb'|| in the ||neptune|| namespace.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "configmaps-secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "neptune"
+    ],
+    "resources": [
+      "configmaps"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMap:",
+      "   kubectl create configmap app-config --from-literal=database_url='mysql://localhost:3306/mydb' -n neptune",
+      "2. Verify ConfigMap:",
+      "   kubectl get configmap app-config -n neptune",
+      "3. Check data:",
+      "   kubectl describe configmap app-config -n neptune"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -n neptune",
+      "expected": "0",
+      "points": 1.5,
+      "description": "ConfigMap should exist in saturn namespace"
+    },
+    {
+      "command": "kubectl get configmap app-config -n neptune -o jsonpath='{.data.database_url}'",
+      "expected": "mysql://localhost:3306/mydb",
+      "points": 1.5,
+      "description": "ConfigMap should contain correct database_url value"
+    }
+  ]
+}

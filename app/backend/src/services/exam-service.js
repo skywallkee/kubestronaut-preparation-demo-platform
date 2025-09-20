@@ -6,14 +6,19 @@ class ExamService {
     this.currentExam = null;
   }
 
-  async createExam(type, difficulty) {
+  async createExam(type, difficulty, practiceMode = false) {
+    // Clear question cache to ensure fresh randomization for each exam
+    QuestionProvider.clearCache();
+    console.log(`Cleared question cache for fresh exam: ${type}-${difficulty}${practiceMode ? ' (Practice Mode)' : ''}`);
+
     // Load questions for the exam
-    const questions = await QuestionProvider.getQuestions(type, difficulty);
-    
+    const questions = await QuestionProvider.getQuestions(type, difficulty, practiceMode);
+
     const exam = {
       id: uuidv4(),
       type,
       difficulty,
+      practiceMode,
       questions: questions.map((q, index) => ({
         ...q,
         id: index + 1,
@@ -21,7 +26,7 @@ class ExamService {
         completed: false,
         viewed: false
       })),
-      duration: this.getDuration(type), // in seconds
+      duration: practiceMode ? null : this.getDuration(type), // No time limit in practice mode
       startTime: null,
       endTime: null,
       currentQuestionIndex: 0,
@@ -30,8 +35,8 @@ class ExamService {
     };
 
     this.currentExam = exam;
-    console.log(`Created exam: ${type}-${difficulty} with ${questions.length} questions`);
-    
+    console.log(`Created exam: ${type}-${difficulty} with ${questions.length} questions${practiceMode ? ' (Practice Mode)' : ''}`);
+
     return exam;
   }
 

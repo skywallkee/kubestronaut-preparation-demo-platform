@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-024",
+  "title": "Create a Service Account",
+  "description": "Create a ServiceAccount named ||app-sa|| in the ||saturn|| namespace.",
+  "points": 2,
+  "timeLimit": 5,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts-rbac",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "serviceaccounts"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount app-sa",
+      "2. Verify ServiceAccount:",
+      "   kubectl get serviceaccount app-sa",
+      "3. Check details:",
+      "   kubectl describe serviceaccount app-sa"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount app-sa -o jsonpath='{.metadata.name}'",
+      "expected": "app-sa",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-027",
+  "title": "Get Pods with Specific Label",
+  "description": "List all pods in the ||mars|| namespace that have the label ||app=web|| and save the output to ||/opt/course/027/labeled-pods.txt||.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "debugging-troubleshooting",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "pods with app=web label exist"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. List pods with label:",
+      "   kubectl get pods -l app=web -n mars",
+      "2. Save to file:",
+      "   kubectl get pods -l app=web -n mars > /opt/course/027/labeled-pods.txt",
+      "3. Verify file:",
+      "   cat /opt/course/027/labeled-pods.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/027/labeled-pods.txt",
+      "expected": "0",
+      "points": 3,
+      "description": "Output file should exist"
+    }
+  ]
+}

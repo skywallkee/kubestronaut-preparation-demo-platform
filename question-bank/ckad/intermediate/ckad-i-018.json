@@ -1,0 +1,94 @@
+{
+  "id": "ckad-i-018",
+  "title": "DNS Service Discovery and Inter-Pod Communication",
+  "description": "Configure service discovery and test DNS resolution between pods in namespace ||mars||:\n\n1. Create a backend Service and Deployment:\n   - Deployment name: ||backend-app||\n   - Image: ||nginx:1.21||\n   - 2 replicas\n   - Service name: ||backend-service||\n   - Service port: ||8080|| targeting container port ||80||\n\n2. Create a frontend Pod that tests DNS resolution:\n   - Pod name: ||frontend-tester||\n   - Image: ||busybox:1.35||\n   - Command to test DNS: ||sleep 3600|| (keep running for testing)\n\n3. Create a headless Service for the backend:\n   - Service name: ||backend-headless||\n   - ClusterIP: ||None||\n   - Selector matches ||backend-app||\n\n4. Test DNS resolution from the frontend pod:\n   - Resolve ||backend-service.mars.svc.cluster.local||\n   - Resolve individual pod IPs through headless service\n   - Test short name resolution ||backend-service||\n\n5. Create a NetworkPolicy to allow communication between frontend and backend\n\n6. Verify connectivity using curl or wget commands",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "Services and Networking",
+  "tags": [
+    "dns-service-discovery",
+    "headless-service",
+    "network-policy",
+    "inter-pod-communication",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "pods",
+      "networkpolicies"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create backend deployment:",
+      "   kubectl create deployment backend-app --image=nginx:1.21 --replicas=2 -n mars",
+      "2. Create regular service for backend:",
+      "   kubectl expose deployment backend-app --name=backend-service --port=8080 --target-port=80 -n mars",
+      "3. Create headless service:",
+      "   kubectl create service clusterip backend-headless --tcp=80:80 --clusterip=None -n mars",
+      "   kubectl patch service backend-headless -n mars -p '{\"spec\":{\"selector\":{\"app\":\"backend-app\"}}}'",
+      "4. Create frontend tester pod:",
+      "   kubectl run frontend-tester --image=busybox:1.35 --command -- sleep 3600 -n mars",
+      "5. Test DNS resolution from frontend pod:",
+      "   kubectl exec frontend-tester -n mars -- nslookup backend-service.mars.svc.cluster.local",
+      "6. Test short name resolution:",
+      "   kubectl exec frontend-tester -n mars -- nslookup backend-service",
+      "7. Test headless service resolution:",
+      "   kubectl exec frontend-tester -n mars -- nslookup backend-headless",
+      "8. Create NetworkPolicy to allow communication:",
+      "   # Apply network policy allowing frontend to backend traffic",
+      "9. Test HTTP connectivity:",
+      "   kubectl exec frontend-tester -n mars -- wget -qO- backend-service:8080"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment backend-app -n mars -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Backend deployment should have 2 replicas"
+    },
+    {
+      "command": "kubectl get service backend-service -n mars -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Backend service should expose port 8080"
+    },
+    {
+      "command": "kubectl get service backend-headless -n mars -o jsonpath='{.spec.clusterIP}'",
+      "expected": "None",
+      "points": 1,
+      "description": "Headless service should have clusterIP set to None"
+    },
+    {
+      "command": "kubectl get pod frontend-tester -n mars -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "busybox:1.35",
+      "points": 1,
+      "description": "Frontend tester pod should use busybox:1.35 image"
+    },
+    {
+      "command": "kubectl exec frontend-tester -n mars -- nslookup backend-service | grep -c 'Address:'",
+      "expected": "2",
+      "points": 1,
+      "description": "DNS resolution should return service IP address"
+    },
+    {
+      "command": "kubectl exec frontend-tester -n mars -- nslookup backend-headless | grep -c 'Address:'",
+      "expected": "3",
+      "points": 1,
+      "description": "Headless service should resolve to individual pod IPs"
+    },
+    {
+      "command": "kubectl exec frontend-tester -n mars -- timeout 5 wget -qO- backend-service:8080 | grep -c 'nginx'",
+      "expected": "1",
+      "points": 1,
+      "description": "Frontend should be able to connect to backend service"
+    }
+  ]
+}

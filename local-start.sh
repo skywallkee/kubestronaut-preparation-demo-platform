@@ -40,7 +40,7 @@ sleep 2
 print_success "Existing processes cleaned up"
 
 # Step 2: Verify project structure
-PROJECT_ROOT="/mnt/c/Users/ramaistroaie/OneDrive - ENDAVA/Documents/kubernetes-demo-platform"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/app/backend"
 FRONTEND_DIR="$PROJECT_ROOT/app/frontend"
 

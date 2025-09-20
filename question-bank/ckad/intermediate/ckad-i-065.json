@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-065",
+  "title": "Service Accounts with Volume Types and Ingress Configuration",
+  "description": "Deploy a financial API service in the mars namespace that requires elevated permissions and multiple storage types for different data classifications. Configure ingress with authentication and implement proper RBAC for secure API access with audit logging.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["service-accounts-rbac", "volume-types", "ingress", "configmaps-secrets", "dns-service-discovery"],
+  "points": 12,
+  "timeMinutes": 22,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ServiceAccount ||finance-api-sa|| with permissions for Secrets and ConfigMaps"
+    },
+    {
+      "step": 2,
+      "description": "Create Role ||finance-role|| with get/list/watch permissions on secrets, configmaps, and pods"
+    },
+    {
+      "step": 3,
+      "description": "Configure hostPath volume ||/audit/logs|| for audit log storage"
+    },
+    {
+      "step": 4,
+      "description": "Configure emptyDir volume ||temp-cache|| for temporary API response caching"
+    },
+    {
+      "step": 5,
+      "description": "Create PVC ||financial-data|| with ||5Gi|| for persistent financial records"
+    },
+    {
+      "step": 6,
+      "description": "Configure Ingress with host ||finapi.local|| and authentication using Secret ||api-auth||"
+    },
+    {
+      "step": 7,
+      "description": "Deploy API service with all volume types mounted and RBAC configured"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount finance-api-sa -n mars -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "finance-api-sa",
+      "description": "Verify ServiceAccount exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get role finance-role -n mars -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "secrets",
+      "description": "Verify Role has secrets permissions",
+      "points": 2
+    },
+    {
+      "command": "kubectl get rolebinding finance-binding -n mars -o jsonpath='{.subjects[0].name}'",
+      "expectedOutput": "finance-api-sa",
+      "description": "Verify RoleBinding links ServiceAccount",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment finance-api -n mars -o jsonpath='{.spec.template.spec.volumes[0].hostPath.path}'",
+      "expectedOutput": "/audit/logs",
+      "description": "Verify hostPath volume for audit logs",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment finance-api -n mars -o jsonpath='{.spec.template.spec.volumes[1].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify emptyDir volume for caching",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc financial-data -n mars -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "5Gi",
+      "description": "Verify PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get ingress finance-api-ingress -n mars -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "finapi.local",
+      "description": "Verify Ingress host configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment finance-api -n mars -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expectedOutput": "finance-api-sa",
+      "description": "Verify deployment uses ServiceAccount",
+      "points": 2
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "id": "ckad-a-037",
+  "title": "Pod Disruption Budget and High Availability",
+  "description": "Implement a high-availability web application deployment with proper ||Pod Disruption Budget|| (PDB) configuration. Create a deployment with multiple replicas and configure a PDB that ensures ||minimum availability|| during voluntary disruptions like node maintenance or cluster upgrades. Test the PDB by simulating drain operations and verify that the minimum number of pods remain available. The solution should demonstrate understanding of how PDBs protect against both voluntary and involuntary disruptions.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Core Concepts",
+  "tags": ["pod-disruption-budget", "high-availability", "deployments", "disruption", "advanced"],
+  "infrastructure": {
+    "namespaces": ["ha-test"],
+    "resources": ["Deployment", "PodDisruptionBudget", "Pod"],
+    "prerequisites": ["Multi-node cluster recommended"]
+  },
+  "solution": {
+    "steps": [
+      "1. Create ha-test namespace:",
+      "   kubectl create namespace ha-test",
+      "2. Create high-availability deployment with 5 replicas:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: webapp-ha",
+      "     namespace: ha-test",
+      "   spec:",
+      "     replicas: 5",
+      "     selector:",
+      "       matchLabels:",
+      "         app: webapp",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: webapp",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:alpine",
+      "           ports:",
+      "           - containerPort: 80",
+      "           resources:",
+      "             requests:",
+      "               cpu: \"100m\"",
+      "               memory: \"128Mi\"",
+      "   EOF",
+      "3. Create Pod Disruption Budget:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: policy/v1",
+      "   kind: PodDisruptionBudget",
+      "   metadata:",
+      "     name: webapp-pdb",
+      "     namespace: ha-test",
+      "   spec:",
+      "     maxUnavailable: 2",
+      "     selector:",
+      "       matchLabels:",
+      "         app: webapp",
+      "   EOF",
+      "4. Create service for the deployment:",
+      "   kubectl expose deployment webapp-ha --port=80 --target-port=80 -n ha-test",
+      "5. Verify deployment and PDB status:",
+      "   kubectl get deployments -n ha-test",
+      "   kubectl get pods -n ha-test",
+      "   kubectl get pdb -n ha-test",
+      "   kubectl describe pdb webapp-pdb -n ha-test",
+      "6. Test PDB enforcement (simulated):",
+      "   kubectl get nodes",
+      "   echo 'PDB will prevent draining if it would violate maxUnavailable constraint'",
+      "   kubectl describe pdb webapp-pdb -n ha-test | grep -E 'Allowed disruptions|Current'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment -n ha-test -o jsonpath='{.items[0].spec.replicas}'",
+      "expected": "5",
+      "points": 2,
+      "description": "Deployment has 5 replicas"
+    },
+    {
+      "command": "kubectl get pdb -n ha-test -o jsonpath='{.items[0].metadata.name}'",
+      "expected": "webapp-pdb",
+      "points": 2,
+      "description": "PodDisruptionBudget exists"
+    },
+    {
+      "command": "kubectl get pdb webapp-pdb -n ha-test -o jsonpath='{.spec.maxUnavailable}'",
+      "expected": "2",
+      "points": 3,
+      "description": "PDB allows maximum 2 unavailable pods"
+    },
+    {
+      "command": "kubectl get pods -n ha-test --field-selector=status.phase=Running | wc -l",
+      "expected": "6",
+      "points": 3,
+      "description": "All 5 deployment pods are running (plus header line)"
+    }
+  ]
+}

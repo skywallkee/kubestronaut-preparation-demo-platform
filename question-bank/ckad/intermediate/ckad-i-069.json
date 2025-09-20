@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-069",
+  "title": "Application Scaling with Debugging and Security Context",
+  "description": "Deploy a scalable application in the mars namespace that automatically scales based on custom metrics. Include debugging containers for troubleshooting scaling issues and configure security contexts for enhanced container security. Implement proper RBAC for scaling operations.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["application-scaling", "debugging-troubleshooting", "security-contexts", "service-accounts-rbac"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ServiceAccount ||scaling-operator|| with permissions to read metrics and manage deployments"
+    },
+    {
+      "step": 2,
+      "description": "Deploy application with ||3|| initial replicas and security context ||runAsUser: 1500||"
+    },
+    {
+      "step": 3,
+      "description": "Configure HPA with custom metrics: ||queue_length|| > ||10|| and CPU > ||60%||"
+    },
+    {
+      "step": 4,
+      "description": "Set scaling range: minimum ||3||, maximum ||15|| replicas"
+    },
+    {
+      "step": 5,
+      "description": "Deploy debug pod with scaling monitoring tools and metrics collection"
+    },
+    {
+      "step": 6,
+      "description": "Configure security context with ||allowPrivilegeEscalation: false|| and ||readOnlyRootFilesystem: true||"
+    },
+    {
+      "step": 7,
+      "description": "Verify scaling behavior and debug tools functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount scaling-operator -n mars -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "scaling-operator",
+      "description": "Verify ServiceAccount for scaling operations",
+      "points": 1
+    },
+    {
+      "command": "kubectl get role scaling-role -n mars -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "deployments",
+      "description": "Verify Role has deployment permissions",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment scalable-app -n mars -o jsonpath='{.spec.replicas}'",
+      "expectedOutput": "3",
+      "description": "Verify initial replica count",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment scalable-app -n mars -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "1500",
+      "description": "Verify security context runAsUser",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa scalable-app-hpa -n mars -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "15",
+      "description": "Verify HPA maximum replicas",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa scalable-app-hpa -n mars -o jsonpath='{.spec.metrics[1].pods.metric.name}'",
+      "expectedOutput": "queue_length",
+      "description": "Verify HPA uses custom queue_length metric",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod scaling-debug -n mars -o jsonpath='{.spec.containers[0].image}' | grep -E '(kubectl|metrics|debug)'",
+      "expectedOutput": "kubectl",
+      "description": "Verify debug pod with scaling tools",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment scalable-app -n mars -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}'",
+      "expectedOutput": "false",
+      "description": "Verify allowPrivilegeEscalation is disabled",
+      "points": 1
+    }
+  ]
+}

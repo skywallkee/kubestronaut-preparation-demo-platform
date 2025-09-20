@@ -4,13 +4,20 @@ import axios from 'axios';
 interface ExamConfig {
   type: string;
   difficulty: string;
+  practiceMode?: boolean;
 }
 
 const ExamSelection: React.FC = () => {
   const [selectedExam, setSelectedExam] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
+  const [practiceMode, setPracticeMode] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [helmChartReady, setHelmChartReady] = useState<boolean>(false);
+  const [isApplying, setIsApplying] = useState<boolean>(false);
+  const [helmApplied, setHelmApplied] = useState<boolean>(false);
+  const [applyError, setApplyError] = useState<string>('');
+  const [streamingLogs, setStreamingLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState<boolean>(false);
 
   const examTypes = [
     { id: 'ckad', name: 'CKAD', description: 'Certified Kubernetes Application Developer' },
@@ -32,7 +39,8 @@ const ExamSelection: React.FC = () => {
     try {
       const response = await axios.post('/api/helm/generate', {
         type: selectedExam,
-        difficulty: selectedDifficulty
+        difficulty: selectedDifficulty,
+        practiceMode: practiceMode
       });
       
       if (response.data.success) {
@@ -52,10 +60,11 @@ const ExamSelection: React.FC = () => {
         responseType: 'blob',
         params: {
           type: selectedExam,
-          difficulty: selectedDifficulty
+          difficulty: selectedDifficulty,
+          practiceMode: practiceMode
         }
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -69,12 +78,100 @@ const ExamSelection: React.FC = () => {
     }
   };
 
+  const applyHelmChart = () => {
+    setIsApplying(true);
+    setApplyError('');
+    setStreamingLogs([]);
+    setShowLogs(true);
+
+    // Use EventSource with GET request (EventSource only supports GET)
+    const url = `/api/helm/apply-stream?type=${encodeURIComponent(selectedExam)}&difficulty=${encodeURIComponent(selectedDifficulty)}&practiceMode=${practiceMode}`;
+    const eventSource = new EventSource(url);
+
+    eventSource.onopen = () => {
+      console.log('✅ Streaming connection opened');
+      setStreamingLogs(prev => [...prev, '🔗 Connected to deployment stream...']);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setStreamingLogs(prev => [...prev, data.message]);
+      } catch (parseError) {
+        console.error('Error parsing message data:', parseError);
+      }
+    };
+
+    eventSource.addEventListener('progress', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setStreamingLogs(prev => [...prev, data.message]);
+      } catch (parseError) {
+        console.error('Error parsing progress data:', parseError);
+      }
+    });
+
+    eventSource.addEventListener('complete', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.success) {
+          setHelmApplied(true);
+          setStreamingLogs(prev => [...prev, '🎉 Deployment completed successfully!']);
+        } else {
+          setApplyError(data.error || 'Failed to apply Helm chart');
+          setStreamingLogs(prev => [...prev, `❌ Error: ${data.error || 'Unknown error'}`]);
+        }
+      } catch (parseError) {
+        console.error('Error parsing completion data:', parseError);
+        setApplyError('Failed to parse completion data');
+      }
+      setIsApplying(false);
+      eventSource.close();
+    });
+
+    eventSource.addEventListener('error', (event) => {
+      try {
+        const data = JSON.parse((event as any).data || '{}');
+        setApplyError(data.error || 'Failed to apply Helm chart');
+        setStreamingLogs(prev => [...prev, `❌ Error: ${data.error || 'Connection error'}`]);
+      } catch (parseError) {
+        console.error('Error parsing error data:', parseError);
+        setApplyError('Failed to apply Helm chart. Please ensure your cluster is accessible.');
+        setStreamingLogs(prev => [...prev, '❌ Connection error or deployment failed']);
+      }
+      setIsApplying(false);
+      eventSource.close();
+    });
+
+    eventSource.onerror = (error) => {
+      console.error('EventSource error:', error);
+      if (eventSource.readyState === EventSource.CLOSED) {
+        setApplyError('Connection lost. Please try again.');
+        setStreamingLogs(prev => [...prev, '❌ Connection lost']);
+      } else {
+        setApplyError('Connection error. Please try again.');
+        setStreamingLogs(prev => [...prev, '❌ Connection error']);
+      }
+      setIsApplying(false);
+      eventSource.close();
+    };
+
+    // Cleanup function
+    const cleanup = () => {
+      eventSource.close();
+    };
+
+    // Store cleanup function for potential component unmount
+    (window as any).cleanupEventSource = cleanup;
+  };
+
   const createExamAndNavigate = async () => {
     try {
       // Create exam session before navigating
       const response = await axios.post('/api/exams', {
         type: selectedExam,
-        difficulty: selectedDifficulty
+        difficulty: selectedDifficulty,
+        practiceMode: practiceMode
       });
       
       if (response.data.success) {
@@ -141,6 +238,29 @@ const ExamSelection: React.FC = () => {
           </div>
         </div>
 
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Exam Mode</h2>
+          <div className="flex items-center space-x-3">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={practiceMode}
+                onChange={(e) => setPracticeMode(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span className="text-sm font-medium text-gray-900">All Questions Practice Mode</span>
+            </label>
+          </div>
+          <div className="mt-2">
+            <p className="text-xs text-gray-600">
+              {practiceMode
+                ? "✓ Practice with all questions, no time limit, solutions visible"
+                : "Standard exam mode with timed questions and limited question set"
+              }
+            </p>
+          </div>
+        </div>
+
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Generate Exam Environment</h2>
           
@@ -149,6 +269,7 @@ const ExamSelection: React.FC = () => {
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
                   <strong>Selected:</strong> {examTypes.find(e => e.id === selectedExam)?.name} - {difficultyLevels.find(d => d.id === selectedDifficulty)?.name}
+                  {practiceMode && <span className="ml-2 text-xs bg-blue-200 text-blue-900 px-2 py-1 rounded">Practice Mode</span>}
                 </p>
               </div>
               
@@ -167,22 +288,91 @@ const ExamSelection: React.FC = () => {
                       ✅ Helm chart generated successfully!
                     </p>
                     <p className="text-xs text-green-700">
-                      Download and apply to your cluster: <code>helm install k8s-exam ./chart</code>
+                      Download and apply manually: <code>helm install k8s-exam ./chart</code>
                     </p>
                   </div>
-                  
+
                   <button
                     onClick={downloadHelmChart}
                     className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
                   >
-                    Download Helm Chart
+                    📥 Download Helm Chart
                   </button>
-                  
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-300" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="bg-white px-2 text-gray-500">OR</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={applyHelmChart}
+                    disabled={isApplying || helmApplied}
+                    className={`w-full py-2 px-4 rounded-md text-white font-medium transition-colors ${
+                      helmApplied
+                        ? 'bg-blue-600 cursor-default'
+                        : isApplying
+                        ? 'bg-gray-400 cursor-wait'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    {isApplying ? '⏳ Applying to Cluster...' : helmApplied ? '✅ Helm Chart Applied' : '🚀 Apply Helm Chart to Cluster'}
+                  </button>
+
+                  {(showLogs && (streamingLogs.length > 0 || isApplying)) && (
+                    <div className="border rounded-lg">
+                      <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
+                        <h3 className="text-sm font-medium text-gray-900">📺 Deployment Console</h3>
+                        <button
+                          onClick={() => setShowLogs(!showLogs)}
+                          className="text-sm text-gray-500 hover:text-gray-700"
+                        >
+                          {showLogs ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
+                      <div className="p-4 bg-black text-green-400 font-mono text-xs max-h-64 overflow-y-auto">
+                        {streamingLogs.length === 0 && isApplying && (
+                          <div className="text-gray-400 animate-pulse">
+                            🔄 Initializing deployment stream...
+                          </div>
+                        )}
+                        {streamingLogs.map((log, index) => (
+                          <div key={index} className="mb-1">
+                            {log}
+                          </div>
+                        ))}
+                        {isApplying && streamingLogs.length > 0 && (
+                          <div className="animate-pulse">▋</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {applyError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-800">❌ {applyError}</p>
+                    </div>
+                  )}
+
+                  {helmApplied && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm text-blue-800">✅ Helm chart has been applied to your cluster successfully!</p>
+                    </div>
+                  )}
+
                   <button
                     onClick={createExamAndNavigate}
-                    className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700"
+                    disabled={!helmApplied && !applyError}
+                    className={`w-full py-2 px-4 rounded-md text-white font-medium transition-colors ${
+                      helmApplied || applyError
+                        ? 'bg-purple-600 hover:bg-purple-700'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
                   >
-                    Start Exam (after applying Helm chart)
+                    {helmApplied ? '▶️ Start Exam' : '⏸️ Start Exam (apply Helm chart first)'}
                   </button>
                 </div>
               )}

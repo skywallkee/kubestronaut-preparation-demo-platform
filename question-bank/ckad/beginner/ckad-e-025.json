@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-025",
+  "title": "Create Pod with ServiceAccount",
+  "description": "Create a Pod named ||sa-pod|| using image ||nginx:1.20-alpine|| that uses the ||app-sa|| ServiceAccount in the ||venus|| namespace.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts-rbac",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods",
+      "serviceaccounts"
+    ],
+    "prerequisites": [
+      "app-sa ServiceAccount exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run sa-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > sa-pod.yaml -n venus",
+      "2. Add serviceAccountName:",
+      "   serviceAccountName: app-sa",
+      "3. Apply pod:",
+      "   kubectl apply -f sa-pod.yaml -n venus",
+      "4. Verify:",
+      "   kubectl get pod sa-pod -n venus -o yaml | grep serviceAccount"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod sa-pod -n venus -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "app-sa",
+      "points": 4,
+      "description": "Pod should use app-sa ServiceAccount"
+    }
+  ]
+}

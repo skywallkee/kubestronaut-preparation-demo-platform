@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample-pod-saturn
+  namespace: saturn
+  labels:
+    app: sample-app-saturn
+    exam-resource: "true"
+    planet: saturn
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.20
+    ports:
+    - containerPort: 80
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"

@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-074",
+  "title": "Job Processing with Ingress and Application Scaling",
+  "description": "Create a job processing system in the saturn namespace that handles batch workloads with automatic scaling. Configure ingress for job submission API and implement horizontal pod autoscaling based on job queue metrics for efficient resource utilization.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "ingress", "application-scaling", "logging-monitoring"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy job submission API with Deployment and Service on port ||8080||"
+    },
+    {
+      "step": 2,
+      "description": "Configure Ingress with host ||jobs.local|| and path ||/api/jobs|| for job submission"
+    },
+    {
+      "step": 3,
+      "description": "Create Job template for batch processing with ||parallelism: 3|| and ||completions: 9||"
+    },
+    {
+      "step": 4,
+      "description": "Set up HPA for job API based on ||pending_jobs|| metric > ||5|| and CPU > ||70%||"
+    },
+    {
+      "step": 5,
+      "description": "Configure job processing workers with scaling range: min ||2||, max ||10||"
+    },
+    {
+      "step": 6,
+      "description": "Deploy monitoring pod to track job metrics and queue length"
+    },
+    {
+      "step": 7,
+      "description": "Verify job submission, processing, and autoscaling functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment job-api -n saturn -o jsonpath='{.spec.template.spec.containers[0].ports[0].containerPort}'",
+      "expectedOutput": "8080",
+      "description": "Verify job API port configuration",
+      "points": 1
+    },
+    {
+      "command": "kubectl get service job-api-svc -n saturn -o jsonpath='{.spec.ports[0].port}'",
+      "expectedOutput": "8080",
+      "description": "Verify job API service port",
+      "points": 1
+    },
+    {
+      "command": "kubectl get ingress job-ingress -n saturn -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "jobs.local",
+      "description": "Verify Ingress host configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress job-ingress -n saturn -o jsonpath='{.spec.rules[0].http.paths[0].path}'",
+      "expectedOutput": "/api/jobs",
+      "description": "Verify Ingress path configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get job batch-processor -n saturn -o jsonpath='{.spec.parallelism}'",
+      "expectedOutput": "3",
+      "description": "Verify job parallelism setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get job batch-processor -n saturn -o jsonpath='{.spec.completions}'",
+      "expectedOutput": "9",
+      "description": "Verify job completions setting",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa job-api-hpa -n saturn -o jsonpath='{.spec.metrics[0].pods.metric.name}'",
+      "expectedOutput": "pending_jobs",
+      "description": "Verify HPA uses pending_jobs metric",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa job-workers-hpa -n saturn -o jsonpath='{.spec.maxReplicas}'",
+      "expectedOutput": "10",
+      "description": "Verify workers HPA max replicas",
+      "points": 1
+    }
+  ]
+}

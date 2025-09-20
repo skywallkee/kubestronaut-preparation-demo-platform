@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-050",
+  "title": "Troubleshooting Multi-Container Pod with Secrets and Resource Management",
+  "description": "Debug and fix a failing multi-container application in the saturn namespace. The application consists of a web frontend, API backend, and database containers that share secrets and have resource constraints. Identify and resolve configuration and resource issues.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["debugging-troubleshooting", "multi-container-pods", "configmaps-secrets", "resource-management", "security-contexts"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Analyze the failing pod ||app-stack|| and identify resource constraint issues"
+    },
+    {
+      "step": 2,
+      "description": "Check Secret ||db-credentials|| mounting and environment variable configuration"
+    },
+    {
+      "step": 3,
+      "description": "Fix resource requests and limits for all three containers"
+    },
+    {
+      "step": 4,
+      "description": "Correct the Secret volume mounting path from ||/etc/secrets|| to ||/var/secrets||"
+    },
+    {
+      "step": 5,
+      "description": "Update container startup order and dependency checks"
+    },
+    {
+      "step": 6,
+      "description": "Add init container to wait for database readiness before starting application"
+    },
+    {
+      "step": 7,
+      "description": "Verify all containers start successfully and can access shared secrets"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get pod app-stack -n saturn -o jsonpath='{.status.phase}'",
+      "expectedOutput": "Running",
+      "description": "Verify pod is running after fixes",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod app-stack -n saturn -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expectedOutput": "3",
+      "description": "Verify pod has 3 main containers",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod app-stack -n saturn -o jsonpath='{.spec.containers[0].resources.requests.memory}'",
+      "expectedOutput": "256Mi",
+      "description": "Verify memory requests are properly configured",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod app-stack -n saturn -o jsonpath='{.spec.containers[0].volumeMounts[0].mountPath}'",
+      "expectedOutput": "/var/secrets",
+      "description": "Verify Secret volume mount path is corrected",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pod app-stack -n saturn -o jsonpath='{.spec.initContainers[0].name}'",
+      "expectedOutput": "wait-for-db",
+      "description": "Verify init container exists for database readiness",
+      "points": 2
+    },
+    {
+      "command": "kubectl get secret db-credentials -n saturn -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "db-credentials",
+      "description": "Verify database credentials Secret exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl logs app-stack -n saturn -c frontend | grep -E '(started|ready|running)'",
+      "expectedOutput": "started",
+      "description": "Verify frontend container logs show successful startup",
+      "points": 1
+    }
+  ]
+}

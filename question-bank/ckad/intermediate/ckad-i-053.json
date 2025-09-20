@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-053",
+  "title": "Network Policies with Ingress and Container Image Management",
+  "description": "Deploy a web application with strict network segmentation in the mars namespace. Implement network policies for frontend-backend isolation, configure ingress with TLS termination, and manage container images with specific tags and pull policies for different environments.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["network-policies", "ingress", "container-images", "deployments-rolling-updates"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy frontend application using image ||nginx:1.21-alpine|| with ||IfNotPresent|| pull policy"
+    },
+    {
+      "step": 2,
+      "description": "Deploy backend application using image ||node:16-alpine|| with ||Always|| pull policy"
+    },
+    {
+      "step": 3,
+      "description": "Create NetworkPolicy ||frontend-policy|| allowing only ingress traffic to frontend"
+    },
+    {
+      "step": 4,
+      "description": "Create NetworkPolicy ||backend-policy|| allowing only frontend-to-backend communication"
+    },
+    {
+      "step": 5,
+      "description": "Configure Ingress with host ||secure-app.local|| and TLS certificate ||app-tls-secret||"
+    },
+    {
+      "step": 6,
+      "description": "Set up path-based routing: ||/|| to frontend, ||/api|| to backend"
+    },
+    {
+      "step": 7,
+      "description": "Verify network isolation and TLS termination work correctly"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "nginx:1.21-alpine",
+      "description": "Verify frontend image version",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment frontend -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "IfNotPresent",
+      "description": "Verify frontend image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment backend -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "Always",
+      "description": "Verify backend image pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get networkpolicy frontend-policy -n mars -o jsonpath='{.spec.podSelector.matchLabels.app}'",
+      "expectedOutput": "frontend",
+      "description": "Verify frontend NetworkPolicy selector",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy backend-policy -n mars -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.app}'",
+      "expectedOutput": "frontend",
+      "description": "Verify backend NetworkPolicy allows frontend access",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress secure-app-ingress -n mars -o jsonpath='{.spec.tls[0].secretName}'",
+      "expectedOutput": "app-tls-secret",
+      "description": "Verify Ingress TLS configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress secure-app-ingress -n mars -o jsonpath='{.spec.rules[0].http.paths[1].path}'",
+      "expectedOutput": "/api",
+      "description": "Verify Ingress path-based routing",
+      "points": 2
+    }
+  ]
+}

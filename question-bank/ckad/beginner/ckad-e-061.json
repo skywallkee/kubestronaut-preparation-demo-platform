@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-061",
+  "title": "Create CronJob with Schedule",
+  "description": "Create a CronJob named ||backup-job|| in Namespace ||default|| using image ||busybox:1.35|| that runs ||echo 'Backup completed'|| every ||5 minutes||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Design and Build",
+  "tags": [
+    "jobs-cronjobs",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create CronJob YAML:",
+      "   kubectl create cronjob backup-job --image=busybox:1.35 --schedule=\"*/5 * * * *\" --dry-run=client -o yaml > backup-job.yaml",
+      "2. Edit YAML to set command",
+      "3. Apply the CronJob:",
+      "   kubectl apply -f backup-job.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get cronjob backup-job -o jsonpath='{.spec.schedule}'",
+      "expected": "*/5 * * * *",
+      "points": 2,
+      "description": "CronJob should run every 5 minutes"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}'",
+      "expected": "busybox:1.35",
+      "points": 1,
+      "description": "CronJob should use busybox:1.35 image"
+    }
+  ]
+}

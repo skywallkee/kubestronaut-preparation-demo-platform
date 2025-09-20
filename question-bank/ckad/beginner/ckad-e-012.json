@@ -1,0 +1,59 @@
+{
+  "id": "ckad-e-012",
+  "title": "Create a Multi-Container Pod",
+  "description": "Create a Pod named ||multi-pod|| with two containers: ||main|| (||nginx:1.20-alpine||) and ||sidecar|| (||busybox:1.31.0|| running ||'sleep 3600'||) in the ||mercury|| namespace.",
+  "points": 5,
+  "timeLimit": 12,
+  "category": "Application Design and Build",
+  "tags": [
+    "multi-container-pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml with two containers:",
+      "   kubectl run multi-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > multi-pod.yaml",
+      "2. Add second container:",
+      "   - name: sidecar",
+      "     image: busybox:1.31.0",
+      "     command: ['sleep', '3600']",
+      "3. Apply pod:",
+      "   kubectl apply -f multi-pod.yaml -n mercury"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod multi-pod -n mercury -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 2,
+      "description": "Pod should be running"
+    },
+    {
+      "command": "kubectl get pod multi-pod -n mercury -o jsonpath='{.spec.containers[*].name}' | wc -w",
+      "expected": "2",
+      "points": 1.5,
+      "description": "Pod should have 2 containers"
+    },
+    {
+      "command": "kubectl get pod multi-pod -n mercury -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "nginx:1.20-alpine",
+      "points": 0.75,
+      "description": "Main container should use nginx:1.20-alpine image"
+    },
+    {
+      "command": "kubectl get pod multi-pod -n mercury -o jsonpath='{.spec.containers[1].image}'",
+      "expected": "busybox:1.31.0",
+      "points": 0.75,
+      "description": "Sidecar container should use busybox:1.31.0 image"
+    }
+  ]
+}

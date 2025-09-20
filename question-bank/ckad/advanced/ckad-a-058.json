@@ -1,0 +1,73 @@
+{
+  "id": "ckad-a-058",
+  "title": "Distributed Tracing and Request Correlation",
+  "description": "Implement a sophisticated ||distributed tracing|| system for microservices request correlation. Create multiple interconnected services that propagate ||trace context|| and generate spans for request tracking. Implement tracing with ||Jaeger|| or ||Zipkin|| integration, custom span creation, trace sampling strategies, and correlation of logs with traces. Include scenarios with cross-service calls, error propagation, performance bottleneck identification, and trace-based debugging of complex request flows.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "Observability",
+  "tags": ["distributed-tracing", "jaeger", "zipkin", "microservices", "correlation", "spans", "advanced"],
+  "infrastructure": {
+    "namespaces": ["tracing-demo"],
+    "resources": ["Deployment", "Service", "ConfigMap"],
+    "prerequisites": ["Tracing backend (Jaeger/Zipkin)"]
+  },
+  "solution": {
+    "steps": [
+      "# Create tracing-demo namespace\nkubectl create namespace tracing-demo",
+
+      "# Deploy Jaeger agent as DaemonSet\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: jaeger-agent\n  namespace: tracing-demo\nspec:\n  selector:\n    matchLabels:\n      app: jaeger-agent\n  template:\n    metadata:\n      labels:\n        app: jaeger-agent\n    spec:\n      containers:\n      - name: jaeger-agent\n        image: jaegertracing/jaeger-agent:latest\n        ports:\n        - containerPort: 5775\n          protocol: UDP\n        - containerPort: 5778\n          protocol: TCP\n        - containerPort: 6831\n          protocol: UDP\n        - containerPort: 6832\n          protocol: UDP\n        - containerPort: 14271\n          protocol: TCP\n        command:\n        - \"/go/bin/agent-linux\"\n        - \"--reporter.grpc.host-port=jaeger-collector:14250\"\nEOF",
+
+      "# Create Jaeger agent service\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: jaeger-agent\n  namespace: tracing-demo\nspec:\n  selector:\n    app: jaeger-agent\n  ports:\n  - name: thrift-udp\n    port: 5775\n    protocol: UDP\n  - name: thrift-http\n    port: 5778\n    protocol: TCP\n  - name: jaeger-udp\n    port: 6831\n    protocol: UDP\n  - name: jaeger-thrift\n    port: 6832\n    protocol: UDP\n  - name: admin\n    port: 14271\n    protocol: TCP\nEOF",
+
+      "# Deploy frontend service with tracing\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: frontend\n  namespace: tracing-demo\n  labels:\n    app: frontend\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: frontend\n  template:\n    metadata:\n      labels:\n        app: frontend\n      annotations:\n        jaeger.io/scrape: \"true\"\n    spec:\n      containers:\n      - name: frontend\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n        env:\n        - name: JAEGER_AGENT_HOST\n          value: \"jaeger-agent\"\n        - name: JAEGER_AGENT_PORT\n          value: \"6831\"\n        - name: JAEGER_SERVICE_NAME\n          value: \"frontend\"\n        command:\n        - /bin/sh\n        - -c\n        - |\n          pip install flask jaeger-client requests\n          \n          cat > /app/main.py << 'SCRIPT'\n          import flask\n          import jaeger_client\n          import requests\n          import uuid\n          import time\n          import json\n          \n          app = flask.Flask(__name__)\n          \n          config = jaeger_client.Config(\n              config={\n                  'sampler': {'type': 'const', 'param': 1},\n                  'local_agent': {\n                      'reporting_host': 'jaeger-agent',\n                      'reporting_port': 6831,\n                  },\n                  'logging': True,\n              },\n              service_name='frontend',\n          )\n          tracer = config.initialize_tracer()\n          \n          @app.route('/api/trace-test')\n          def trace_test():\n              with tracer.start_span('frontend-request') as span:\n                  trace_id = span.context.trace_id\n                  span_id = span.context.span_id\n                  \n                  span.set_tag('user.id', str(uuid.uuid4()))\n                  span.set_tag('request.type', 'api')\n                  \n                  # Call backend service\n                  try:\n                      backend_response = requests.get(\n                          'http://backend:8081/process',\n                          headers={'X-Trace-ID': str(trace_id)}\n                      )\n                      span.set_tag('backend.status', backend_response.status_code)\n                  except Exception as e:\n                      span.set_tag('error', True)\n                      span.log_kv({'error': str(e)})\n                  \n                  return flask.jsonify({\n                      'trace_id': str(trace_id),\n                      'span_id': str(span_id),\n                      'service': 'frontend',\n                      'timestamp': time.time()\n                  })\n          \n          @app.route('/metrics')\n          def metrics():\n              return '''# HELP jaeger_tracer_spans_total Total spans created\n# TYPE jaeger_tracer_spans_total counter\njaeger_tracer_spans_total{service=\"frontend\"} 100\n'''\n          \n          if __name__ == '__main__':\n              app.run(host='0.0.0.0', port=8080)\n          SCRIPT\n          \n          cd /app && python main.py\nEOF",
+
+      "# Deploy backend service with span propagation\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: backend\n  namespace: tracing-demo\n  labels:\n    app: backend\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: backend\n  template:\n    metadata:\n      labels:\n        app: backend\n    spec:\n      containers:\n      - name: backend\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8081\n        env:\n        - name: JAEGER_AGENT_HOST\n          value: \"jaeger-agent\"\n        - name: JAEGER_SERVICE_NAME\n          value: \"backend\"\n        command:\n        - /bin/sh\n        - -c\n        - |\n          pip install flask jaeger-client requests\n          \n          cat > /app/main.py << 'SCRIPT'\n          import flask\n          import jaeger_client\n          import requests\n          import time\n          import logging\n          import json\n          \n          app = flask.Flask(__name__)\n          \n          # Configure logging with trace correlation\n          logging.basicConfig(level=logging.INFO,\n                            format='%(asctime)s - %(name)s - %(levelname)s - trace_id=%(trace_id)s span_id=%(span_id)s - %(message)s')\n          logger = logging.getLogger(__name__)\n          \n          config = jaeger_client.Config(\n              config={\n                  'sampler': {'type': 'const', 'param': 1},\n                  'local_agent': {\n                      'reporting_host': 'jaeger-agent',\n                      'reporting_port': 6831,\n                  },\n                  'logging': True,\n              },\n              service_name='backend',\n          )\n          tracer = config.initialize_tracer()\n          \n          @app.route('/process')\n          def process():\n              trace_id = flask.request.headers.get('X-Trace-ID', 'no-trace')\n              \n              with tracer.start_span('backend-processing') as span:\n                  span.set_tag('operation', 'data-processing')\n                  span.set_tag('version', 'v1.0')\n                  \n                  # Log with trace correlation\n                  extra = {'trace_id': str(span.context.trace_id), 'span_id': str(span.context.span_id)}\n                  logger.info('Processing request from frontend', extra=extra)\n                  \n                  # Simulate processing time\n                  time.sleep(0.1)\n                  \n                  # Call database service\n                  try:\n                      db_response = requests.get(\n                          'http://database:8082/query',\n                          headers={'X-Trace-ID': trace_id}\n                      )\n                      span.set_tag('database.status', db_response.status_code)\n                      logger.info('Database query completed', extra=extra)\n                  except Exception as e:\n                      span.set_tag('error', True)\n                      span.log_kv({'error': str(e)})\n                      logger.error(f'Database error: {e}', extra=extra)\n                  \n                  return flask.jsonify({\n                      'status': 'processed',\n                      'trace_id': trace_id,\n                      'processing_time': 0.1\n                  })\n          \n          @app.route('/metrics')\n          def metrics():\n              return '''# HELP jaeger_tracer_spans_total Total spans created\n# TYPE jaeger_tracer_spans_total counter\njaeger_tracer_spans_total{service=\"backend\"} 150\n'''\n          \n          if __name__ == '__main__':\n              app.run(host='0.0.0.0', port=8081)\n          SCRIPT\n          \n          cd /app && python main.py\nEOF",
+
+      "# Deploy database service with trace correlation\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: database\n  namespace: tracing-demo\n  labels:\n    app: database\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: database\n  template:\n    metadata:\n      labels:\n        app: database\n    spec:\n      containers:\n      - name: database\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8082\n        env:\n        - name: JAEGER_AGENT_HOST\n          value: \"jaeger-agent\"\n        - name: JAEGER_SERVICE_NAME\n          value: \"database\"\n        command:\n        - /bin/sh\n        - -c\n        - |\n          pip install flask jaeger-client\n          \n          cat > /app/main.py << 'SCRIPT'\n          import flask\n          import jaeger_client\n          import time\n          import uuid\n          \n          app = flask.Flask(__name__)\n          \n          config = jaeger_client.Config(\n              config={\n                  'sampler': {'type': 'const', 'param': 1},\n                  'local_agent': {\n                      'reporting_host': 'jaeger-agent',\n                      'reporting_port': 6831,\n                  },\n                  'logging': True,\n              },\n              service_name='database',\n          )\n          tracer = config.initialize_tracer()\n          \n          @app.route('/query')\n          def query():\n              with tracer.start_span('database-query') as span:\n                  span.set_tag('query.type', 'SELECT')\n                  span.set_tag('table', 'users')\n                  span.set_tag('rows.returned', 10)\n                  \n                  # Simulate database query time\n                  time.sleep(0.05)\n                  \n                  return flask.jsonify({\n                      'status': 'success',\n                      'rows': 10,\n                      'query_time': 0.05\n                  })\n          \n          if __name__ == '__main__':\n              app.run(host='0.0.0.0', port=8082)\n          SCRIPT\n          \n          cd /app && python main.py\nEOF",
+
+      "# Create services for all components\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: frontend\n  namespace: tracing-demo\n  annotations:\n    jaeger.io/scrape: \"true\"\n  labels:\n    app: frontend\nspec:\n  selector:\n    app: frontend\n  ports:\n  - port: 8080\n    targetPort: 8080\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: backend\n  namespace: tracing-demo\n  labels:\n    app: backend\nspec:\n  selector:\n    app: backend\n  ports:\n  - port: 8081\n    targetPort: 8081\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: database\n  namespace: tracing-demo\n  labels:\n    app: database\nspec:\n  selector:\n    app: database\n  ports:\n  - port: 8082\n    targetPort: 8082\nEOF",
+
+      "# Wait for deployments to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/frontend -n tracing-demo\nkubectl wait --for=condition=available --timeout=300s deployment/backend -n tracing-demo\nkubectl wait --for=condition=available --timeout=300s deployment/database -n tracing-demo",
+
+      "# Test the tracing flow\nkubectl exec -n tracing-demo deploy/frontend -- curl -s localhost:8080/api/trace-test"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n tracing-demo -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"JAEGER_AGENT_HOST\")].value}'",
+      "expected": "jaeger-agent",
+      "points": 2,
+      "description": "Frontend service configured for Jaeger tracing"
+    },
+    {
+      "command": "kubectl exec -n tracing-demo deploy/frontend -- curl -s localhost:8080/api/trace-test | jq .trace_id",
+      "expected": "trace-id-present",
+      "points": 3,
+      "description": "Frontend generates trace IDs for requests"
+    },
+    {
+      "command": "kubectl logs -n tracing-demo deploy/backend | grep -c 'trace_id='",
+      "expected": "5",
+      "points": 3,
+      "description": "Backend service logs include trace correlation"
+    },
+    {
+      "command": "kubectl exec -n tracing-demo deploy/backend -- curl -s localhost:8081/metrics | grep 'jaeger_tracer_spans'",
+      "expected": "span-metrics",
+      "points": 3,
+      "description": "Backend exports tracing metrics"
+    },
+    {
+      "command": "kubectl get service -n tracing-demo -l app=frontend -o jsonpath='{.items[0].metadata.annotations.jaeger\\.io/scrape}'",
+      "expected": "true",
+      "points": 2,
+      "description": "Services annotated for trace collection"
+    },
+    {
+      "command": "kubectl exec -n tracing-demo deploy/database -- grep -c 'span.SetTag' /app/main.py",
+      "expected": "3",
+      "points": 2,
+      "description": "Database service creates custom spans with tags"
+    }
+  ]
+}

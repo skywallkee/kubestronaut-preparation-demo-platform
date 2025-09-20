@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-service-mercury
+  namespace: mercury
+  labels:
+    app: sample-app-mercury
+    exam-resource: "true"
+    planet: mercury
+spec:
+  selector:
+    app: sample-app-mercury
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

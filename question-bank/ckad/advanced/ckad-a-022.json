@@ -1,0 +1,125 @@
+{
+  "id": "ckad-a-022",
+  "title": "Advanced Pod Lifecycle Management with Custom Hooks and Signals",
+  "description": "Implement sophisticated pod lifecycle management in namespace ||pluto|| with custom initialization, graceful shutdown, and signal handling:\n\n1. **Multi-Stage Application Setup**:\n   - Deploy ||web-server|| with nginx:1.21 requiring complex initialization sequence\n   - Deploy ||data-processor|| with python:3.9 handling batch jobs with graceful interruption\n   - Deploy ||cache-warmer|| with redis:6.2 requiring cache preloading before serving traffic\n   - Deploy ||log-shipper|| with fluentd:v1.14 requiring configuration validation before startup\n\n2. **Advanced Init Container Patterns**:\n   - **Dependency Checker**: Init container that waits for database and external services\n   - **Configuration Builder**: Init container that generates configuration from templates\n   - **Security Scanner**: Init container that validates container images and configurations\n   - **Data Migrator**: Init container that performs database migrations or data setup\n   - **Certificate Fetcher**: Init container that retrieves TLS certificates from vault\n\n3. **Custom Lifecycle Hooks Implementation**:\n   - **PostStart Hook**: Configure post-start hooks for each application:\n     - Web server: Warm up caches and establish connections\n     - Data processor: Register with job queue and load initial data\n     - Cache warmer: Load critical data into memory\n     - Log shipper: Establish log forwarding connections\n   - **PreStop Hook**: Configure pre-stop hooks for graceful shutdown:\n     - Web server: Drain connections and save state\n     - Data processor: Complete current jobs and save progress\n     - Cache warmer: Persist cache to disk\n     - Log shipper: Flush pending logs\n\n4. **Signal Handling and Graceful Shutdown**:\n   - Configure custom terminationGracePeriodSeconds for each application type\n   - Implement SIGTERM handling for graceful shutdown (30-120 seconds)\n   - Add SIGKILL protection with proper cleanup procedures\n   - Configure signal forwarding to child processes\n   - Add shutdown coordination between multiple containers\n\n5. **Health and Readiness Management**:\n   - **Complex Readiness Checks**: Multi-step readiness validation\n     - Check database connectivity\n     - Verify external service availability\n     - Validate configuration completeness\n     - Confirm resource initialization\n   - **Startup Probes**: Configure startup probes for slow-initializing applications\n   - **Custom Health Endpoints**: Implement detailed health reporting\n\n6. **Resource and Dependency Management**:\n   - Configure shared volumes between init containers and main containers\n   - Implement dependency ordering and coordination\n   - Add resource cleanup during pod termination\n   - Configure persistent state handling across restarts\n\n7. **Failure Handling and Recovery**:\n   - Configure appropriate restart policies for different failure scenarios\n   - Implement exponential backoff for failed initialization\n   - Add circuit breaker patterns for external dependencies\n   - Configure automatic recovery procedures\n\n8. **Monitoring and Observability**:\n   - Add lifecycle event logging and metrics\n   - Monitor initialization time and success rates\n   - Track graceful shutdown completion\n   - Alert on lifecycle hook failures\n   - Create dashboard for pod lifecycle analytics\n\n9. **Testing and Validation**:\n   - Create Job ||lifecycle-tester|| that validates all lifecycle behaviors\n   - Test graceful shutdown scenarios with controlled termination\n   - Verify init container dependency chains\n   - Validate signal handling and hook execution\n   - Test failure recovery and restart scenarios\n\nEnsure robust pod lifecycle management with proper initialization, graceful shutdown, and comprehensive failure handling.",
+  "points": 11,
+  "timeLimit": 25,
+  "category": "Pod Lifecycle",
+  "tags": [
+    "pod-lifecycle",
+    "init-containers",
+    "lifecycle-hooks",
+    "signal-handling",
+    "graceful-shutdown",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "pods",
+      "configmaps",
+      "secrets",
+      "jobs",
+      "services",
+      "persistentvolumeclaims"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create shared resources for lifecycle management:",
+      "   kubectl create configmap init-scripts --from-file=init/ -n pluto",
+      "   kubectl create secret generic lifecycle-config --from-literal=db-url=postgres://... -n pluto",
+      "2. Create deployment manifests with init containers:",
+      "   web-server: dependency-checker, config-builder init containers",
+      "   data-processor: security-scanner, data-migrator init containers",
+      "   cache-warmer: certificate-fetcher init container",
+      "   log-shipper: configuration-validator init container",
+      "3. Configure lifecycle hooks for each deployment:",
+      "   postStart: custom initialization commands",
+      "   preStop: graceful shutdown procedures",
+      "4. Set appropriate termination grace periods:",
+      "   web-server: 60s, data-processor: 120s, cache-warmer: 30s, log-shipper: 45s",
+      "5. Configure health probes with proper timing:",
+      "   startup probes: failureThreshold=30, periodSeconds=10",
+      "   readiness probes: complex multi-step validation",
+      "   liveness probes: application-specific health checks",
+      "6. Add resource and volume configurations:",
+      "   Shared emptyDir volumes for inter-container communication",
+      "   ConfigMap and Secret mounts for configuration",
+      "7. Deploy lifecycle testing and validation job",
+      "8. Test graceful shutdown with controlled pod termination"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.template.spec.initContainers[*].name}' | tr ' ' '\\n' | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Web server should have 2 init containers"
+    },
+    {
+      "command": "kubectl get deployment data-processor -n pluto -o jsonpath='{.spec.template.spec.containers[0].lifecycle.postStart.exec.command[0]}'",
+      "expected": "/bin/sh",
+      "points": 1,
+      "description": "Data processor should have postStart hook configured"
+    },
+    {
+      "command": "kubectl get deployment cache-warmer -n pluto -o jsonpath='{.spec.template.spec.containers[0].lifecycle.preStop.exec.command[0]}'",
+      "expected": "/bin/sh",
+      "points": 1,
+      "description": "Cache warmer should have preStop hook configured"
+    },
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.template.spec.terminationGracePeriodSeconds}'",
+      "expected": "60",
+      "points": 1,
+      "description": "Web server should have 60s termination grace period"
+    },
+    {
+      "command": "kubectl get deployment data-processor -n pluto -o jsonpath='{.spec.template.spec.terminationGracePeriodSeconds}'",
+      "expected": "120",
+      "points": 1,
+      "description": "Data processor should have 120s termination grace period"
+    },
+    {
+      "command": "kubectl get deployment cache-warmer -n pluto -o jsonpath='{.spec.template.spec.containers[0].startupProbe.failureThreshold}'",
+      "expected": "30",
+      "points": 1,
+      "description": "Cache warmer should have startup probe with 30 failure threshold"
+    },
+    {
+      "command": "kubectl get deployment log-shipper -n pluto -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expected": "/ready",
+      "points": 1,
+      "description": "Log shipper should have readiness probe on /ready endpoint"
+    },
+    {
+      "command": "kubectl get pods -n pluto -l app=web-server --field-selector=status.phase=Running --no-headers | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Web server pod should be running after initialization"
+    },
+    {
+      "command": "kubectl get job lifecycle-tester -n pluto -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Lifecycle tester should complete successfully"
+    },
+    {
+      "command": "kubectl get configmap init-scripts -n pluto -o jsonpath='{.metadata.name}'",
+      "expected": "init-scripts",
+      "points": 1,
+      "description": "Should have init-scripts ConfigMap for initialization"
+    },
+    {
+      "command": "kubectl get deployments -n pluto --no-headers | wc -l",
+      "expected": "4",
+      "points": 1,
+      "description": "Should have 4 deployments with lifecycle management"
+    }
+  ]
+}

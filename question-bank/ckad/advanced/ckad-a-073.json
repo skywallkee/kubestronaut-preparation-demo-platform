@@ -1,0 +1,75 @@
+{
+  "id": "ckad-a-073",
+  "title": "Multi-Protocol Service Exposure",
+  "description": "Design a comprehensive service exposure strategy supporting multiple protocols and access patterns. Create services that handle ||HTTP||, ||HTTPS||, ||TCP||, ||UDP||, and ||gRPC|| traffic with appropriate ||LoadBalancer||, ||NodePort||, and ||ClusterIP|| configurations. Implement protocol-specific load balancing, configure session affinity for stateful connections, and demonstrate advanced service features like ||external traffic policies||, ||health check node ports||, and ||topology-aware routing||. Include scenarios with mixed-protocol applications and protocol upgrade handling.",
+  "points": 13,
+  "timeLimit": 27,
+  "category": "Services & Networking",
+  "tags": ["multi-protocol", "loadbalancer", "nodeport", "session-affinity", "grpc", "topology-aware", "advanced"],
+  "infrastructure": {
+    "namespaces": ["multi-protocol"],
+    "resources": ["Service", "Deployment", "ConfigMap"],
+    "prerequisites": ["Load balancer support for mixed protocols"]
+  },
+  "solution": {
+    "steps": [
+      "# Create multi-protocol namespace\nkubectl create namespace multi-protocol",
+
+      "# Deploy multi-protocol web application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-app\n  namespace: multi-protocol\n  labels:\n    app: web-app\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: web-app\n  template:\n    metadata:\n      labels:\n        app: web-app\n    spec:\n      containers:\n      - name: web\n        image: nginx:1.21\n        ports:\n        - containerPort: 80\n          name: http\n        - containerPort: 443\n          name: https\n        - containerPort: 8080\n          name: grpc\nEOF",
+
+      "# Deploy gRPC application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: grpc-app\n  namespace: multi-protocol\n  labels:\n    app: grpc-app\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: grpc-app\n  template:\n    metadata:\n      labels:\n        app: grpc-app\n    spec:\n      containers:\n      - name: grpc-server\n        image: nginx:1.21\n        ports:\n        - containerPort: 9090\n          name: grpc\nEOF",
+
+      "# Configure LoadBalancer service for external access\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: web-app-lb\n  namespace: multi-protocol\n  labels:\n    app: web-app\nspec:\n  type: LoadBalancer\n  selector:\n    app: web-app\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    protocol: TCP\n  - name: https\n    port: 443\n    targetPort: 443\n    protocol: TCP\n  externalTrafficPolicy: Cluster\nEOF",
+
+      "# Set up gRPC service\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: grpc-service\n  namespace: multi-protocol\n  labels:\n    app: grpc-app\nspec:\n  type: ClusterIP\n  selector:\n    app: grpc-app\n  ports:\n  - name: grpc\n    port: 9090\n    targetPort: 9090\n    protocol: TCP\nEOF",
+
+      "# Configure service with session affinity for stateful connections\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: sticky-app\n  namespace: multi-protocol\n  labels:\n    app: web-app\nspec:\n  type: ClusterIP\n  selector:\n    app: web-app\n  sessionAffinity: ClientIP\n  sessionAffinityConfig:\n    clientIP:\n      timeoutSeconds: 3600\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    protocol: TCP\nEOF",
+
+      "# Set up NodePort service for direct node access\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: nodeport-service\n  namespace: multi-protocol\n  labels:\n    app: web-app\nspec:\n  type: NodePort\n  selector:\n    app: web-app\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    nodePort: 30080\n    protocol: TCP\n  healthCheckNodePort: 30081\n  externalTrafficPolicy: Local\nEOF",
+
+      "# Implement external traffic policy for source IP preservation\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: external-app\n  namespace: multi-protocol\n  labels:\n    app: web-app\nspec:\n  type: LoadBalancer\n  selector:\n    app: web-app\n  externalTrafficPolicy: Local\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    protocol: TCP\nEOF",
+
+      "# Create multi-port service for different protocols\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: multi-port\n  namespace: multi-protocol\n  labels:\n    app: web-app\nspec:\n  type: ClusterIP\n  selector:\n    app: web-app\n  ports:\n  - name: http\n    port: 80\n    targetPort: 80\n    protocol: TCP\n  - name: https\n    port: 443\n    targetPort: 443\n    protocol: TCP\n  - name: grpc\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\nEOF",
+
+      "# Test protocol-specific routing and load balancing\nkubectl get services -n multi-protocol\nkubectl describe service web-app-lb -n multi-protocol\nkubectl describe service nodeport-service -n multi-protocol"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service web-app-lb -n multi-protocol -o jsonpath='{.spec.type}'",
+      "expected": "LoadBalancer",
+      "points": 2,
+      "description": "LoadBalancer service configured for external access"
+    },
+    {
+      "command": "kubectl get service grpc-service -n multi-protocol -o jsonpath='{.spec.ports[0].protocol}'",
+      "expected": "TCP",
+      "points": 2,
+      "description": "gRPC service uses TCP protocol"
+    },
+    {
+      "command": "kubectl get service sticky-app -n multi-protocol -o jsonpath='{.spec.sessionAffinity}'",
+      "expected": "ClientIP",
+      "points": 3,
+      "description": "Service has session affinity configured"
+    },
+    {
+      "command": "kubectl get service external-app -n multi-protocol -o jsonpath='{.spec.externalTrafficPolicy}'",
+      "expected": "Local",
+      "points": 3,
+      "description": "Service preserves source IP with Local traffic policy"
+    },
+    {
+      "command": "kubectl get service nodeport-service -n multi-protocol -o jsonpath='{.spec.healthCheckNodePort}'",
+      "expected": "health-check-port",
+      "points": 2,
+      "description": "NodePort service has health check port configured"
+    },
+    {
+      "command": "kubectl get service multi-port -n multi-protocol -o jsonpath='{.spec.ports}' | jq length",
+      "expected": "3",
+      "points": 1,
+      "description": "Service exposes multiple ports for different protocols"
+    }
+  ]
+}

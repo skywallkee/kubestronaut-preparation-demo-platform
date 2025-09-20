@@ -1,0 +1,69 @@
+{
+  "id": "ckad-e-010",
+  "title": "Create Pod with Volume Mount",
+  "description": "Create a Pod named ||vol-pod|| using image ||nginx:1.20-alpine|| with an emptyDir volume named ||temp-vol|| mounted at ||/tmp/data|| in the ||pluto|| namespace.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Storage",
+  "tags": [
+    "volume-types",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run vol-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > vol-pod.yaml",
+      "2. Add volumes section:",
+      "   volumes:",
+      "   - name: temp-vol",
+      "     emptyDir: {}",
+      "3. Add volumeMounts section:",
+      "   volumeMounts:",
+      "   - name: temp-vol",
+      "     mountPath: /tmp/data",
+      "4. Apply pod:",
+      "   kubectl apply -f vol-pod.yaml -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod vol-pod -n pluto -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1.5,
+      "description": "Pod should be running"
+    },
+    {
+      "command": "kubectl get pod vol-pod -n pluto -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "nginx:1.20-alpine",
+      "points": 0.5,
+      "description": "Pod should use correct image"
+    },
+    {
+      "command": "kubectl get pod vol-pod -n pluto -o jsonpath='{.spec.volumes[0].name}'",
+      "expected": "temp-vol",
+      "points": 0.5,
+      "description": "Pod should have volume named temp-vol"
+    },
+    {
+      "command": "kubectl get pod vol-pod -n pluto -o jsonpath='{.spec.volumes[0].emptyDir}'",
+      "expected": "{}",
+      "points": 0.5,
+      "description": "Volume should be emptyDir type"
+    },
+    {
+      "command": "kubectl get pod vol-pod -n pluto -o jsonpath='{.spec.containers[0].volumeMounts[0].mountPath}'",
+      "expected": "/tmp/data",
+      "points": 1,
+      "description": "Volume should be mounted at /tmp/data"
+    }
+  ]
+}

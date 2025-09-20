@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-030",
+  "title": "Check Pod Resource Usage",
+  "description": "Get the current CPU and memory usage of all pods in the ||uranus|| namespace and save to ||/opt/course/030/pod-usage.txt||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "logging-monitoring",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "uranus"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "metrics-server running"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Get pod resource usage:",
+      "   kubectl top pods -n uranus",
+      "2. Save to file:",
+      "   kubectl top pods -n uranus > /opt/course/030/pod-usage.txt",
+      "3. Verify file:",
+      "   cat /opt/course/030/pod-usage.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/030/pod-usage.txt",
+      "expected": "0",
+      "points": 3,
+      "description": "Usage file should exist"
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "id": "ckad-a-014",
+  "title": "Advanced CronJob with Parallel Execution and Failure Handling",
+  "description": "Create a sophisticated batch processing system in namespace ||pluto|| using CronJobs with advanced execution patterns:\n\n1. Create three interconnected CronJobs:\n   - **Data Processor**: ||data-processor-cron|| runs every 5 minutes with parallel execution (3 jobs)\n   - **Report Generator**: ||report-generator-cron|| runs every 15 minutes with sequential execution\n   - **Cleanup Job**: ||cleanup-cron|| runs every hour to clean up old data\n\n2. Advanced CronJob configurations:\n   - **Parallel Execution**: Data processor should allow 3 concurrent jobs with ||Forbid|| policy\n   - **Failure Handling**: Set failure threshold to 2 retries with exponential backoff\n   - **History Management**: Keep last 3 successful and 3 failed job executions\n   - **Timeout Control**: Jobs should timeout after 10 minutes\n   - **Resource Management**: Each job pod should have resource requests and limits\n\n3. Job Dependencies and Communication:\n   - Create ConfigMap ||job-config|| with shared processing parameters\n   - Create Secret ||processing-credentials|| with API keys for external services\n   - Use shared PVC ||batch-storage|| for data exchange between jobs\n   - Implement status reporting using annotations\n\n4. Monitoring and Observability:\n   - Add proper labels for job tracking (||job-type||, ||batch-id||, ||priority||)\n   - Create ServiceAccount ||batch-processor|| with appropriate RBAC\n   - Configure logging output to specific directory structure\n   - Add health check endpoints for job status monitoring\n\n5. Advanced Features:\n   - **Suspend/Resume**: Implement capability to suspend data processor during maintenance\n   - **Manual Trigger**: Create a manual Job ||manual-trigger|| that can start processing outside schedule\n   - **Deadlines**: Set active deadline seconds for each job type\n   - **Restart Policy**: Configure appropriate restart policies for different job types\n\n6. Validation and Testing:\n   - Create a verification Job ||cron-validator|| that checks all CronJob configurations\n   - Ensure jobs can communicate through shared storage\n   - Verify failure scenarios and recovery mechanisms\n\nImplement proper job orchestration with dependency management and comprehensive error handling.",
+  "points": 10,
+  "timeLimit": 25,
+  "category": "Jobs and CronJobs",
+  "tags": [
+    "cronjobs",
+    "parallel-execution",
+    "batch-processing",
+    "failure-handling",
+    "job-orchestration",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "cronjobs",
+      "jobs",
+      "configmaps",
+      "secrets",
+      "persistentvolumeclaims",
+      "serviceaccounts",
+      "roles",
+      "rolebindings"
+    ],
+    "prerequisites": [
+      "storage-class"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and RBAC resources:",
+      "   kubectl create namespace pluto",
+      "   kubectl create serviceaccount batch-processor -n pluto",
+      "   kubectl create role job-runner --verb=get,list,create,delete --resource=jobs,pods -n pluto",
+      "   kubectl create rolebinding batch-processor-binding --role=job-runner --serviceaccount=pluto:batch-processor -n pluto",
+      "2. Create shared resources:",
+      "   kubectl create configmap job-config --from-literal=batch_size=1000 --from-literal=retry_limit=3 -n pluto",
+      "   kubectl create secret generic processing-credentials --from-literal=api_key=abc123 -n pluto",
+      "   kubectl create pvc batch-storage --size=10Gi --access-modes=ReadWriteMany -n pluto",
+      "3. Create CronJob manifests with:",
+      "   - data-processor-cron: schedule='*/5 * * * *', concurrencyPolicy=Allow, parallelism=3",
+      "   - report-generator-cron: schedule='*/15 * * * *', concurrencyPolicy=Forbid",
+      "   - cleanup-cron: schedule='0 * * * *', startingDeadlineSeconds=300",
+      "4. Configure advanced job settings:",
+      "   - Resource requests/limits for all containers",
+      "   - Shared volume mounts for PVC",
+      "   - Environment variables from ConfigMap and Secret",
+      "   - Proper restart policies and active deadline seconds",
+      "5. Create manual trigger job and validation job",
+      "6. Apply all resources and verify CronJob scheduling"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get cronjob data-processor-cron -n pluto -o jsonpath='{.spec.schedule}'",
+      "expected": "*/5 * * * *",
+      "points": 1,
+      "description": "Data processor should run every 5 minutes"
+    },
+    {
+      "command": "kubectl get cronjob data-processor-cron -n pluto -o jsonpath='{.spec.concurrencyPolicy}'",
+      "expected": "Allow",
+      "points": 1,
+      "description": "Data processor should allow concurrent executions"
+    },
+    {
+      "command": "kubectl get cronjob report-generator-cron -n pluto -o jsonpath='{.spec.concurrencyPolicy}'",
+      "expected": "Forbid",
+      "points": 1,
+      "description": "Report generator should forbid concurrent executions"
+    },
+    {
+      "command": "kubectl get cronjob cleanup-cron -n pluto -o jsonpath='{.spec.schedule}'",
+      "expected": "0 * * * *",
+      "points": 1,
+      "description": "Cleanup job should run every hour"
+    },
+    {
+      "command": "kubectl get cronjob data-processor-cron -n pluto -o jsonpath='{.spec.successfulJobsHistoryLimit}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Should keep 3 successful job histories"
+    },
+    {
+      "command": "kubectl get pvc batch-storage -n pluto -o jsonpath='{.spec.accessModes[0]}'",
+      "expected": "ReadWriteMany",
+      "points": 1,
+      "description": "Shared storage should support ReadWriteMany access"
+    },
+    {
+      "command": "kubectl get serviceaccount batch-processor -n pluto -o jsonpath='{.metadata.name}'",
+      "expected": "batch-processor",
+      "points": 1,
+      "description": "Should have batch-processor service account"
+    },
+    {
+      "command": "kubectl get job manual-trigger -n pluto -o jsonpath='{.metadata.labels.job-type}'",
+      "expected": "manual",
+      "points": 1,
+      "description": "Manual trigger job should have proper job-type label"
+    },
+    {
+      "command": "kubectl get job cron-validator -n pluto -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "CronJob validator should complete successfully"
+    },
+    {
+      "command": "kubectl get cronjobs -n pluto --no-headers | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Should have exactly 3 CronJobs configured"
+    }
+  ]
+}

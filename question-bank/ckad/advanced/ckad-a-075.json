@@ -1,0 +1,75 @@
+{
+  "id": "ckad-a-075",
+  "title": "Gateway API and Modern Traffic Management",
+  "description": "Implement next-generation traffic management using the ||Gateway API|| for advanced routing, load balancing, and traffic control. Create sophisticated traffic routing configurations with ||Gateway||, ||HTTPRoute||, and ||TCPRoute|| resources. Implement advanced features like ||request/response transformation||, ||traffic mirroring||, ||weighted routing||, and ||cross-namespace routing||. Demonstrate integration with multiple gateway controllers, implement complex routing policies, and show how Gateway API provides more expressive traffic management than traditional Ingress. Include scenarios with TLS termination, protocol upgrades, and advanced matching criteria.",
+  "points": 15,
+  "timeLimit": 30,
+  "category": "Services & Networking",
+  "tags": ["gateway-api", "httproute", "tcproute", "traffic-mirroring", "weighted-routing", "modern-networking", "advanced"],
+  "infrastructure": {
+    "namespaces": ["gateway-api"],
+    "resources": ["Gateway", "HTTPRoute", "TCPRoute", "Service", "Deployment"],
+    "prerequisites": ["Gateway API CRDs and controller installed"]
+  },
+  "solution": {
+    "steps": [
+      "# Create gateway-api namespace\nkubectl create namespace gateway-api\nkubectl create namespace other-namespace",
+
+      "# Create Gateway resource with TLS configuration\nkubectl apply -f - <<EOF\napiVersion: gateway.networking.k8s.io/v1beta1\nkind: Gateway\nmetadata:\n  name: main-gateway\n  namespace: gateway-api\nspec:\n  gatewayClassName: nginx\n  listeners:\n  - name: http\n    port: 80\n    protocol: HTTP\n  - name: https\n    port: 443\n    protocol: HTTPS\n    tls:\n      mode: Terminate\n      certificateRefs:\n      - name: tls-secret\nEOF",
+
+      "# Deploy main application\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: app-v1\n  namespace: gateway-api\n  labels:\n    app: myapp\n    version: v1\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: myapp\n      version: v1\n  template:\n    metadata:\n      labels:\n        app: myapp\n        version: v1\n    spec:\n      containers:\n      - name: app\n        image: nginx:1.21\n        ports:\n        - containerPort: 80\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: app-v2\n  namespace: gateway-api\n  labels:\n    app: myapp\n    version: v2\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: myapp\n      version: v2\n  template:\n    metadata:\n      labels:\n        app: myapp\n        version: v2\n    spec:\n      containers:\n      - name: app\n        image: nginx:1.22\n        ports:\n        - containerPort: 80\nEOF",
+
+      "# Create services for applications\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-v1-service\n  namespace: gateway-api\n  labels:\n    app: myapp\n    version: v1\nspec:\n  selector:\n    app: myapp\n    version: v1\n  ports:\n  - port: 80\n    targetPort: 80\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-v2-service\n  namespace: gateway-api\n  labels:\n    app: myapp\n    version: v2\nspec:\n  selector:\n    app: myapp\n    version: v2\n  ports:\n  - port: 80\n    targetPort: 80\nEOF",
+
+      "# Configure HTTPRoute for application routing\nkubectl apply -f - <<EOF\napiVersion: gateway.networking.k8s.io/v1beta1\nkind: HTTPRoute\nmetadata:\n  name: app-route\n  namespace: gateway-api\nspec:\n  parentRefs:\n  - name: main-gateway\n  hostnames:\n  - \"api.example.com\"\n  rules:\n  - matches:\n    - path:\n        type: PathPrefix\n        value: /api\n    backendRefs:\n    - name: app-v1-service\n      port: 80\n      weight: 90\n    - name: app-v2-service\n      port: 80\n      weight: 10\nEOF",
+
+      "# Set up canary routing with weights\nkubectl apply -f - <<EOF\napiVersion: gateway.networking.k8s.io/v1beta1\nkind: HTTPRoute\nmetadata:\n  name: canary-route\n  namespace: gateway-api\nspec:\n  parentRefs:\n  - name: main-gateway\n  hostnames:\n  - \"canary.example.com\"\n  rules:\n  - matches:\n    - headers:\n      - name: \"canary\"\n        value: \"true\"\n    backendRefs:\n    - name: app-v2-service\n      port: 80\n      weight: 100\n  - backendRefs:\n    - name: app-v1-service\n      port: 80\n      weight: 90\n    - name: app-v2-service\n      port: 80\n      weight: 10\nEOF",
+
+      "# Configure traffic mirroring for testing\nkubectl apply -f - <<EOF\napiVersion: gateway.networking.k8s.io/v1beta1\nkind: HTTPRoute\nmetadata:\n  name: mirror-route\n  namespace: gateway-api\nspec:\n  parentRefs:\n  - name: main-gateway\n  hostnames:\n  - \"mirror.example.com\"\n  rules:\n  - matches:\n    - path:\n        type: PathPrefix\n        value: /\n    filters:\n    - type: RequestMirror\n      requestMirror:\n        backendRef:\n          name: app-v2-service\n          port: 80\n    backendRefs:\n    - name: app-v1-service\n      port: 80\nEOF",
+
+      "# Deploy cross-namespace service\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: other-app\n  namespace: other-namespace\n  labels:\n    app: other-app\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: other-app\n  template:\n    metadata:\n      labels:\n        app: other-app\n    spec:\n      containers:\n      - name: app\n        image: nginx:1.21\n        ports:\n        - containerPort: 80\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: other-service\n  namespace: other-namespace\n  labels:\n    app: other-app\nspec:\n  selector:\n    app: other-app\n  ports:\n  - port: 80\n    targetPort: 80\nEOF",
+
+      "# Set up cross-namespace routing\nkubectl apply -f - <<EOF\napiVersion: gateway.networking.k8s.io/v1beta1\nkind: HTTPRoute\nmetadata:\n  name: cross-ns-route\n  namespace: gateway-api\nspec:\n  parentRefs:\n  - name: main-gateway\n  hostnames:\n  - \"cross.example.com\"\n  rules:\n  - matches:\n    - path:\n        type: PathPrefix\n        value: /other\n    backendRefs:\n    - name: other-service\n      namespace: other-namespace\n      port: 80\nEOF",
+
+      "# Test Gateway API configurations\nkubectl get gateway -n gateway-api\nkubectl get httproute -n gateway-api\nkubectl describe gateway main-gateway -n gateway-api"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get gateway main-gateway -n gateway-api -o jsonpath='{.spec.gatewayClassName}'",
+      "expected": "nginx",
+      "points": 2,
+      "description": "Gateway configured with correct gateway class"
+    },
+    {
+      "command": "kubectl get httproute app-route -n gateway-api -o jsonpath='{.spec.rules[0].backendRefs}' | jq length",
+      "expected": "2",
+      "points": 3,
+      "description": "HTTPRoute has multiple backend references for weighted routing"
+    },
+    {
+      "command": "kubectl get httproute canary-route -n gateway-api -o jsonpath='{.spec.rules[0].backendRefs[0].weight}'",
+      "expected": "90",
+      "points": 3,
+      "description": "Canary route has weighted traffic distribution"
+    },
+    {
+      "command": "kubectl get httproute mirror-route -n gateway-api -o jsonpath='{.spec.rules[0].filters[0].type}'",
+      "expected": "RequestMirror",
+      "points": 3,
+      "description": "HTTPRoute configured with traffic mirroring filter"
+    },
+    {
+      "command": "kubectl get gateway main-gateway -n gateway-api -o jsonpath='{.spec.listeners[0].tls.mode}'",
+      "expected": "Terminate",
+      "points": 2,
+      "description": "Gateway has TLS termination configured"
+    },
+    {
+      "command": "kubectl get httproute cross-ns-route -n gateway-api -o jsonpath='{.spec.rules[0].backendRefs[0].namespace}'",
+      "expected": "other-namespace",
+      "points": 2,
+      "description": "HTTPRoute supports cross-namespace backend references"
+    }
+  ]
+}

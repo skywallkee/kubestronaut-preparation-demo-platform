@@ -1,0 +1,61 @@
+{
+  "id": "ckad-e-014",
+  "title": "Create Pod with Resource Limits",
+  "description": "Create a Pod named ||resource-pod|| using image ||nginx:1.20-alpine|| with memory request ||64Mi|| and memory limit ||128Mi|| in the ||uranus|| namespace.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "resource-management",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "uranus"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run resource-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > resource-pod.yaml",
+      "2. Add resources section:",
+      "   resources:",
+      "     requests:",
+      "       memory: '64Mi'",
+      "     limits:",
+      "       memory: '128Mi'",
+      "3. Apply pod:",
+      "   kubectl apply -f resource-pod.yaml -n uranus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod resource-pod -n uranus -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1.5,
+      "description": "Pod should be running"
+    },
+    {
+      "command": "kubectl get pod resource-pod -n uranus -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "nginx:1.20-alpine",
+      "points": 0.5,
+      "description": "Pod should use correct image"
+    },
+    {
+      "command": "kubectl get pod resource-pod -n uranus -o jsonpath='{.spec.containers[0].resources.requests.memory}'",
+      "expected": "64Mi",
+      "points": 1,
+      "description": "Pod should have memory request of 64Mi"
+    },
+    {
+      "command": "kubectl get pod resource-pod -n uranus -o jsonpath='{.spec.containers[0].resources.limits.memory}'",
+      "expected": "128Mi",
+      "points": 1,
+      "description": "Pod should have memory limit of 128Mi"
+    }
+  ]
+}

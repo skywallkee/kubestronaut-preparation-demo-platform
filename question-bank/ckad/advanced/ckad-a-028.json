@@ -1,0 +1,94 @@
+{
+  "id": "ckad-a-028",
+  "title": "Advanced Namespace Management and Resource Isolation",
+  "description": "Create a complex multi-tenant namespace architecture in ||tenant-a||, ||tenant-b||, and ||shared-services|| with proper isolation and resource management:\n\n1. **Namespace Architecture Setup**:\n   Create namespace hierarchy with:\n   - **Tenant A**: ||tenant-a|| for development team with medium resource allocation\n   - **Tenant B**: ||tenant-b|| for production team with high resource allocation\n   - **Shared Services**: ||shared-services|| for common infrastructure components\n   - **Monitoring**: ||monitoring|| for observability across all tenants\n\n2. **Resource Quotas per Namespace**:\n   Configure different resource limits:\n   - **Tenant A**: 2 CPU cores, 4Gi RAM, 10 pods, 5 services, 3 PVCs\n   - **Tenant B**: 4 CPU cores, 8Gi RAM, 20 pods, 10 services, 10 PVCs\n   - **Shared Services**: 1 CPU core, 2Gi RAM, 5 pods, 5 services\n   - **Monitoring**: 1 CPU core, 2Gi RAM, 10 pods, 3 services\n\n3. **Limit Ranges for Resource Management**:\n   Create LimitRange objects for each namespace:\n   - **Default requests**: CPU 100m, memory 128Mi\n   - **Default limits**: CPU 500m, memory 512Mi\n   - **Maximum per container**: CPU 1000m, memory 1Gi\n   - **Minimum requirements**: CPU 50m, memory 64Mi\n\n4. **Cross-Namespace Service Discovery**:\n   Deploy applications that communicate across namespaces:\n   - **Frontend** in tenant-a calling ||api-service|| in tenant-b\n   - **Database** in shared-services used by both tenants\n   - **Monitoring** in monitoring namespace scraping all tenants\n\n5. **Network Policies for Tenant Isolation**:\n   Implement network segmentation:\n   - **Tenant A isolation**: Allow only necessary cross-namespace traffic\n   - **Tenant B protection**: Strict ingress/egress rules for production\n   - **Shared services access**: Controlled access to common resources\n   - **Monitoring exemption**: Allow monitoring to access all namespaces\n\n6. **RBAC per Namespace**:\n   Configure role-based access control:\n   - **Tenant A team**: Full access to tenant-a, read-only to shared-services\n   - **Tenant B team**: Full access to tenant-b, read-only to shared-services\n   - **SRE team**: Admin access to monitoring and shared-services\n   - **Platform team**: Cluster-admin for infrastructure management\n\n7. **Namespace Lifecycle Management**:\n   Implement namespace operations:\n   - **Finalizers**: Prevent accidental namespace deletion\n   - **Labels and annotations**: Organize namespaces with metadata\n   - **Cleanup jobs**: Automated resource cleanup within namespaces\n   - **Backup policies**: Per-namespace backup configurations\n\n8. **Resource Monitoring and Alerting**:\n   Set up namespace-level monitoring:\n   - **Resource usage tracking**: CPU, memory, storage per namespace\n   - **Quota alerts**: Notifications when approaching resource limits\n   - **Cross-namespace dependency monitoring**: Service health checks\n   - **Tenant billing**: Resource consumption reporting\n\nEnsure proper multi-tenant namespace isolation with comprehensive resource management.",
+  "points": 8,
+  "timeLimit": 18,
+  "category": "Core Concepts",
+  "tags": [
+    "namespaces",
+    "resource-quotas",
+    "limit-ranges",
+    "multi-tenancy",
+    "isolation",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "tenant-a",
+      "tenant-b",
+      "shared-services",
+      "monitoring"
+    ],
+    "resources": [
+      "resourcequotas",
+      "limitranges",
+      "deployments",
+      "services",
+      "networkpolicies",
+      "serviceaccounts",
+      "roles",
+      "rolebindings"
+    ],
+    "prerequisites": [
+      "network-policy-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespaces with proper labels:",
+      "   kubectl create namespace tenant-a tenant-b shared-services monitoring",
+      "   kubectl label namespace tenant-a tenant=a environment=dev",
+      "   kubectl label namespace tenant-b tenant=b environment=prod",
+      "2. Create ResourceQuota objects for each namespace:",
+      "   Configure CPU, memory, pod, service, and PVC limits per tenant",
+      "3. Create LimitRange objects:",
+      "   Set default requests/limits and min/max per container",
+      "4. Deploy applications across namespaces:",
+      "   Frontend in tenant-a, API in tenant-b, database in shared-services",
+      "5. Configure NetworkPolicies for isolation:",
+      "   Allow necessary cross-namespace communication only",
+      "6. Set up RBAC with appropriate permissions:",
+      "   Team-specific access to their namespaces and shared resources",
+      "7. Implement monitoring and resource tracking across all namespaces"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota -n tenant-a -o jsonpath='{.items[0].spec.hard.requests\\.cpu}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Tenant A should have 2 CPU cores quota"
+    },
+    {
+      "command": "kubectl get resourcequota -n tenant-b -o jsonpath='{.items[0].spec.hard.requests\\.cpu}'",
+      "expected": "4",
+      "points": 1,
+      "description": "Tenant B should have 4 CPU cores quota"
+    },
+    {
+      "command": "kubectl get limitrange -n tenant-a -o jsonpath='{.items[0].spec.limits[0].default.cpu}'",
+      "expected": "500m",
+      "points": 1,
+      "description": "Tenant A should have 500m CPU default limit"
+    },
+    {
+      "command": "kubectl get deployment frontend -n tenant-a -o jsonpath='{.status.readyReplicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Frontend should be running in tenant-a"
+    },
+    {
+      "command": "kubectl get service api-service -n tenant-b -o jsonpath='{.metadata.name}'",
+      "expected": "api-service",
+      "points": 1,
+      "description": "API service should exist in tenant-b"
+    },
+    {
+      "command": "kubectl get networkpolicy -n tenant-a -o jsonpath='{.items[0].metadata.name}'",
+      "expected": "tenant-isolation",
+      "points": 1,
+      "description": "Should have network policy for tenant isolation"
+    }
+  ]
+}

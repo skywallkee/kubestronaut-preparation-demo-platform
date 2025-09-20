@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-076",
+  "title": "Network Policies with Volume Management and Resource Control",
+  "description": "Deploy a multi-tier application in the pluto namespace with strict network segmentation. Configure different volume types for each tier, implement network policies for security, and apply resource quotas to ensure fair resource allocation across application tiers.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["network-policies", "volume-types", "resource-management", "multi-container-pods"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ResourceQuota ||tier-quota|| limiting CPU to ||3|| cores, memory to ||6Gi||"
+    },
+    {
+      "step": 2,
+      "description": "Deploy web tier with emptyDir volume for session storage and label ||tier=web||"
+    },
+    {
+      "step": 3,
+      "description": "Deploy app tier with PVC ||app-data|| (2Gi) for application data and label ||tier=app||"
+    },
+    {
+      "step": 4,
+      "description": "Deploy data tier with hostPath volume ||/data/db|| for database files and label ||tier=data||"
+    },
+    {
+      "step": 5,
+      "description": "Create NetworkPolicy allowing web to app communication only"
+    },
+    {
+      "step": 6,
+      "description": "Create NetworkPolicy allowing app to data communication only"
+    },
+    {
+      "step": 7,
+      "description": "Verify network isolation, volume access, and resource constraints"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get resourcequota tier-quota -n pluto -o jsonpath='{.spec.hard.\"requests.cpu\"}'",
+      "expectedOutput": "3",
+      "description": "Verify ResourceQuota CPU limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment web-tier -n pluto -o jsonpath='{.spec.template.spec.volumes[0].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify web tier uses emptyDir volume",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc app-data -n pluto -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify app tier PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment data-tier -n pluto -o jsonpath='{.spec.template.spec.volumes[0].hostPath.path}'",
+      "expectedOutput": "/data/db",
+      "description": "Verify data tier uses hostPath volume",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy web-to-app -n pluto -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expectedOutput": "app",
+      "description": "Verify NetworkPolicy targets app tier",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy web-to-app -n pluto -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expectedOutput": "web",
+      "description": "Verify NetworkPolicy allows web to app access",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy app-to-data -n pluto -o jsonpath='{.spec.ingress[0].from[0].podSelector.matchLabels.tier}'",
+      "expectedOutput": "app",
+      "description": "Verify NetworkPolicy allows app to data access",
+      "points": 2
+    }
+  ]
+}

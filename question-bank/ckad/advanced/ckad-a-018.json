@@ -1,0 +1,120 @@
+{
+  "id": "ckad-a-018",
+  "title": "Security Hardening with SecurityContext and Pod Security Standards",
+  "description": "Implement comprehensive security hardening for a financial application in namespace ||pluto|| following security best practices:\n\n1. **Secure Application Deployment**:\n   - Deploy ||banking-app|| with 2 replicas using ||nginx:1.21|| with strict security context\n   - Deploy ||payment-processor|| with 1 replica using ||alpine:3.16|| for payment processing\n   - Deploy ||audit-logger|| with 1 replica using ||busybox:1.35|| for security logging\n\n2. **Pod Security Context Configuration**:\n   - **Banking App**: Run as non-root user (UID 1001), group 2001\n     - Read-only root filesystem\n     - Drop ALL capabilities, add only NET_BIND_SERVICE\n     - Disable privilege escalation\n     - Set seccomp profile to RuntimeDefault\n   - **Payment Processor**: Run as user 1002, group 2002\n     - Read-only root filesystem except /tmp\n     - Drop ALL capabilities\n     - Set AppArmor profile to runtime/default\n   - **Audit Logger**: Run as user 1003, group 2003\n     - Allow specific capabilities: CHOWN, DAC_OVERRIDE for log management\n     - Set SELinux context with appropriate levels\n\n3. **Pod Security Standards**:\n   - Configure namespace with ||pod-security.kubernetes.io/enforce=restricted|| label\n   - Set ||pod-security.kubernetes.io/audit=restricted|| for auditing\n   - Set ||pod-security.kubernetes.io/warn=restricted|| for warnings\n   - Ensure all pods comply with restricted Pod Security Standards\n\n4. **Network Security**:\n   - Create NetworkPolicy ||security-isolation|| that:\n     - Denies all ingress and egress by default\n     - Allows banking-app to communicate with payment-processor only on port 8080\n     - Allows audit-logger to receive logs from both apps on port 514\n     - Allows DNS resolution for all pods\n\n5. **RBAC and Service Accounts**:\n   - Create ServiceAccount ||secure-banking-sa|| with minimal permissions\n   - Create Role ||banking-role|| with specific permissions:\n     - GET/LIST pods and services in pluto namespace only\n     - CREATE/UPDATE configmaps for configuration\n   - Create RoleBinding linking service account to role\n   - Ensure no pods use default service account\n\n6. **Secrets and Configuration Security**:\n   - Create Secret ||banking-secrets|| with encrypted sensitive data:\n     - API keys, database passwords, TLS certificates\n   - Mount secrets as files (not environment variables) with restricted file permissions (0400)\n   - Implement secret rotation strategy\n   - Use projected volumes for combining secrets and configmaps securely\n\n7. **Admission Control and Validation**:\n   - Create PodSecurityPolicy ||restricted-psp|| (if supported) or OPA Gatekeeper policies\n   - Implement resource validation rules\n   - Create ValidatingAdmissionWebhook for custom security checks\n\n8. **Security Monitoring and Compliance**:\n   - Deploy security scanning Job ||security-scanner|| that validates all security configurations\n   - Create compliance checking Job ||compliance-checker|| that ensures adherence to security standards\n   - Configure security event logging and alerting\n\nEnsure the application meets enterprise security requirements and compliance standards.",
+  "points": 10,
+  "timeLimit": 22,
+  "category": "Security",
+  "tags": [
+    "security-context",
+    "pod-security-standards",
+    "rbac",
+    "network-security",
+    "security-hardening",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "networkpolicies",
+      "secrets",
+      "configmaps",
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": [
+      "pod-security-standards",
+      "network-policy-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Configure namespace with Pod Security Standards:",
+      "   kubectl label namespace pluto pod-security.kubernetes.io/enforce=restricted",
+      "   kubectl label namespace pluto pod-security.kubernetes.io/audit=restricted",
+      "   kubectl label namespace pluto pod-security.kubernetes.io/warn=restricted",
+      "2. Create RBAC resources:",
+      "   kubectl create serviceaccount secure-banking-sa -n pluto",
+      "   kubectl create role banking-role --verb=get,list --resource=pods,services --verb=create,update --resource=configmaps -n pluto",
+      "   kubectl create rolebinding banking-rb --role=banking-role --serviceaccount=pluto:secure-banking-sa -n pluto",
+      "3. Create secrets with proper security:",
+      "   kubectl create secret generic banking-secrets --from-literal=api-key=secure123 --from-literal=db-password=encrypted456 -n pluto",
+      "4. Create deployment manifests with security contexts:",
+      "   - banking-app: runAsUser=1001, runAsGroup=2001, readOnlyRootFilesystem=true",
+      "   - payment-processor: runAsUser=1002, runAsGroup=2002, drop ALL capabilities",
+      "   - audit-logger: runAsUser=1003, specific capabilities for log management",
+      "5. Create NetworkPolicy for security isolation:",
+      "   Default deny all, specific allow rules for inter-service communication",
+      "6. Deploy security validation and compliance checking jobs",
+      "7. Verify all security configurations are properly applied"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get namespace pluto -o jsonpath='{.metadata.labels.pod-security\\.kubernetes\\.io/enforce}'",
+      "expected": "restricted",
+      "points": 1,
+      "description": "Namespace should enforce restricted Pod Security Standards"
+    },
+    {
+      "command": "kubectl get deployment banking-app -n pluto -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expected": "1001",
+      "points": 1,
+      "description": "Banking app should run as user 1001"
+    },
+    {
+      "command": "kubectl get deployment banking-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}'",
+      "expected": "true",
+      "points": 1,
+      "description": "Banking app should have read-only root filesystem"
+    },
+    {
+      "command": "kubectl get deployment payment-processor -n pluto -o jsonpath='{.spec.template.spec.containers[0].securityContext.capabilities.drop[0]}'",
+      "expected": "ALL",
+      "points": 1,
+      "description": "Payment processor should drop ALL capabilities"
+    },
+    {
+      "command": "kubectl get deployment banking-app -n pluto -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expected": "secure-banking-sa",
+      "points": 1,
+      "description": "Banking app should use secure service account"
+    },
+    {
+      "command": "kubectl get role banking-role -n pluto -o jsonpath='{.rules[0].verbs[0]}'",
+      "expected": "get",
+      "points": 1,
+      "description": "Banking role should have minimal required permissions"
+    },
+    {
+      "command": "kubectl get networkpolicy security-isolation -n pluto -o jsonpath='{.spec.policyTypes[0]}'",
+      "expected": "Ingress",
+      "points": 1,
+      "description": "Should have network policy for security isolation"
+    },
+    {
+      "command": "kubectl get secret banking-secrets -n pluto -o jsonpath='{.data.api-key}' | base64 -d",
+      "expected": "secure123",
+      "points": 1,
+      "description": "Banking secrets should be properly encoded"
+    },
+    {
+      "command": "kubectl get job security-scanner -n pluto -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Security scanner should complete successfully"
+    },
+    {
+      "command": "kubectl get pods -n pluto --field-selector=status.phase=Running --no-headers | wc -l",
+      "expected": "4",
+      "points": 1,
+      "description": "All security-hardened pods should be running"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-070",
+  "title": "Helm Chart with Volume Types and Health Monitoring",
+  "description": "Create a comprehensive Helm chart for a monitoring solution in the saturn namespace. Configure multiple volume types for different data retention requirements and implement extensive health monitoring with custom probes. The chart should support different deployment modes.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["helm-package-manager", "volume-types", "health-probes", "logging-monitoring"],
+  "points": 12,
+  "timeMinutes": 25,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create Helm chart ||monitoring-suite|| with templates for Prometheus, Grafana, and AlertManager"
+    },
+    {
+      "step": 2,
+      "description": "Configure values.yaml with volume configurations for different components"
+    },
+    {
+      "step": 3,
+      "description": "Set up emptyDir volume for Prometheus temp data and hostPath for system metrics"
+    },
+    {
+      "step": 4,
+      "description": "Configure PVC templates for persistent storage: ||metrics-storage|| (10Gi), ||dashboard-storage|| (2Gi)"
+    },
+    {
+      "step": 5,
+      "description": "Implement health probes: liveness on ||/health||, readiness on ||/ready||, startup on ||/startup||"
+    },
+    {
+      "step": 6,
+      "description": "Configure probe parameters with different intervals and thresholds per component"
+    },
+    {
+      "step": 7,
+      "description": "Deploy the chart and verify all components are healthy with proper storage"
+    }
+  ],
+  "validations": [
+    {
+      "command": "helm list -n saturn | grep monitoring-suite",
+      "expectedOutput": "monitoring-suite",
+      "description": "Verify Helm release is deployed",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment prometheus -n saturn -o jsonpath='{.spec.template.spec.volumes[0].emptyDir}'",
+      "expectedOutput": "{}",
+      "description": "Verify Prometheus uses emptyDir volume",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment prometheus -n saturn -o jsonpath='{.spec.template.spec.volumes[1].hostPath.path}'",
+      "expectedOutput": "/proc",
+      "description": "Verify Prometheus uses hostPath for system metrics",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc metrics-storage -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "10Gi",
+      "description": "Verify metrics storage PVC size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc dashboard-storage -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "2Gi",
+      "description": "Verify dashboard storage PVC size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment prometheus -n saturn -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify Prometheus liveness probe",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment grafana -n saturn -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}'",
+      "expectedOutput": "/ready",
+      "description": "Verify Grafana readiness probe",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment alertmanager -n saturn -o jsonpath='{.spec.template.spec.containers[0].startupProbe.httpGet.path}'",
+      "expectedOutput": "/startup",
+      "description": "Verify AlertManager startup probe",
+      "points": 2
+    }
+  ]
+}

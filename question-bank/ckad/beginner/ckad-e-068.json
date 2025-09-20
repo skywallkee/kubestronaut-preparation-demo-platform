@@ -1,0 +1,51 @@
+{
+  "id": "ckad-e-068",
+  "title": "Create LoadBalancer Service",
+  "description": "Create a LoadBalancer Service named ||lb-service|| in Namespace ||default|| that exposes Deployment ||web-deploy|| on port ||8080|| targeting container port ||80||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "services"
+    ],
+    "prerequisites": [
+      "web-deploy Deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create LoadBalancer Service:",
+      "   kubectl expose deployment web-deploy --port=8080 --target-port=80 --type=LoadBalancer --name=lb-service",
+      "2. Verify service:",
+      "   kubectl get service lb-service"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service lb-service -o jsonpath='{.spec.type}'",
+      "expected": "LoadBalancer",
+      "points": 1,
+      "description": "Service should be of type LoadBalancer"
+    },
+    {
+      "command": "kubectl get service lb-service -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "Service should expose port 8080"
+    },
+    {
+      "command": "kubectl get service lb-service -o jsonpath='{.spec.ports[0].targetPort}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should target port 80"
+    }
+  ]
+}

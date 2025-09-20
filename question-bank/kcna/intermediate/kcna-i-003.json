@@ -1,0 +1,95 @@
+{
+  "id": "kcna-i-003",
+  "title": "Pod Lifecycle and Basic Workloads",
+  "description": "Demonstrate understanding of Pod lifecycle and basic workload management:\n\n1. Create a Pod named ||lifecycle-demo|| in namespace ||venus|| with:\n   - Image: ||busybox:1.35||\n   - Command: ||sleep 3600||\n   - Resource requests: CPU ||100m||, Memory ||128Mi||\n   - Resource limits: CPU ||200m||, Memory ||256Mi||\n\n2. Monitor the Pod through its lifecycle phases:\n   - Check initial status\n   - Verify it reaches Running state\n   - Examine Pod events\n\n3. Create a ReplicaSet named ||rs-demo|| with:\n   - 3 replicas\n   - Image: ||nginx:1.21||\n   - Label selector: ||app=demo||\n\n4. Scale the ReplicaSet to 5 replicas and observe the changes\n\n5. Delete one Pod and watch how the ReplicaSet responds\n\nExplain the Pod phases and ReplicaSet behavior you observe.",
+  "points": 7,
+  "timeLimit": 15,
+  "category": "Workloads",
+  "tags": [
+    "pods",
+    "lifecycle",
+    "replicaset",
+    "scaling"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods",
+      "replicasets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the Pod with resource constraints:",
+      "   kubectl run lifecycle-demo --image=busybox:1.35 --command -n venus -- sleep 3600",
+      "   kubectl patch pod lifecycle-demo -n venus -p '{\"spec\":{\"containers\":[{\"name\":\"lifecycle-demo\",\"resources\":{\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"},\"limits\":{\"cpu\":\"200m\",\"memory\":\"256Mi\"}}}]}}'",
+      "2. Monitor Pod status:",
+      "   kubectl get pod lifecycle-demo -n venus -w",
+      "3. Check Pod events:",
+      "   kubectl describe pod lifecycle-demo -n venus",
+      "4. Create ReplicaSet YAML:",
+      "   cat > rs-demo.yaml << EOF",
+      "   apiVersion: apps/v1",
+      "   kind: ReplicaSet",
+      "   metadata:",
+      "     name: rs-demo",
+      "     namespace: venus",
+      "   spec:",
+      "     replicas: 3",
+      "     selector:",
+      "       matchLabels:",
+      "         app: demo",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: demo",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:1.21",
+      "   EOF",
+      "5. Apply ReplicaSet:",
+      "   kubectl apply -f rs-demo.yaml",
+      "6. Scale ReplicaSet:",
+      "   kubectl scale rs rs-demo --replicas=5 -n venus",
+      "7. Delete a Pod and observe:",
+      "   kubectl delete pod -l app=demo -n venus --field-selector=status.phase=Running | head -1",
+      "   kubectl get pods -l app=demo -n venus -w"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod lifecycle-demo -n venus -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 1,
+      "description": "Pod should be in Running phase"
+    },
+    {
+      "command": "kubectl get pod lifecycle-demo -n venus -o jsonpath='{.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Pod should have correct CPU request"
+    },
+    {
+      "command": "kubectl get rs rs-demo -n venus -o jsonpath='{.spec.replicas}'",
+      "expected": "5",
+      "points": 2,
+      "description": "ReplicaSet should be scaled to 5 replicas"
+    },
+    {
+      "command": "kubectl get pods -l app=demo -n venus --no-headers | wc -l",
+      "expected": "5",
+      "points": 2,
+      "description": "Should have 5 running Pods with demo label"
+    },
+    {
+      "command": "kubectl get rs rs-demo -n venus -o jsonpath='{.status.readyReplicas}'",
+      "expected": "5",
+      "points": 1,
+      "description": "All replicas should be ready"
+    }
+  ]
+}

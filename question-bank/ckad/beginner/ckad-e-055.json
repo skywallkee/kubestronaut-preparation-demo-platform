@@ -1,0 +1,44 @@
+{
+  "id": "ckad-e-055",
+  "title": "Create Pod with Security Context",
+  "description": "Create a Pod named ||secure-pod|| in Namespace ||default|| using image ||nginx:1.21|| with security context: run as user ||1001|| and run as group ||2001||.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "security-contexts",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Pod YAML with security context:",
+      "   kubectl run secure-pod --image=nginx:1.21 --dry-run=client -o yaml > secure-pod.yaml",
+      "2. Edit YAML to add security context (runAsUser: 1001, runAsGroup: 2001)",
+      "3. Apply the Pod:",
+      "   kubectl apply -f secure-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod secure-pod -o jsonpath='{.spec.securityContext.runAsUser}'",
+      "expected": "1001",
+      "points": 1.5,
+      "description": "Pod should run as user 1001"
+    },
+    {
+      "command": "kubectl get pod secure-pod -o jsonpath='{.spec.securityContext.runAsGroup}'",
+      "expected": "2001",
+      "points": 1.5,
+      "description": "Pod should run as group 2001"
+    }
+  ]
+}

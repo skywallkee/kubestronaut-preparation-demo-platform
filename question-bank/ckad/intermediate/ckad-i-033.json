@@ -1,0 +1,113 @@
+{
+  "id": "ckad-i-033",
+  "title": "Ingress with TLS and Service Discovery",
+  "description": "Set up a complete ingress solution in namespace ||pluto|| with TLS termination and advanced routing:\n\n**Application Stack:**\n- Web app deployment: ||web-app|| (nginx:1.21, 2 replicas)\n- API deployment: ||api-app|| (nginx:alpine, 2 replicas)\n- Admin panel: ||admin-app|| (nginx:alpine, 1 replica)\n\n**Ingress Configuration:**\n- Ingress name: ||main-ingress||\n- Host: ||myapp.local||\n- Path routing: ||/|| -> web-app, ||/api|| -> api-app, ||/admin|| -> admin-app\n- TLS secret: ||myapp-tls|| with self-signed certificate\n- Annotations for SSL redirect and rate limiting\n\n**DNS Service Discovery:**\n- Configure apps to communicate via service DNS\n- Web app calls API via ||api-service.pluto.svc.cluster.local||\n- Admin app monitors both via headless services\n\n**ConfigMaps for Routing:**\n- Web app nginx config for API calls\n- API app config for response headers\n- Admin app config for service discovery\n\n**Services:**\n- ||web-service|| (ClusterIP, port 80)\n- ||api-service|| (ClusterIP, port 8080)\n- ||admin-service|| (ClusterIP, port 9090)\n- ||api-headless|| (headless service)\n\nVerify TLS termination, path routing, and internal service communication.",
+  "points": 9,
+  "timeLimit": 16,
+  "category": "Services and Networking",
+  "tags": [
+    "ingress",
+    "dns-service-discovery",
+    "services",
+    "configmaps-secrets",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "ingresses",
+      "configmaps",
+      "secrets"
+    ],
+    "prerequisites": [
+      "ingress-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create TLS secret:",
+      "   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj '/CN=myapp.local'",
+      "   kubectl create secret tls myapp-tls --key tls.key --cert tls.crt -n pluto",
+      "2. Create ConfigMaps for each app:",
+      "   kubectl create configmap web-config -n pluto --from-literal=api_endpoint='http://api-service.pluto.svc.cluster.local:8080'",
+      "   kubectl create configmap api-config -n pluto --from-literal=response_header='API-v1.0'",
+      "   kubectl create configmap admin-config -n pluto --from-literal=monitoring_targets='web-service.pluto.svc.cluster.local,api-service.pluto.svc.cluster.local'",
+      "3. Create deployments and services:",
+      "   kubectl create deployment web-app --image=nginx:1.21 --replicas=2 -n pluto",
+      "   kubectl create deployment api-app --image=nginx:alpine --replicas=2 -n pluto",
+      "   kubectl create deployment admin-app --image=nginx:alpine --replicas=1 -n pluto",
+      "   kubectl expose deployment web-app --port=80 --name=web-service -n pluto",
+      "   kubectl expose deployment api-app --port=8080 --name=api-service -n pluto",
+      "   kubectl expose deployment admin-app --port=9090 --name=admin-service -n pluto",
+      "4. Create headless service for API:",
+      "   kubectl create service clusterip api-headless --tcp=8080:8080 --clusterip=None -n pluto",
+      "   kubectl patch service api-headless -n pluto --type='json' -p='[{\"op\":\"replace\",\"path\":\"/spec/selector\",\"value\":{\"app\":\"api-app\"}}]'",
+      "5. Create ingress with TLS and path routing:",
+      "   kubectl create ingress main-ingress -n pluto --rule='myapp.local/=web-service:80' --rule='myapp.local/api=api-service:8080' --rule='myapp.local/admin=admin-service:9090' --annotation='nginx.ingress.kubernetes.io/ssl-redirect=true'",
+      "   kubectl patch ingress main-ingress -n pluto --type='json' -p='[{\"op\":\"add\",\"path\":\"/spec/tls\",\"value\":[{\"hosts\":[\"myapp.local\"],\"secretName\":\"myapp-tls\"}]}]'",
+      "6. Verify ingress and services:",
+      "   kubectl get ingress main-ingress -n pluto",
+      "   kubectl get services -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get secret myapp-tls -n pluto -o jsonpath='{.type}'",
+      "expected": "kubernetes.io/tls",
+      "points": 1,
+      "description": "TLS secret should be created"
+    },
+    {
+      "command": "kubectl get ingress main-ingress -n pluto -o jsonpath='{.spec.tls[0].secretName}'",
+      "expected": "myapp-tls",
+      "points": 1,
+      "description": "Ingress should reference TLS secret"
+    },
+    {
+      "command": "kubectl get ingress main-ingress -n pluto -o jsonpath='{.spec.rules[*].http.paths[*].path}' | tr ' ' '\n' | wc -l",
+      "expected": "3",
+      "points": 1,
+      "description": "Ingress should have 3 path routes"
+    },
+    {
+      "command": "kubectl get service web-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Web service should expose port 80"
+    },
+    {
+      "command": "kubectl get service api-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "8080",
+      "points": 1,
+      "description": "API service should expose port 8080"
+    },
+    {
+      "command": "kubectl get service api-headless -n pluto -o jsonpath='{.spec.clusterIP}'",
+      "expected": "None",
+      "points": 1,
+      "description": "API headless service should have no cluster IP"
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.status.readyReplicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Web app should have 2 ready replicas"
+    },
+    {
+      "command": "kubectl get deployment api-app -n pluto -o jsonpath='{.status.readyReplicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "API app should have 2 ready replicas"
+    },
+    {
+      "command": "kubectl get configmap web-config -n pluto -o jsonpath='{.data.api_endpoint}' | grep -c 'api-service.pluto.svc.cluster.local'",
+      "expected": "1",
+      "points": 1,
+      "description": "Web config should contain service discovery endpoint"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "id": "ckad-i-025",
+  "title": "Debugging Troubleshooting with Logging",
+  "description": "Debug and fix a problematic application deployment in namespace ||pluto||:\n\n**Broken Deployment (provided):**\n- Name: ||broken-app||\n- Image: ||nginx:1.21||\n- Replicas: ||3||\n- Has configuration and networking issues\n\n**Your Tasks:**\n1. **Investigate the issues:**\n   - Check pod status and events\n   - Examine logs for errors\n   - Identify configuration problems\n   - Use debugging commands to diagnose\n\n2. **Fix the deployment:**\n   - Correct the container image issue (||nginx:1.21|| -> ||nginx:1.21-alpine||)\n   - Add missing environment variable ||ENVIRONMENT|| = ||production||\n   - Fix port configuration (containerPort should be ||80||)\n   - Add resource requests: CPU ||50m||, Memory ||64Mi||\n\n3. **Add monitoring and logging:**\n   - Create a sidecar logging container\n   - Configure log aggregation to ||/var/log/app.log||\n   - Add readiness probe for port ||80||\n\n4. **Service and testing:**\n   - Create service ||broken-app-service|| on port ||80||\n   - Test connectivity and log collection\n\n**Debugging Requirements:**\n- Use ||kubectl describe||, ||kubectl logs||, ||kubectl get events||\n- Document the issues found\n- Verify fixes work correctly",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Application Observability",
+  "tags": [
+    "debugging-troubleshooting",
+    "logging-monitoring",
+    "deployments-rolling-updates",
+    "health-probes",
+    "services",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "pods"
+    ],
+    "prerequisites": [
+      "broken-deployment"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create the broken deployment for debugging:",
+      "   cat <<EOF > broken-app.yaml",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: broken-app",
+      "     namespace: pluto",
+      "   spec:",
+      "     replicas: 3",
+      "     selector:",
+      "       matchLabels:",
+      "         app: broken-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: broken-app",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:wrong-tag",
+      "           ports:",
+      "           - containerPort: 8080",
+      "   EOF",
+      "   kubectl apply -f broken-app.yaml",
+      "2. Debug the deployment issues:",
+      "   kubectl get pods -n pluto",
+      "   kubectl describe deployment broken-app -n pluto",
+      "   kubectl describe pods -l app=broken-app -n pluto",
+      "   kubectl get events -n pluto --sort-by='.lastTimestamp'",
+      "3. Fix the deployment with correct configuration:",
+      "   cat <<EOF > fixed-app.yaml",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: broken-app",
+      "     namespace: pluto",
+      "   spec:",
+      "     replicas: 3",
+      "     selector:",
+      "       matchLabels:",
+      "         app: broken-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: broken-app",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:1.21-alpine",
+      "           ports:",
+      "           - containerPort: 80",
+      "           env:",
+      "           - name: ENVIRONMENT",
+      "             value: production",
+      "           resources:",
+      "             requests:",
+      "               cpu: 50m",
+      "               memory: 64Mi",
+      "           readinessProbe:",
+      "             httpGet:",
+      "               path: /",
+      "               port: 80",
+      "             initialDelaySeconds: 5",
+      "             periodSeconds: 5",
+      "         - name: log-collector",
+      "           image: busybox:1.35",
+      "           command: ['sh', '-c', 'while true; do echo \"$(date): App logs\" >> /var/log/app.log; sleep 30; done']",
+      "           volumeMounts:",
+      "           - name: log-volume",
+      "             mountPath: /var/log",
+      "         volumes:",
+      "         - name: log-volume",
+      "           emptyDir: {}",
+      "   EOF",
+      "4. Apply the fixed deployment:",
+      "   kubectl apply -f fixed-app.yaml",
+      "5. Create service:",
+      "   kubectl expose deployment broken-app --port=80 --name=broken-app-service -n pluto",
+      "6. Verify fixes:",
+      "   kubectl rollout status deployment/broken-app -n pluto",
+      "   kubectl get pods -l app=broken-app -n pluto",
+      "7. Test connectivity:",
+      "   kubectl exec -n pluto deployment/broken-app -- curl -s localhost",
+      "8. Check logs are being collected:",
+      "   kubectl logs -n pluto deployment/broken-app -c log-collector"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21-alpine",
+      "points": 1,
+      "description": "Deployment should use correct nginx image"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].ports[0].containerPort}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Container should expose port 80"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].env[0].value}'",
+      "expected": "production",
+      "points": 1,
+      "description": "Environment variable should be set to production"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "50m",
+      "points": 1,
+      "description": "Deployment should have correct CPU request"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Readiness probe should check port 80"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.spec.template.spec.containers[*].name}' | tr ' ' '\n' | wc -l",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 containers (app + logging sidecar)"
+    },
+    {
+      "command": "kubectl get service broken-app-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl get deployment broken-app -n pluto -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "All replicas should be ready after fixes"
+    },
+    {
+      "command": "kubectl exec -n pluto deployment/broken-app -- curl -s -o /dev/null -w '%{http_code}' localhost",
+      "expected": "200",
+      "points": 1,
+      "description": "Application should be accessible and return HTTP 200"
+    }
+  ]
+}

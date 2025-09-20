@@ -1,0 +1,110 @@
+{
+  "id": "ckad-i-080",
+  "title": "Production-Ready Deployment with Complete Integration",
+  "description": "Deploy a production-ready application in the pluto namespace that integrates all CKAD intermediate concepts. Configure a complete CI/CD pipeline simulation with proper security, monitoring, scaling, networking, and storage management for a real-world microservices architecture.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["helm-package-manager", "persistent-volumes-claims", "health-probes", "configmaps-secrets", "storage-classes", "ingress", "application-scaling", "security-contexts"],
+  "points": 15,
+  "timeMinutes": 30,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create comprehensive Helm chart ||production-stack|| with all necessary templates"
+    },
+    {
+      "step": 2,
+      "description": "Configure multiple storage tiers: SSD for databases, HDD for logs, emptyDir for cache"
+    },
+    {
+      "step": 3,
+      "description": "Set up comprehensive health monitoring with startup, liveness, and readiness probes"
+    },
+    {
+      "step": 4,
+      "description": "Configure security contexts, RBAC, network policies for production security"
+    },
+    {
+      "step": 5,
+      "description": "Implement autoscaling with multiple metrics and resource management"
+    },
+    {
+      "step": 6,
+      "description": "Set up service mesh with proper service discovery and load balancing"
+    },
+    {
+      "step": 7,
+      "description": "Configure ingress with TLS, authentication, and rate limiting"
+    },
+    {
+      "step": 8,
+      "description": "Deploy monitoring, logging, and alerting stack for observability"
+    },
+    {
+      "step": 9,
+      "description": "Verify complete production deployment with all integrations working"
+    }
+  ],
+  "validations": [
+    {
+      "command": "helm list -n pluto | grep production-stack",
+      "expectedOutput": "production-stack",
+      "description": "Verify Helm release is deployed",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass production-ssd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "production-ssd",
+      "description": "Verify SSD storage class exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get storageclass production-hdd -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "production-hdd",
+      "description": "Verify HDD storage class exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment frontend -n pluto -o jsonpath='{.spec.template.spec.containers[0].startupProbe.httpGet.path}'",
+      "expectedOutput": "/startup",
+      "description": "Verify startup probe configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy production-security -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "production-security",
+      "description": "Verify production NetworkPolicy exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get hpa frontend-hpa -n pluto -o jsonpath='{.spec.metrics[*].type}' | grep -E '(Resource|Pods)'",
+      "expectedOutput": "Resource",
+      "description": "Verify HPA with multiple metrics",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress production-ingress -n pluto -o jsonpath='{.spec.tls[0].secretName}'",
+      "expectedOutput": "production-tls",
+      "description": "Verify Ingress TLS configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service monitoring-service -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "monitoring-service",
+      "description": "Verify monitoring service exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment logging-stack -n pluto -o jsonpath='{.status.readyReplicas}'",
+      "expectedOutput": "1",
+      "description": "Verify logging stack is ready",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pods -n pluto -l environment=production | grep Running | wc -l",
+      "expectedOutput": "6",
+      "description": "Verify all production pods are running",
+      "points": 2
+    }
+  ]
+}

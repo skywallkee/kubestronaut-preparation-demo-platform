@@ -1,0 +1,78 @@
+{
+  "id": "kcna-i-004",
+  "title": "Services and Basic Networking Concepts",
+  "description": "Demonstrate understanding of Kubernetes networking and Services:\n\n1. Create a Deployment named ||web-server|| in namespace ||pluto|| with:\n   - Image: ||nginx:1.21||\n   - 3 replicas\n   - Container port ||80||\n   - Labels: ||app=webserver, tier=frontend||\n\n2. Create three different types of Services:\n   - ClusterIP Service named ||web-clusterip|| exposing port ||80||\n   - NodePort Service named ||web-nodeport|| exposing port ||80|| on node port ||30080||\n   - LoadBalancer Service named ||web-loadbalancer|| exposing port ||80||\n\n3. Test connectivity:\n   - From within the cluster to ClusterIP service\n   - Verify NodePort accessibility\n   - Check service endpoints\n\n4. Display and explain:\n   - Service discovery mechanisms\n   - DNS resolution for services\n   - Differences between service types",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Networking",
+  "tags": [
+    "services",
+    "networking",
+    "clusterip",
+    "nodeport",
+    "loadbalancer"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the deployment:",
+      "   kubectl create deployment web-server --image=nginx:1.21 --replicas=3 -n pluto",
+      "   kubectl patch deployment web-server -n pluto -p '{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"app\":\"webserver\",\"tier\":\"frontend\"}}}}}'",
+      "2. Create ClusterIP service:",
+      "   kubectl expose deployment web-server --name=web-clusterip --port=80 --type=ClusterIP -n pluto",
+      "3. Create NodePort service:",
+      "   kubectl expose deployment web-server --name=web-nodeport --port=80 --type=NodePort --node-port=30080 -n pluto",
+      "4. Create LoadBalancer service:",
+      "   kubectl expose deployment web-server --name=web-loadbalancer --port=80 --type=LoadBalancer -n pluto",
+      "5. Test ClusterIP connectivity:",
+      "   kubectl run test-pod --image=busybox --rm -it -n pluto -- wget -qO- web-clusterip",
+      "6. Check service endpoints:",
+      "   kubectl get endpoints -n pluto",
+      "7. Test DNS resolution:",
+      "   kubectl run test-pod --image=busybox --rm -it -n pluto -- nslookup web-clusterip",
+      "8. Verify services:",
+      "   kubectl get services -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-server -n pluto -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Deployment should have 3 replicas"
+    },
+    {
+      "command": "kubectl get service web-clusterip -n pluto -o jsonpath='{.spec.type}'",
+      "expected": "ClusterIP",
+      "points": 1,
+      "description": "ClusterIP service should be created"
+    },
+    {
+      "command": "kubectl get service web-nodeport -n pluto -o jsonpath='{.spec.ports[0].nodePort}'",
+      "expected": "30080",
+      "points": 1,
+      "description": "NodePort service should be on port 30080"
+    },
+    {
+      "command": "kubectl get service web-loadbalancer -n pluto -o jsonpath='{.spec.type}'",
+      "expected": "LoadBalancer",
+      "points": 1,
+      "description": "LoadBalancer service should be created"
+    },
+    {
+      "command": "kubectl get endpoints web-clusterip -n pluto -o jsonpath='{.subsets[0].addresses}' | grep -c '\"ip\"'",
+      "expected": "3",
+      "points": 2,
+      "description": "Service should have 3 endpoints from the deployment"
+    }
+  ]
+}

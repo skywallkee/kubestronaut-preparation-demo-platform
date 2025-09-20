@@ -1,0 +1,73 @@
+{
+  "id": "ckad-a-060",
+  "title": "Custom Resource Monitoring and Alerting",
+  "description": "Implement advanced monitoring for ||custom resources|| and ||application-specific metrics||. Create custom Kubernetes resources that represent business entities and implement monitoring for their lifecycle, state changes, and health. Build custom controllers that emit metrics about resource status, implement alerting rules for business-critical conditions, and create dashboards for operational visibility. Include scenarios with resource dependency tracking, custom health indicators, and automated remediation based on monitoring data.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Observability",
+  "tags": ["custom-resources", "custom-metrics", "controllers", "business-monitoring", "automation", "advanced"],
+  "infrastructure": {
+    "namespaces": ["custom-monitoring"],
+    "resources": ["CustomResourceDefinition", "Deployment", "ServiceMonitor"],
+    "prerequisites": ["Prometheus operator for custom metrics"]
+  },
+  "solution": {
+    "steps": [
+      "# Create custom-monitoring namespace\nkubectl create namespace custom-monitoring",
+
+      "# Create CRD for DatabaseBackup custom resource\nkubectl apply -f - <<EOF\napiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: databasebackups.apps.example.com\nspec:\n  group: apps.example.com\n  versions:\n  - name: v1\n    served: true\n    storage: true\n    schema:\n      openAPIV3Schema:\n        type: object\n        properties:\n          spec:\n            type: object\n            properties:\n              database:\n                type: string\n              schedule:\n                type: string\n              retentionDays:\n                type: integer\n          status:\n            type: object\n            properties:\n              lastBackup:\n                type: string\n              state:\n                type: string\n              message:\n                type: string\n  scope: Namespaced\n  names:\n    plural: databasebackups\n    singular: databasebackup\n    kind: DatabaseBackup\nEOF",
+
+      "# Create custom resource instances\nkubectl apply -f - <<EOF\napiVersion: apps.example.com/v1\nkind: DatabaseBackup\nmetadata:\n  name: postgres-backup\n  namespace: custom-monitoring\nspec:\n  database: postgres\n  schedule: \"0 2 * * *\"\n  retentionDays: 7\nstatus:\n  state: active\n  lastBackup: \"2023-01-01T02:00:00Z\"\n---\napiVersion: apps.example.com/v1\nkind: DatabaseBackup\nmetadata:\n  name: mysql-backup\n  namespace: custom-monitoring\nspec:\n  database: mysql\n  schedule: \"0 3 * * *\"\n  retentionDays: 14\nstatus:\n  state: active\n  lastBackup: \"2023-01-01T03:00:00Z\"\n---\napiVersion: apps.example.com/v1\nkind: DatabaseBackup\nmetadata:\n  name: mongodb-backup\n  namespace: custom-monitoring\nspec:\n  database: mongodb\n  schedule: \"0 4 * * *\"\n  retentionDays: 30\nstatus:\n  state: failed\n  lastBackup: \"2023-01-01T04:00:00Z\"\nEOF",
+
+      "# Deploy resource controller with custom metrics\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: resource-controller\n  namespace: custom-monitoring\n  labels:\n    app: resource-controller\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: resource-controller\n  template:\n    metadata:\n      labels:\n        app: resource-controller\n    spec:\n      serviceAccountName: resource-controller\n      containers:\n      - name: controller\n        image: python:3.9-slim\n        ports:\n        - containerPort: 8080\n          name: metrics\n        command:\n        - /bin/sh\n        - -c\n        - |\n          pip install flask kubernetes\n          \n          cat > /app/controller.py << 'SCRIPT'\n          import flask\n          import time\n          import threading\n          import json\n          from datetime import datetime\n          from kubernetes import client, config, watch\n          \n          app = flask.Flask(__name__)\n          \n          # Metrics storage\n          backup_status_metrics = {}\n          backup_success_count = {}\n          resource_state_changes = 0\n          \n          try:\n              config.load_incluster_config()\n          except:\n              config.load_kube_config()\n          \n          api_client = client.ApiClient()\n          custom_api = client.CustomObjectsApi()\n          \n          def monitor_custom_resources():\n              global resource_state_changes\n              \n              while True:\n                  try:\n                      # List all DatabaseBackup resources\n                      resources = custom_api.list_namespaced_custom_object(\n                          group=\"apps.example.com\",\n                          version=\"v1\",\n                          namespace=\"custom-monitoring\",\n                          plural=\"databasebackups\"\n                      )\n                      \n                      for resource in resources.get('items', []):\n                          name = resource['metadata']['name']\n                          status = resource.get('status', {})\n                          state = status.get('state', 'unknown')\n                          database = resource['spec']['database']\n                          \n                          # Update metrics\n                          backup_status_metrics[name] = {\n                              'state': state,\n                              'database': database,\n                              'last_updated': datetime.now().isoformat()\n                          }\n                          \n                          # Count successful backups\n                          if state == 'active':\n                              backup_success_count[database] = backup_success_count.get(database, 0) + 1\n                          \n                          print(f\"Monitored resource {name}: state={state}, database={database}\")\n                          print(f\"Resource state changed for {name}\")\n                          resource_state_changes += 1\n                  \n                  except Exception as e:\n                      print(f\"Error monitoring resources: {e}\")\n                  \n                  time.sleep(30)\n          \n          # Start monitoring thread\n          threading.Thread(target=monitor_custom_resources, daemon=True).start()\n          \n          @app.route('/metrics')\n          def metrics():\n              metrics_output = []\n              \n              # Database backup status metrics\n              for backup_name, data in backup_status_metrics.items():\n                  state_value = 1 if data['state'] == 'active' else 0\n                  metrics_output.append(\n                      f'database_backup_status{{backup=\"{backup_name}\",database=\"{data[\"database\"]}\",state=\"{data[\"state\"]}\"}} {state_value}'\n                  )\n              \n              # Backup success totals\n              for database, count in backup_success_count.items():\n                  metrics_output.append(\n                      f'backup_success_total{{database=\"{database}\"}} {count}'\n                  )\n              \n              # Resource state change counter\n              metrics_output.append(f'resource_state_changes_total {resource_state_changes}')\n              \n              return '\\n'.join(metrics_output) + '\\n'\n          \n          @app.route('/health')\n          def health():\n              return flask.jsonify({\n                  'status': 'healthy',\n                  'monitored_resources': len(backup_status_metrics),\n                  'state_changes': resource_state_changes\n              })\n          \n          if __name__ == '__main__':\n              app.run(host='0.0.0.0', port=8080)\n          SCRIPT\n          \n          cd /app && python controller.py\nEOF",
+
+      "# Create ServiceAccount and RBAC for controller\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: resource-controller\n  namespace: custom-monitoring\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: resource-controller\nrules:\n- apiGroups: [\"apps.example.com\"]\n  resources: [\"databasebackups\"]\n  verbs: [\"get\", \"list\", \"watch\", \"create\", \"update\", \"patch\", \"delete\"]\n- apiGroups: [\"\"]\n  resources: [\"events\"]\n  verbs: [\"create\"]\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: resource-controller\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: resource-controller\nsubjects:\n- kind: ServiceAccount\n  name: resource-controller\n  namespace: custom-monitoring\nEOF",
+
+      "# Create service for controller\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: resource-controller\n  namespace: custom-monitoring\n  labels:\n    app: resource-controller\nspec:\n  selector:\n    app: resource-controller\n  ports:\n  - name: metrics\n    port: 8080\n    targetPort: 8080\nEOF",
+
+      "# Create ServiceMonitor for Prometheus\nkubectl apply -f - <<EOF\napiVersion: monitoring.coreos.com/v1\nkind: ServiceMonitor\nmetadata:\n  name: resource-controller-monitor\n  namespace: custom-monitoring\n  labels:\n    app: resource-controller\nspec:\n  selector:\n    matchLabels:\n      app: resource-controller\n  endpoints:\n  - port: metrics\n    interval: 30s\n    path: /metrics\nEOF",
+
+      "# Wait for controller deployment\nkubectl wait --for=condition=available --timeout=300s deployment/resource-controller -n custom-monitoring",
+
+      "# Test the controller metrics\nkubectl exec -n custom-monitoring deploy/resource-controller -- curl -s localhost:8080/metrics\nkubectl exec -n custom-monitoring deploy/resource-controller -- curl -s localhost:8080/health"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get crd databasebackups.apps.example.com -o jsonpath='{.metadata.name}'",
+      "expected": "databasebackups.apps.example.com",
+      "points": 2,
+      "description": "Custom resource definition exists"
+    },
+    {
+      "command": "kubectl get databasebackup -n custom-monitoring | wc -l",
+      "expected": "4",
+      "points": 2,
+      "description": "Custom resource instances are created"
+    },
+    {
+      "command": "kubectl exec -n custom-monitoring deploy/resource-controller -- curl -s localhost:8080/metrics | grep 'database_backup_status'",
+      "expected": "custom-metric",
+      "points": 3,
+      "description": "Controller exposes custom resource metrics"
+    },
+    {
+      "command": "kubectl get servicemonitor -n custom-monitoring resource-controller-monitor -o jsonpath='{.spec.selector.matchLabels.app}'",
+      "expected": "resource-controller",
+      "points": 2,
+      "description": "ServiceMonitor configured for controller metrics"
+    },
+    {
+      "command": "kubectl logs -n custom-monitoring deploy/resource-controller | grep -c 'resource state changed'",
+      "expected": "5",
+      "points": 3,
+      "description": "Controller logs resource state changes"
+    },
+    {
+      "command": "kubectl exec -n custom-monitoring deploy/resource-controller -- curl -s localhost:8080/metrics | grep -c 'backup_success_total'",
+      "expected": "3",
+      "points": 2,
+      "description": "Controller tracks successful backup operations"
+    }
+  ]
+}

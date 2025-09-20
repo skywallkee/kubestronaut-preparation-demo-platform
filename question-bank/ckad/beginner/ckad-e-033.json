@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-033",
+  "title": "Rollback a Deployment",
+  "description": "Rollback the ||web-deploy|| Deployment to the previous revision in the ||venus|| namespace.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Deployment",
+  "tags": [
+    "deployments-rolling-updates",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment with multiple revisions"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check rollout history:",
+      "   kubectl rollout history deployment/web-deploy -n venus",
+      "2. Rollback to previous revision:",
+      "   kubectl rollout undo deployment/web-deploy -n venus",
+      "3. Check rollout status:",
+      "   kubectl rollout status deployment/web-deploy -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl rollout history deployment/web-deploy -n venus | tail -1 | awk '{print $1}'",
+      "expected": "3",
+      "points": 3,
+      "description": "Deployment should have new revision after rollback"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "ckad-e-065",
+  "title": "Create ConfigMap and Use in Pod",
+  "description": "Create a ConfigMap named ||app-config|| in Namespace ||default|| with key ||database_url|| and value ||mongodb://localhost:27017||, then create a Pod that uses this ConfigMap as environment variable.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "configmaps-secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "configmaps",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ConfigMap:",
+      "   kubectl create configmap app-config --from-literal=database_url=mongodb://localhost:27017",
+      "2. Create Pod with ConfigMap:",
+      "   kubectl run config-pod --image=nginx:1.21 --dry-run=client -o yaml > config-pod.yaml",
+      "3. Edit YAML to add environment variable from ConfigMap",
+      "4. Apply the Pod:",
+      "   kubectl apply -f config-pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get configmap app-config -o jsonpath='{.data.database_url}'",
+      "expected": "mongodb://localhost:27017",
+      "points": 2,
+      "description": "ConfigMap should contain correct database URL"
+    },
+    {
+      "command": "kubectl get pod config-pod -o jsonpath='{.spec.containers[0].env[0].valueFrom.configMapKeyRef.name}'",
+      "expected": "app-config",
+      "points": 2,
+      "description": "Pod should reference app-config ConfigMap"
+    }
+  ]
+}

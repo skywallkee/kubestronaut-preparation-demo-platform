@@ -1,0 +1,122 @@
+{
+  "id": "ckad-a-016",
+  "title": "Troubleshooting Failing Application with Multiple Issues",
+  "description": "You are tasked with fixing a broken application deployment in namespace ||saturn|| that has multiple interconnected issues. The application should be a working e-commerce platform but is currently failing.\n\n**Current Problematic State:**\nThe namespace contains several broken resources that need to be diagnosed and fixed:\n\n1. **Broken Deployment**: ||ecommerce-app|| with multiple configuration issues:\n   - Image pull failures and incorrect image tags\n   - Resource constraint problems causing OOMKilled pods\n   - Missing environment variables for database connection\n   - Incorrect health check configurations\n   - Wrong service account and RBAC permissions\n\n2. **Service Discovery Issues**: \n   - Service ||app-service|| has incorrect selectors and port configurations\n   - Service ||database-service|| is pointing to wrong endpoints\n   - Service mesh or ingress configuration problems\n\n3. **Storage Problems**:\n   - PVC ||app-storage|| has incorrect access modes\n   - Volume mount path conflicts\n   - Missing storage class or provisioning issues\n\n4. **Configuration Errors**:\n   - ConfigMap ||app-config|| has malformed JSON/YAML\n   - Secret ||db-credentials|| has incorrect encoding\n   - Environment variable references pointing to non-existent resources\n\n**Your Mission:**\nDiagnose and fix ALL issues to make the application fully functional:\n\n1. **Application Requirements** (what it should be when working):\n   - 3 replicas of ||nginx:1.21|| serving on port 80\n   - Connected to Redis cache and PostgreSQL database\n   - Persistent storage for uploaded files\n   - Health checks on ||/health|| endpoint\n   - Resource limits: CPU 200m, Memory 256Mi\n\n2. **Troubleshooting Process**:\n   - Use kubectl debugging commands to identify all issues\n   - Check pod logs, events, and describe outputs\n   - Analyze resource status and dependencies\n   - Identify configuration mismatches\n\n3. **Required Fixes**:\n   - Fix deployment configuration and resource specifications\n   - Correct service selectors and networking\n   - Resolve storage and volume mounting issues\n   - Fix ConfigMap and Secret data\n   - Ensure proper RBAC and security context\n\n4. **Validation**:\n   - All pods should be in Running state\n   - Services should have proper endpoints\n   - Application should respond to health checks\n   - Storage should be properly mounted and accessible\n\nDocument your troubleshooting process and create a summary of issues found and fixes applied.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Troubleshooting",
+  "tags": [
+    "troubleshooting",
+    "debugging",
+    "application-repair",
+    "multi-issue-diagnosis",
+    "problem-solving",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "configmaps",
+      "secrets",
+      "persistentvolumeclaims",
+      "serviceaccounts",
+      "pods"
+    ],
+    "prerequisites": [
+      "broken-application-state"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Initial diagnosis:",
+      "   kubectl get all -n saturn",
+      "   kubectl describe deployment ecommerce-app -n saturn",
+      "   kubectl logs -l app=ecommerce-app -n saturn",
+      "   kubectl get events -n saturn --sort-by='.lastTimestamp'",
+      "2. Fix deployment issues:",
+      "   - Correct image tag from nginx:broken to nginx:1.21",
+      "   - Add missing environment variables for database connection",
+      "   - Fix resource requests and limits",
+      "   - Correct health check paths and ports",
+      "3. Fix service issues:",
+      "   - Update service selector to match deployment labels",
+      "   - Correct port configuration and target ports",
+      "   - Ensure endpoint connectivity",
+      "4. Fix storage issues:",
+      "   - Update PVC access mode to ReadWriteOnce",
+      "   - Fix volume mount path conflicts",
+      "   - Ensure storage class exists and is default",
+      "5. Fix configuration issues:",
+      "   - Correct malformed JSON in ConfigMap",
+      "   - Re-encode Secret data properly with base64",
+      "   - Update environment variable references",
+      "6. Verify all fixes and test application functionality"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment ecommerce-app -n saturn -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 2,
+      "description": "Deployment should have 3 ready replicas"
+    },
+    {
+      "command": "kubectl get pods -l app=ecommerce-app -n saturn --field-selector=status.phase=Running --no-headers | wc -l",
+      "expected": "3",
+      "points": 2,
+      "description": "All 3 pods should be in Running state"
+    },
+    {
+      "command": "kubectl get service app-service -n saturn -o jsonpath='{.spec.selector.app}'",
+      "expected": "ecommerce-app",
+      "points": 1,
+      "description": "Service should have correct selector for app"
+    },
+    {
+      "command": "kubectl get endpoints app-service -n saturn -o jsonpath='{.subsets[0].addresses[*].ip}' | wc -w",
+      "expected": "3",
+      "points": 1,
+      "description": "Service should have 3 endpoint addresses"
+    },
+    {
+      "command": "kubectl get pvc app-storage -n saturn -o jsonpath='{.status.phase}'",
+      "expected": "Bound",
+      "points": 1,
+      "description": "PVC should be in Bound state"
+    },
+    {
+      "command": "kubectl get configmap app-config -n saturn -o jsonpath='{.data.config\\.json}' | jq -e . > /dev/null && echo 'valid' || echo 'invalid'",
+      "expected": "valid",
+      "points": 1,
+      "description": "ConfigMap should contain valid JSON"
+    },
+    {
+      "command": "kubectl get secret db-credentials -n saturn -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "appuser",
+      "points": 1,
+      "description": "Secret should have correctly encoded username"
+    },
+    {
+      "command": "kubectl get deployment ecommerce-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21",
+      "points": 1,
+      "description": "Deployment should use correct nginx image"
+    },
+    {
+      "command": "kubectl get deployment ecommerce-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expected": "/health",
+      "points": 1,
+      "description": "Liveness probe should check /health endpoint"
+    },
+    {
+      "command": "kubectl get deployment ecommerce-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "256Mi",
+      "points": 1,
+      "description": "Memory limit should be set to 256Mi"
+    }
+  ]
+}

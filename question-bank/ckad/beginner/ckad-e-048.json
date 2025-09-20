@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-048",
+  "title": "Create Pod with Image Pull Policy",
+  "description": "Create a Pod named ||pull-policy-pod|| using image ||nginx:1.20-alpine|| with ||imagePullPolicy|| set to ||Always|| in the ||saturn|| namespace.",
+  "points": 3,
+  "timeLimit": 8,
+  "category": "Application Design and Build",
+  "tags": [
+    "container-images",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run pull-policy-pod --image=nginx:1.20-alpine --dry-run=client -o yaml > pull-policy-pod.yaml",
+      "2. Add imagePullPolicy:",
+      "   imagePullPolicy: Always",
+      "3. Apply pod:",
+      "   kubectl apply -f pull-policy-pod.yaml -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod pull-policy-pod -n saturn -o jsonpath='{.spec.containers[0].imagePullPolicy}'",
+      "expected": "Always",
+      "points": 3,
+      "description": "Pod should have Always image pull policy"
+    }
+  ]
+}

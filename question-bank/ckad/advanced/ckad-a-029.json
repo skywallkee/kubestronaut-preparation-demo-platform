@@ -1,0 +1,103 @@
+{
+  "id": "ckad-a-029",
+  "title": "Advanced Ingress Configuration with Multiple Controllers and SSL/TLS",
+  "description": "Implement a complex ingress architecture in namespace ||gateway|| with multiple ingress controllers, SSL/TLS termination, and advanced routing:\n\n1. **Multiple Ingress Controllers Setup**:\n   Deploy and configure multiple ingress controllers:\n   - **NGINX Ingress**: Primary controller for HTTP/HTTPS traffic\n   - **Traefik Ingress**: Secondary controller for API gateway functionality\n   - **Istio Gateway**: Service mesh ingress for microservices\n   - **Class Configuration**: Proper ingress class annotations\n\n2. **SSL/TLS Certificate Management**:\n   Configure comprehensive SSL/TLS setup:\n   - **Let's Encrypt Integration**: Automatic certificate provisioning\n   - **Custom CA Certificates**: Internal certificate authority\n   - **Wildcard Certificates**: *.example.com for subdomains\n   - **Certificate Secrets**: Proper TLS secret management\n   - **ACME Challenge**: HTTP-01 and DNS-01 validation\n\n3. **Advanced Routing Rules**:\n   Implement sophisticated routing patterns:\n   - **Path-based routing**: /api/* to backend, /static/* to CDN\n   - **Host-based routing**: api.example.com vs web.example.com\n   - **Header-based routing**: Route based on User-Agent or custom headers\n   - **Weight-based routing**: Canary deployments with traffic splitting\n   - **Regex path matching**: Complex URL pattern matching\n\n4. **Backend Service Configuration**:\n   Deploy backend services with different characteristics:\n   - **Web Frontend**: Static content server (nginx:1.21)\n   - **API Gateway**: RESTful API service (httpd:2.4)\n   - **WebSocket Service**: Real-time communication (node:16-alpine)\n   - **gRPC Service**: High-performance RPC (envoy:v1.22)\n   - **Health Check Endpoints**: Custom health check paths\n\n5. **Load Balancing and Session Affinity**:\n   Configure advanced load balancing:\n   - **Session Affinity**: Cookie-based sticky sessions\n   - **Load Balancing Algorithms**: Round-robin, least connections\n   - **Connection Limits**: Rate limiting and throttling\n   - **Circuit Breaker**: Fault tolerance patterns\n   - **Retry Policies**: Automatic retry on failures\n\n6. **Security and Access Control**:\n   Implement ingress security features:\n   - **Basic Authentication**: Username/password protection\n   - **OAuth2 Integration**: OIDC authentication flow\n   - **IP Whitelisting**: Restrict access by source IP\n   - **Rate Limiting**: Requests per minute/hour limits\n   - **WAF Rules**: Web Application Firewall integration\n\n7. **Monitoring and Observability**:\n   Configure ingress monitoring:\n   - **Metrics Collection**: Prometheus metrics from ingress controllers\n   - **Access Logs**: Detailed request logging\n   - **Distributed Tracing**: Request tracing across services\n   - **Health Checks**: Ingress controller health monitoring\n   - **Alert Rules**: SLA-based alerting\n\n8. **Testing and Validation**:\n   Create comprehensive ingress tests:\n   - **Connectivity Tests**: Verify all routing rules\n   - **SSL/TLS Validation**: Certificate chain verification\n   - **Performance Tests**: Load testing through ingress\n   - **Security Tests**: Authentication and authorization validation\n   - **Failover Tests**: Controller failure scenarios\n\nEnsure robust, secure, and scalable ingress architecture with proper SSL/TLS and advanced routing.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Services & Networking",
+  "tags": [
+    "ingress",
+    "ssl-tls",
+    "load-balancing",
+    "routing",
+    "multiple-controllers",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "gateway"
+    ],
+    "resources": [
+      "ingress",
+      "services",
+      "deployments",
+      "secrets",
+      "configmaps",
+      "certificates",
+      "jobs"
+    ],
+    "prerequisites": [
+      "ingress-controllers",
+      "cert-manager"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and deploy backend services:",
+      "   kubectl create namespace gateway",
+      "   kubectl create deployment web-frontend --image=nginx:1.21 --replicas=2 -n gateway",
+      "   kubectl create deployment api-gateway --image=httpd:2.4 --replicas=2 -n gateway",
+      "   kubectl create deployment websocket-service --image=node:16-alpine --replicas=1 -n gateway",
+      "   kubectl create deployment grpc-service --image=envoyproxy/envoy:v1.22.0 --replicas=1 -n gateway",
+      "2. Expose services:",
+      "   kubectl expose deployment web-frontend --port=80 --target-port=80 --name=web-frontend -n gateway",
+      "   kubectl expose deployment api-gateway --port=8080 --target-port=80 --name=api-gateway -n gateway",
+      "   kubectl expose deployment websocket-service --port=3000 --target-port=3000 --name=websocket-service -n gateway",
+      "   kubectl expose deployment grpc-service --port=9090 --target-port=9090 --name=grpc-service -n gateway",
+      "3. Create TLS secret for SSL certificates:",
+      "   kubectl create secret tls web-tls-secret --cert=web.crt --key=web.key -n gateway",
+      "   kubectl create secret tls api-tls-secret --cert=api.crt --key=api.key -n gateway",
+      "4. Create ingress for web frontend with SSL:",
+      "   kubectl create ingress web-ingress --class=nginx --rule='web.example.com/*=web-frontend:80,tls=web-tls-secret' -n gateway",
+      "5. Create ingress for API with path-based routing:",
+      "   kubectl create ingress api-ingress --class=nginx --rule='api.example.com/v1/*=api-gateway:8080,tls=api-tls-secret' -n gateway",
+      "6. Create ingress for WebSocket service:",
+      "   kubectl create ingress websocket-ingress --class=nginx --rule='ws.example.com/*=websocket-service:3000' -n gateway",
+      "7. Create basic auth secret and apply to ingress:",
+      "   kubectl create secret generic basic-auth --from-literal=auth='admin:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/' -n gateway",
+      "   kubectl annotate ingress api-ingress nginx.ingress.kubernetes.io/auth-type=basic -n gateway",
+      "   kubectl annotate ingress api-ingress nginx.ingress.kubernetes.io/auth-secret=basic-auth -n gateway",
+      "8. Test ingress connectivity and validate SSL certificates:",
+      "   kubectl get ingress -n gateway",
+      "   kubectl describe ingress web-ingress -n gateway"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get ingress web-ingress -n gateway -o jsonpath='{.spec.tls[0].secretName}'",
+      "expected": "web-tls-secret",
+      "points": 1,
+      "description": "Web ingress should have TLS configuration"
+    },
+    {
+      "command": "kubectl get ingress api-ingress -n gateway -o jsonpath='{.metadata.annotations.kubernetes\\.io/ingress\\.class}'",
+      "expected": "nginx",
+      "points": 1,
+      "description": "API ingress should use nginx class"
+    },
+    {
+      "command": "kubectl get service web-frontend -n gateway -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Web frontend service should be on port 80"
+    },
+    {
+      "command": "kubectl get secret web-tls-secret -n gateway -o jsonpath='{.type}'",
+      "expected": "kubernetes.io/tls",
+      "points": 1,
+      "description": "Should have TLS secret for SSL certificates"
+    },
+    {
+      "command": "kubectl get ingress -n gateway --no-headers | wc -l",
+      "expected": "4",
+      "points": 1,
+      "description": "Should have 4 ingress resources for different services"
+    },
+    {
+      "command": "kubectl get job ingress-tester -n gateway -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Ingress validation tests should complete successfully"
+    }
+  ]
+}

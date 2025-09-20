@@ -1,0 +1,118 @@
+{
+  "id": "ckad-a-020",
+  "title": "Helm Chart Basics and Templating for Deployment",
+  "description": "Create and deploy a comprehensive Helm chart in namespace ||saturn|| for a microservices application with advanced templating and configuration management:\n\n1. **Helm Chart Structure**:\n   Create a Helm chart ||microservices-chart|| with the following structure:\n   - Chart.yaml with metadata, version, and dependencies\n   - values.yaml with configurable parameters\n   - templates/ directory with Kubernetes manifests\n   - helpers.tpl with reusable template functions\n   - NOTES.txt with post-installation instructions\n\n2. **Multi-Service Deployment**:\n   Template the following services with parameterized configurations:\n   - **Frontend Service**: ||frontend|| deployment with configurable replicas, image, and resources\n   - **API Service**: ||api|| deployment with database connectivity and scaling options\n   - **Cache Service**: ||redis|| deployment with persistence and memory configuration\n   - **Worker Service**: ||worker|| deployment with queue processing capabilities\n\n3. **Advanced Templating Features**:\n   - **Conditional Resources**: Use ||if/else|| statements to conditionally deploy services\n   - **Loops and Iteration**: Template multiple similar resources using ||range||\n   - **Template Functions**: Use built-in functions like ||default||, ||quote||, ||upper||, ||lower||\n   - **Named Templates**: Create reusable templates for common patterns (labels, annotations)\n   - **Includes and Partials**: Include shared templates across multiple resources\n\n4. **Configuration Management**:\n   - **Environment-specific Values**: Support dev/staging/production configurations\n   - **Secret Management**: Template secrets with base64 encoding and external references\n   - **ConfigMap Generation**: Dynamic ConfigMap creation from values\n   - **Resource Customization**: Parameterized resource requests, limits, and node affinity\n\n5. **Service Dependencies and Communication**:\n   - Template Services with proper selectors and port configurations\n   - Create Ingress resources with parameterized routing rules\n   - Configure inter-service communication with service discovery\n   - Add health checks and readiness probes with configurable parameters\n\n6. **Advanced Helm Features**:\n   - **Hooks**: Implement pre-install and post-install hooks for database initialization\n   - **Tests**: Create Helm test pods to validate deployment success\n   - **Subcharts**: Include Redis subchart as a dependency\n   - **Values Validation**: Add JSON schema validation for values.yaml\n\n7. **Deployment and Management**:\n   - Install the chart with custom values: ||helm install microservices ./microservices-chart||\n   - Upgrade deployment with new values: ||helm upgrade microservices ./microservices-chart||\n   - Create multiple releases for different environments\n   - Implement rollback procedures and version management\n\n8. **Chart Validation and Testing**:\n   - Use ||helm lint|| to validate chart syntax and best practices\n   - Use ||helm template|| to render templates and verify output\n   - Run ||helm test|| to execute test pods and validate functionality\n   - Create custom validation scripts for chart integrity\n\nRequired Values Configuration:\n- Replicas: frontend(3), api(2), worker(1)\n- Resource limits: CPU(200m), Memory(256Mi)\n- Enable persistence for Redis\n- Configure Ingress with TLS termination\n- Set environment-specific labels and annotations",
+  "points": 9,
+  "timeLimit": 22,
+  "category": "Package Management",
+  "tags": [
+    "helm",
+    "templating",
+    "package-management",
+    "configuration-management",
+    "deployment-automation",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "configmaps",
+      "secrets",
+      "ingress",
+      "persistentvolumeclaims",
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": [
+      "helm-v3"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create Helm chart structure:",
+      "   helm create microservices-chart",
+      "   cd microservices-chart",
+      "2. Modify Chart.yaml with proper metadata:",
+      "   apiVersion: v2, name: microservices-chart, version: 0.1.0",
+      "   Add description and dependencies (redis subchart)",
+      "3. Configure values.yaml with parameterized values:",
+      "   frontend.replicas: 3, api.replicas: 2, worker.replicas: 1",
+      "   resources.limits: cpu=200m, memory=256Mi",
+      "   redis.enabled: true, ingress.enabled: true",
+      "4. Create template files:",
+      "   templates/frontend-deployment.yaml with templated values",
+      "   templates/api-deployment.yaml with database config",
+      "   templates/worker-deployment.yaml with queue config",
+      "   templates/services.yaml for all service definitions",
+      "   templates/ingress.yaml with conditional TLS",
+      "5. Add helper templates in _helpers.tpl:",
+      "   Common labels, selector labels, chart name functions",
+      "6. Create hooks and tests:",
+      "   templates/hooks/db-init-job.yaml (pre-install hook)",
+      "   templates/tests/connection-test.yaml",
+      "7. Install and validate chart:",
+      "   helm install microservices ./microservices-chart -n saturn",
+      "   helm test microservices -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm list -n saturn | grep microservices | awk '{print $8}'",
+      "expected": "deployed",
+      "points": 1,
+      "description": "Helm chart should be successfully deployed"
+    },
+    {
+      "command": "kubectl get deployment frontend -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "Frontend should have 3 replicas as per values"
+    },
+    {
+      "command": "kubectl get deployment api -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "API should have 2 replicas as per values"
+    },
+    {
+      "command": "kubectl get deployment worker -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Worker should have 1 replica as per values"
+    },
+    {
+      "command": "kubectl get deployment redis -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "redis",
+      "points": 1,
+      "description": "Redis subchart should be deployed"
+    },
+    {
+      "command": "kubectl get service frontend -n saturn -o jsonpath='{.spec.selector.app}'",
+      "expected": "frontend",
+      "points": 1,
+      "description": "Frontend service should have correct selector"
+    },
+    {
+      "command": "kubectl get ingress microservices-ingress -n saturn -o jsonpath='{.spec.tls[0].secretName}'",
+      "expected": "microservices-tls",
+      "points": 1,
+      "description": "Ingress should have TLS configuration"
+    },
+    {
+      "command": "helm test microservices -n saturn | grep 'Phase:.*Succeeded' | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Helm tests should pass successfully"
+    },
+    {
+      "command": "kubectl get job -n saturn -l 'helm.sh/hook=pre-install' -o jsonpath='{.items[0].status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Pre-install hook should complete successfully"
+    }
+  ]
+}

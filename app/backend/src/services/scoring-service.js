@@ -1,9 +1,15 @@
 const fs = require('fs').promises;
 const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 
 class ScoringService {
   constructor() {
-    this.answerKeyPath = path.join(__dirname, '../../../question-bank');
+    // Use environment variable if set (for Docker), otherwise use relative path
+    this.answerKeyPath = process.env.QUESTION_BANK_PATH ||
+                        path.join(__dirname, '../../../question-bank');
+    console.log(`ScoringService initialized with answer key path: ${this.answerKeyPath}`);
   }
 
   async scoreExam(exam) {
@@ -72,57 +78,204 @@ class ScoringService {
 
   async scoreQuestion(question, answerKey, examType) {
     const maxPoints = question.points || this.getDefaultPoints(examType);
-    
-    // If no answer key available, use completion status
-    if (!answerKey) {
+    console.log(`Scoring question ${question.id}: ${question.title}`);
+
+    try {
+      // Get the full question data with validations and solution
+      const fullQuestion = await this.loadFullQuestionData(question, examType);
+
+      if (!fullQuestion || !fullQuestion.validations || fullQuestion.validations.length === 0) {
+        console.warn(`No validations found for question ${question.id}, using completion status`);
+        return this.scoreByCompletion(question, maxPoints);
+      }
+
+      // Run all validation commands and collect results
+      const validationResults = [];
+      let totalEarnedPoints = 0;
+      let totalMaxPoints = 0;
+
+      for (const validation of fullQuestion.validations) {
+        const result = await this.runValidationCommand(validation, question.id);
+        validationResults.push(result);
+
+        if (result.passed) {
+          totalEarnedPoints += result.points;
+        }
+        totalMaxPoints += result.points;
+      }
+
+      const passed = totalEarnedPoints >= totalMaxPoints * 0.7; // 70% threshold
+      const finalScore = Math.min(maxPoints, totalEarnedPoints);
+
       return {
         questionId: question.id,
+        originalId: question.originalId,
         title: question.title,
         description: question.description,
-        points: question.completed ? maxPoints : Math.floor(maxPoints * 0.3), // Partial credit if not completed
+        points: finalScore,
         maxPoints,
-        correct: question.completed,
-        explanation: question.completed 
-          ? "Question marked as completed during exam."
-          : "Question was not marked as completed. In a real exam, this would be validated against cluster state."
+        correct: passed,
+        completionStatus: question.completed,
+        validationResults,
+        solutionSteps: fullQuestion.solution?.steps || [],
+        explanation: this.generateDetailedExplanation(validationResults, passed, fullQuestion.solution),
+        category: fullQuestion.category || 'General'
       };
+
+    } catch (error) {
+      console.error(`Error scoring question ${question.id}:`, error);
+      return this.scoreByCompletion(question, maxPoints);
     }
+  }
 
-    // Find answer in answer key
-    const answer = answerKey.find(a => 
-      a.id === question.id || 
-      a.title === question.title ||
-      a.questionNumber === question.id
-    );
+  async loadFullQuestionData(question, examType) {
+    try {
+      // Try to load the full question data from the original file
+      const difficultyMapping = {
+        'beginner': 'easy',
+        'intermediate': 'intermediate',
+        'advanced': 'hard'
+      };
 
-    if (!answer) {
-      // No specific answer found, use completion status
+      const questionId = question.originalId || question.id;
+      if (typeof questionId === 'string' && questionId.includes('-')) {
+        // Try to load from individual question file (like ckad-e-001.json)
+        const difficultyDir = difficultyMapping['beginner']; // Most questions are in easy for now
+        const questionFilePath = path.join(this.answerKeyPath, examType, difficultyDir, `${questionId}.json`);
+
+        try {
+          const questionData = await fs.readFile(questionFilePath, 'utf8');
+          return JSON.parse(questionData);
+        } catch (fileError) {
+          console.warn(`Could not load question file ${questionFilePath}`);
+        }
+      }
+
+      // Fallback: return question with validations if available
+      return question.validations ? question : null;
+    } catch (error) {
+      console.error('Error loading full question data:', error);
+      return null;
+    }
+  }
+
+  async runValidationCommand(validation, questionId) {
+    console.log(`Running validation for question ${questionId}: ${validation.command}`);
+
+    try {
+      const timeoutMs = 10000; // 10 second timeout for each command
+      const { stdout, stderr } = await execAsync(validation.command, {
+        timeout: timeoutMs,
+        shell: '/bin/bash'
+      });
+
+      let passed = false;
+      let actualResult = stdout.trim();
+
+      // Handle different types of expected results
+      if (validation.expected === "0") {
+        // Exit code check (for grep -q, test commands, etc.)
+        passed = true; // If command succeeded without throwing, it passed
+      } else if (validation.expected === "true") {
+        // Boolean check
+        passed = actualResult.toLowerCase() === 'true' || actualResult === '0';
+      } else {
+        // String comparison
+        passed = actualResult === validation.expected;
+      }
+
       return {
-        questionId: question.id,
-        title: question.title,
-        description: question.description,
-        points: question.completed ? maxPoints : 0,
-        maxPoints,
-        correct: question.completed,
-        explanation: "No specific validation criteria found. Scored based on completion status."
+        command: validation.command,
+        expected: validation.expected,
+        actual: actualResult,
+        passed,
+        points: validation.points || 1,
+        description: validation.description || 'Validation check',
+        error: stderr || null
+      };
+
+    } catch (error) {
+      console.warn(`Validation command failed for question ${questionId}: ${error.message}`);
+
+      // For commands that are expected to fail (like grep -q), check exit code
+      if (validation.expected === "0" && error.code === 1) {
+        // grep -q returns 1 when no match found, which might be expected failure
+        return {
+          command: validation.command,
+          expected: validation.expected,
+          actual: `Exit code: ${error.code}`,
+          passed: false,
+          points: validation.points || 1,
+          description: validation.description || 'Validation check',
+          error: error.message
+        };
+      }
+
+      return {
+        command: validation.command,
+        expected: validation.expected,
+        actual: error.message,
+        passed: false,
+        points: validation.points || 1,
+        description: validation.description || 'Validation check',
+        error: error.message
       };
     }
+  }
 
-    // In a real implementation, this would validate against actual cluster state
-    // For now, we'll simulate scoring based on completion and some randomization
-    const baseScore = question.completed ? maxPoints : 0;
-    const randomFactor = question.completed ? (0.8 + Math.random() * 0.2) : (Math.random() * 0.3);
-    const finalScore = Math.round(baseScore * randomFactor);
-
+  scoreByCompletion(question, maxPoints) {
     return {
       questionId: question.id,
+      originalId: question.originalId,
       title: question.title,
       description: question.description,
-      points: finalScore,
+      points: question.completed ? Math.floor(maxPoints * 0.8) : 0, // 80% for completion without validation
       maxPoints,
-      correct: finalScore >= maxPoints * 0.8,
-      explanation: answer.explanation || `${question.completed ? 'Completed' : 'Incomplete'} - ${answer.solution || 'Check solution in exam documentation'}`
+      correct: question.completed,
+      completionStatus: question.completed,
+      validationResults: [],
+      solutionSteps: [],
+      explanation: question.completed
+        ? "Question marked as completed. No automated validations available - scored based on completion status."
+        : "Question was not marked as completed during the exam.",
+      category: 'General'
     };
+  }
+
+  generateDetailedExplanation(validationResults, passed, solution) {
+    if (validationResults.length === 0) {
+      return "No validation commands were available for this question.";
+    }
+
+    let explanation = "";
+
+    if (passed) {
+      explanation += "✅ **PASSED** - All required validations succeeded!\n\n";
+    } else {
+      explanation += "❌ **FAILED** - Some validations did not pass.\n\n";
+    }
+
+    explanation += "**Validation Results:**\n";
+    validationResults.forEach((result, index) => {
+      const status = result.passed ? "✅ PASS" : "❌ FAIL";
+      explanation += `${index + 1}. ${status} (${result.points} pts): ${result.description}\n`;
+      explanation += `   Command: \`${result.command}\`\n`;
+      explanation += `   Expected: \`${result.expected}\`\n`;
+      explanation += `   Actual: \`${result.actual}\`\n`;
+      if (result.error) {
+        explanation += `   Error: ${result.error}\n`;
+      }
+      explanation += "\n";
+    });
+
+    if (solution && solution.steps && solution.steps.length > 0) {
+      explanation += "\n**Solution Steps:**\n";
+      solution.steps.forEach((step, index) => {
+        explanation += `${index + 1}. ${step}\n`;
+      });
+    }
+
+    return explanation;
   }
 
   generateMockResults(exam) {

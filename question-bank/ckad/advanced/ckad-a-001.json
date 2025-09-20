@@ -1,0 +1,77 @@
+{
+  "id": "ckad-a-001",
+  "title": "Multi-Container Pod with Init Container",
+  "description": "Create a Pod named ||webapp|| in namespace ||saturn|| with the following requirements:\n\n- An init container that runs ||busybox:1.35|| and creates a file ||/shared/init-complete|| with content \"initialized\"\n- Main container running ||nginx:1.21|| with a volume mount at ||/usr/share/nginx/html|| \n- A sidecar container running ||busybox:1.35|| that watches the shared volume and logs any changes\n- Use an emptyDir volume named ||shared-data|| mounted in all containers\n\nVerify the init container completes successfully and the main application starts.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Multi-Container Pods",
+  "tags": [
+    "init-containers",
+    "multi-container",
+    "volumes",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods",
+      "volumes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create the multi-container pod YAML:",
+      "   kubectl run webapp --image=nginx:1.21 --dry-run=client -o yaml > webapp.yaml",
+      "2. Edit the YAML to add init container and sidecar:",
+      "   Add initContainers section with busybox that creates /shared/init-complete",
+      "   Add sidecar container with busybox that watches /shared volume",
+      "   Add emptyDir volume shared-data mounted in all containers",
+      "3. Apply the pod:",
+      "   kubectl apply -f webapp.yaml -n saturn",
+      "4. Verify init container completed:",
+      "   kubectl get pod webapp -n saturn",
+      "   kubectl describe pod webapp -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod webapp -n saturn -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 2,
+      "description": "Pod should be in Running state"
+    },
+    {
+      "command": "kubectl get pod webapp -n saturn -o jsonpath='{.status.initContainerStatuses[0].state.terminated.reason}'",
+      "expected": "Completed",
+      "points": 2,
+      "description": "Init container should complete successfully"
+    },
+    {
+      "command": "kubectl get pod webapp -n saturn -o jsonpath='{.spec.containers[*].name}' | grep -o nginx | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have nginx main container"
+    },
+    {
+      "command": "kubectl get pod webapp -n saturn -o jsonpath='{.spec.containers[*].name}' | grep -o busybox | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have busybox sidecar container"
+    },
+    {
+      "command": "kubectl get pod webapp -n saturn -o jsonpath='{.spec.volumes[*].emptyDir}' | grep -c '{}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Should have emptyDir volume"
+    },
+    {
+      "command": "kubectl exec webapp -n saturn -c nginx -- test -f /usr/share/nginx/html/init-complete; echo $?",
+      "expected": "0",
+      "points": 1,
+      "description": "Init container should create file accessible to main container"
+    }
+  ]
+}

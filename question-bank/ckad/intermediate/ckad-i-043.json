@@ -1,0 +1,88 @@
+{
+  "id": "ckad-i-043",
+  "title": "Network Policy with Ingress and Application Scaling",
+  "description": "Deploy a three-tier application (frontend, backend, database) in the venus namespace with strict network policies. Configure ingress routing for the frontend and implement horizontal pod autoscaling for the backend tier based on memory utilization.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["network-policies", "ingress", "application-scaling", "dns-service-discovery", "deployments-rolling-updates"],
+  "points": 12,
+  "timeMinutes": 25,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy frontend deployment with ||2|| replicas and label ||tier=frontend||"
+    },
+    {
+      "step": 2,
+      "description": "Deploy backend deployment with ||3|| replicas and label ||tier=backend||"
+    },
+    {
+      "step": 3,
+      "description": "Deploy database deployment with ||1|| replica and label ||tier=database||"
+    },
+    {
+      "step": 4,
+      "description": "Create NetworkPolicy allowing frontend to backend communication only"
+    },
+    {
+      "step": 5,
+      "description": "Create NetworkPolicy allowing backend to database communication only"
+    },
+    {
+      "step": 6,
+      "description": "Configure Ingress for frontend with path ||/app|| and host ||three-tier.local||"
+    },
+    {
+      "step": 7,
+      "description": "Create HPA for backend scaling based on ||60%|| memory utilization"
+    },
+    {
+      "step": 8,
+      "description": "Verify network isolation and scaling functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n venus -o jsonpath='{.spec.template.metadata.labels.tier}'",
+      "expectedOutput": "frontend",
+      "description": "Verify frontend deployment has correct tier label",
+      "points": 1
+    },
+    {
+      "command": "kubectl get networkpolicy frontend-to-backend -n venus -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expectedOutput": "backend",
+      "description": "Verify NetworkPolicy for frontend to backend",
+      "points": 2
+    },
+    {
+      "command": "kubectl get networkpolicy backend-to-database -n venus -o jsonpath='{.spec.podSelector.matchLabels.tier}'",
+      "expectedOutput": "database",
+      "description": "Verify NetworkPolicy for backend to database",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress three-tier-ingress -n venus -o jsonpath='{.spec.rules[0].host}'",
+      "expectedOutput": "three-tier.local",
+      "description": "Verify Ingress host configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get ingress three-tier-ingress -n venus -o jsonpath='{.spec.rules[0].http.paths[0].path}'",
+      "expectedOutput": "/app",
+      "description": "Verify Ingress path configuration",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa backend-hpa -n venus -o jsonpath='{.spec.metrics[0].resource.name}'",
+      "expectedOutput": "memory",
+      "description": "Verify HPA is configured for memory scaling",
+      "points": 2
+    },
+    {
+      "command": "kubectl get hpa backend-hpa -n venus -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}'",
+      "expectedOutput": "60",
+      "description": "Verify HPA memory target is 60%",
+      "points": 1
+    }
+  ]
+}

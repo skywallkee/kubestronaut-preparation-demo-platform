@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-073",
+  "title": "Container Image Management with Secrets and Debugging",
+  "description": "Set up a container image management system in the mars namespace with private registry integration. Configure image pull secrets, implement automated image scanning, and provide debugging tools for troubleshooting image pull and deployment issues.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["container-images", "configmaps-secrets", "debugging-troubleshooting", "service-accounts-rbac"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create Secret ||registry-credentials|| of type ||kubernetes.io/dockerconfigjson|| for private registry"
+    },
+    {
+      "step": 2,
+      "description": "Create ServiceAccount ||image-puller|| with imagePullSecrets configured"
+    },
+    {
+      "step": 3,
+      "description": "Deploy applications using images from private registry: ||private.registry.com/app:v1.0||"
+    },
+    {
+      "step": 4,
+      "description": "Configure image scanning job with ||always|| pull policy for security checks"
+    },
+    {
+      "step": 5,
+      "description": "Create debug pod with container inspection tools like ||skopeo||, ||dive||"
+    },
+    {
+      "step": 6,
+      "description": "Set up Role and RoleBinding for image management permissions"
+    },
+    {
+      "step": 7,
+      "description": "Verify image pulls, scanning, and debugging capabilities"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get secret registry-credentials -n mars -o jsonpath='{.type}'",
+      "expectedOutput": "kubernetes.io/dockerconfigjson",
+      "description": "Verify registry credentials secret type",
+      "points": 2
+    },
+    {
+      "command": "kubectl get serviceaccount image-puller -n mars -o jsonpath='{.imagePullSecrets[0].name}'",
+      "expectedOutput": "registry-credentials",
+      "description": "Verify ServiceAccount has imagePullSecrets",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment private-app -n mars -o jsonpath='{.spec.template.spec.containers[0].image}' | grep private.registry.com",
+      "expectedOutput": "private.registry.com",
+      "description": "Verify deployment uses private registry image",
+      "points": 1
+    },
+    {
+      "command": "kubectl get job image-scanner -n mars -o jsonpath='{.spec.template.spec.containers[0].imagePullPolicy}'",
+      "expectedOutput": "Always",
+      "description": "Verify image scanner uses Always pull policy",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pod image-debug -n mars -o jsonpath='{.spec.containers[0].image}' | grep -E '(skopeo|dive|tools)'",
+      "expectedOutput": "tools",
+      "description": "Verify debug pod has image inspection tools",
+      "points": 2
+    },
+    {
+      "command": "kubectl get role image-manager -n mars -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "secrets",
+      "description": "Verify Role has image management permissions",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment private-app -n mars -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expectedOutput": "image-puller",
+      "description": "Verify deployment uses image-puller ServiceAccount",
+      "points": 1
+    }
+  ]
+}

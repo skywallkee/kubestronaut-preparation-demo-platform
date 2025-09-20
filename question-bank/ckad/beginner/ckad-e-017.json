@@ -1,0 +1,57 @@
+{
+  "id": "ckad-e-017",
+  "title": "Create a CronJob",
+  "description": "Create a CronJob named ||daily-job|| that runs every day at midnight using image ||busybox:1.31.0|| and command ||'echo Hello World'|| in the ||venus|| namespace.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "jobs-cronjobs",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create CronJob:",
+      "   kubectl create cronjob daily-job --schedule='0 0 * * *' --image=busybox:1.31.0 -n venus -- echo 'Hello World'",
+      "2. Verify CronJob:",
+      "   kubectl get cronjob daily-job -n venus",
+      "3. Check schedule:",
+      "   kubectl describe cronjob daily-job -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get cronjob daily-job -n venus",
+      "expected": "0",
+      "points": 1.5,
+      "description": "CronJob should exist in venus namespace"
+    },
+    {
+      "command": "kubectl get cronjob daily-job -n venus -o jsonpath='{.spec.schedule}'",
+      "expected": "0 0 * * *",
+      "points": 1.5,
+      "description": "CronJob should have correct schedule (midnight daily)"
+    },
+    {
+      "command": "kubectl get cronjob daily-job -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}'",
+      "expected": "busybox:1.31.0",
+      "points": 0.5,
+      "description": "CronJob should use correct image"
+    },
+    {
+      "command": "kubectl get cronjob daily-job -n venus -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].command[0]}'",
+      "expected": "echo",
+      "points": 0.5,
+      "description": "CronJob should have correct command"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "ckad-a-080",
+  "title": "CSI Driver Integration and Storage Optimization",
+  "description": "Implement advanced ||Container Storage Interface|| (CSI) driver integration with custom storage optimization and management features. Create applications that leverage CSI driver capabilities for ||dynamic provisioning||, ||volume expansion||, ||topology awareness||, and ||storage tiering||. Configure CSI drivers with custom parameters, implement ||volume health monitoring||, and demonstrate advanced features like ||volume migration||, ||encryption at rest||, and ||performance tuning||. Include scenarios with multi-zone deployments, storage cost optimization, and integration with cloud provider storage services.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "State Persistence",
+  "tags": ["csi-driver", "dynamic-provisioning", "topology-awareness", "encryption", "performance-tuning", "storage-optimization", "advanced"],
+  "infrastructure": {
+    "namespaces": ["csi-integration"],
+    "resources": ["StorageClass", "PersistentVolumeClaim", "CSIDriver", "VolumeAttachment"],
+    "prerequisites": ["CSI driver with advanced features installed"]
+  },
+  "solution": {
+    "steps": [
+      "# Create csi-integration namespace\nkubectl create namespace csi-integration",
+      "Configure StorageClass with CSI driver parameters",
+      "Set up topology-aware storage provisioning",
+      "Create encrypted PVC with CSI encryption",
+      "Configure volume performance optimization",
+      "Implement storage health monitoring",
+      "Test volume migration and expansion",
+      "Verify CSI driver metrics and observability"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get storageclass csi-encrypted -o jsonpath='{.parameters.encryption}'",
+      "expected": "true",
+      "points": 3,
+      "description": "StorageClass enables encryption through CSI parameters"
+    },
+    {
+      "command": "kubectl get storageclass csi-topology -o jsonpath='{.allowedTopologies[0].matchLabelExpressions[0].key}'",
+      "expected": "topology.kubernetes.io/zone",
+      "points": 3,
+      "description": "StorageClass configured with topology awareness"
+    },
+    {
+      "command": "kubectl get pvc high-perf-storage -n csi-integration -o jsonpath='{.metadata.annotations.volume\\.beta\\.kubernetes\\.io/storage-provisioner}'",
+      "expected": "csi-driver",
+      "points": 2,
+      "description": "PVC provisioned by CSI driver"
+    },
+    {
+      "command": "kubectl get volumeattachment | grep csi-integration | wc -l",
+      "expected": "2",
+      "points": 2,
+      "description": "CSI volumes properly attached to nodes"
+    },
+    {
+      "command": "kubectl exec -n csi-integration deploy/storage-app -- lsblk | grep -c 'encrypted'",
+      "expected": "1",
+      "points": 2,
+      "description": "Encrypted volume visible in container"
+    },
+    {
+      "command": "kubectl get csidriver -o jsonpath='{.items[0].spec.attachRequired}'",
+      "expected": "true",
+      "points": 2,
+      "description": "CSI driver properly registered with attachment support"
+    }
+  ]
+}

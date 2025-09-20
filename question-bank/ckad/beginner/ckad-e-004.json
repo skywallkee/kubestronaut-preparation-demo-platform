@@ -1,0 +1,51 @@
+{
+  "id": "ckad-e-004",
+  "title": "Create a Deployment",
+  "description": "Create a Deployment named ||web-deploy|| with ||3|| replicas using image ||nginx:1.20-alpine|| in Namespace ||mercury||.",
+  "points": 4,
+  "timeLimit": 10,
+  "category": "Application Deployment",
+  "tags": [
+    "deployments-rolling-updates",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment:",
+      "   kubectl create deployment web-deploy --image=nginx:1.20-alpine --replicas=3 -n mercury",
+      "2. Verify deployment:",
+      "   kubectl get deployment web-deploy -n mercury",
+      "3. Check pods:",
+      "   kubectl get pods -l app=web-deploy -n mercury"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment web-deploy -n mercury -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 2,
+      "description": "Deployment should be configured for 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment web-deploy -n mercury -o jsonpath='{.status.readyReplicas}'",
+      "expected": "3",
+      "points": 1,
+      "description": "All 3 replicas should be ready"
+    },
+    {
+      "command": "kubectl get deployment web-deploy -n mercury -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.20-alpine",
+      "points": 1,
+      "description": "Deployment should use correct image"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-057",
+  "title": "Rolling Updates with Services and DNS Discovery",
+  "description": "Perform a complex rolling update of a distributed application in the mars namespace. The application consists of multiple services that discover each other using DNS. Ensure zero-downtime deployment while updating container images and maintaining service connectivity throughout the process.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["deployments-rolling-updates", "services", "dns-service-discovery", "container-images"],
+  "points": 10,
+  "timeMinutes": 18,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Deploy initial application with ||frontend:v1.0||, ||backend:v1.0||, and ||database:v1.0|| images"
+    },
+    {
+      "step": 2,
+      "description": "Configure services for each component with appropriate ClusterIP configuration"
+    },
+    {
+      "step": 3,
+      "description": "Set up DNS service discovery with environment variables pointing to service FQDNs"
+    },
+    {
+      "step": 4,
+      "description": "Configure rolling update strategy: ||maxUnavailable: 25%||, ||maxSurge: 25%||"
+    },
+    {
+      "step": 5,
+      "description": "Perform rolling update to ||frontend:v2.0||, ||backend:v2.0||, ||database:v2.0||"
+    },
+    {
+      "step": 6,
+      "description": "Monitor service connectivity during the update process"
+    },
+    {
+      "step": 7,
+      "description": "Verify all services are updated and DNS resolution continues to work"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get deployment frontend -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "frontend:v2.0",
+      "description": "Verify frontend image updated to v2.0",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment backend -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "backend:v2.0",
+      "description": "Verify backend image updated to v2.0",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment database -n mars -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expectedOutput": "database:v2.0",
+      "description": "Verify database image updated to v2.0",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment frontend -n mars -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}'",
+      "expectedOutput": "25%",
+      "description": "Verify rolling update maxUnavailable setting",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment frontend -n mars -o jsonpath='{.spec.strategy.rollingUpdate.maxSurge}'",
+      "expectedOutput": "25%",
+      "description": "Verify rolling update maxSurge setting",
+      "points": 2
+    },
+    {
+      "command": "kubectl get service frontend-svc -n mars -o jsonpath='{.spec.type}'",
+      "expectedOutput": "ClusterIP",
+      "description": "Verify frontend service type",
+      "points": 1
+    },
+    {
+      "command": "kubectl exec deployment/frontend -n mars -- nslookup backend-svc.mars.svc.cluster.local | grep Name",
+      "expectedOutput": "Name:",
+      "description": "Verify DNS service discovery works post-update",
+      "points": 2
+    }
+  ]
+}

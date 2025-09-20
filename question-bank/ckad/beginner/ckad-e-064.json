@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-064",
+  "title": "Debug Failing Pod",
+  "description": "Pod ||failing-pod|| in Namespace ||debug|| is not starting. Identify the issue and save the error details to ||/opt/course/064/error.txt||.",
+  "points": 3,
+  "timeLimit": 10,
+  "category": "Application Observability and Maintenance",
+  "tags": [
+    "debugging-troubleshooting",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "debug"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": [
+      "failing-pod exists with issues"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check pod status:",
+      "   kubectl get pod failing-pod -n debug",
+      "2. Describe pod to find issues:",
+      "   kubectl describe pod failing-pod -n debug",
+      "3. Save error details:",
+      "   kubectl describe pod failing-pod -n debug | grep -A5 -B5 Error > /opt/course/064/error.txt"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f /opt/course/064/error.txt",
+      "expected": "0",
+      "points": 3,
+      "description": "Error details file should exist"
+    }
+  ]
+}

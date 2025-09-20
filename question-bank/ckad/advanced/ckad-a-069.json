@@ -1,0 +1,81 @@
+{
+  "id": "ckad-a-069",
+  "title": "Advanced Service Discovery and DNS",
+  "description": "Implement sophisticated ||service discovery|| mechanisms using Kubernetes ||DNS||, ||service registration||, and ||external service|| integration. Create a microservices architecture where services discover each other through DNS queries, implement service mesh integration for advanced discovery, configure external services for third-party integrations, and demonstrate advanced DNS features like ||headless services|| and ||custom DNS policies||. Include scenarios with service alias management, DNS caching optimization, and cross-cluster service discovery.",
+  "points": 14,
+  "timeLimit": 28,
+  "category": "Services & Networking",
+  "tags": ["service-discovery", "dns", "headless-services", "external-services", "service-mesh", "advanced"],
+  "infrastructure": {
+    "namespaces": ["service-discovery"],
+    "resources": ["Service", "Deployment", "ExternalService", "Endpoints"],
+    "prerequisites": ["Understanding of Kubernetes DNS and service registration"]
+  },
+  "solution": {
+    "steps": [
+      "# Create service-discovery namespace\nkubectl create namespace service-discovery",
+
+      "# Create StatefulSet for database cluster\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: database-cluster\n  namespace: service-discovery\n  labels:\n    app: database\nspec:\n  serviceName: database-headless\n  replicas: 3\n  selector:\n    matchLabels:\n      app: database\n  template:\n    metadata:\n      labels:\n        app: database\n    spec:\n      containers:\n      - name: database\n        image: postgres:13\n        ports:\n        - containerPort: 5432\n        env:\n        - name: POSTGRES_DB\n          value: cluster\n        - name: POSTGRES_USER\n          value: admin\n        - name: POSTGRES_PASSWORD\n          value: password\nEOF",
+
+      "# Create headless service for database cluster discovery\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: database-headless\n  namespace: service-discovery\n  labels:\n    app: database\nspec:\n  clusterIP: None  # Headless service\n  selector:\n    app: database\n  ports:\n  - port: 5432\n    targetPort: 5432\n    protocol: TCP\nEOF",
+
+      "# Create API Gateway deployment\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api-gateway\n  namespace: service-discovery\n  labels:\n    app: api-gateway\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: api-gateway\n  template:\n    metadata:\n      labels:\n        app: api-gateway\n    spec:\n      containers:\n      - name: gateway\n        image: nginx:1.20\n        ports:\n        - containerPort: 80\n        command:\n        - /bin/sh\n        - -c\n        - |\n          apt-get update && apt-get install -y dnsutils curl\n          nginx -g 'daemon off;'\nEOF",
+
+      "# Create ClusterIP service for API gateway\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: api-gateway\n  namespace: service-discovery\n  labels:\n    app: api-gateway\nspec:\n  type: ClusterIP\n  selector:\n    app: api-gateway\n  ports:\n  - port: 80\n    targetPort: 80\n    protocol: TCP\nEOF",
+
+      "# Create ExternalName service for external database\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: external-db\n  namespace: service-discovery\nspec:\n  type: ExternalName\n  externalName: external-postgres.example.com\n  ports:\n  - port: 5432\n    protocol: TCP\nEOF",
+
+      "# Create frontend deployment with custom DNS policy\nkubectl apply -f - <<EOF\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: frontend\n  namespace: service-discovery\n  labels:\n    app: frontend\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: frontend\n  template:\n    metadata:\n      labels:\n        app: frontend\n        app: custom-dns\n    spec:\n      dnsPolicy: ClusterFirst\n      dnsConfig:\n        options:\n        - name: ndots\n          value: \"2\"\n        - name: edns0\n      containers:\n      - name: frontend\n        image: busybox:1.35\n        command:\n        - /bin/sh\n        - -c\n        - |\n          while true; do\n            echo \"Frontend service running - $(date)\"\n            sleep 30\n          done\nEOF",
+
+      "# Wait for deployments to be ready\nkubectl wait --for=condition=available --timeout=300s deployment/api-gateway -n service-discovery\nkubectl wait --for=condition=available --timeout=300s deployment/frontend -n service-discovery\nkubectl wait --for=condition=ready --timeout=300s pod -l app=database -n service-discovery",
+
+      "# Test headless service DNS resolution\necho \"Testing headless service DNS resolution...\"\nkubectl exec -n service-discovery deploy/api-gateway -- nslookup database-headless.service-discovery.svc.cluster.local\necho",
+
+      "# Test ClusterIP service DNS resolution\necho \"Testing ClusterIP service DNS resolution...\"\nkubectl exec -n service-discovery deploy/api-gateway -- dig +short api-gateway.service-discovery.svc.cluster.local\necho",
+
+      "# Test service discovery environment variables\necho \"Testing service discovery environment variables...\"\nkubectl exec -n service-discovery deploy/frontend -- env | grep '_SERVICE_'\necho",
+
+      "# Create additional service for testing\nkubectl apply -f - <<EOF\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-service\n  namespace: service-discovery\nspec:\n  selector:\n    app: frontend\n  ports:\n  - port: 8080\n    targetPort: 80\nEOF",
+
+      "# Test cross-service communication\necho \"Testing cross-service communication...\"\nkubectl exec -n service-discovery deploy/api-gateway -- ping -c 3 frontend.service-discovery.svc.cluster.local\necho \"Service discovery testing completed\""
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service database-headless -n service-discovery -o jsonpath='{.spec.clusterIP}'",
+      "expected": "None",
+      "points": 3,
+      "description": "Headless service has no cluster IP"
+    },
+    {
+      "command": "kubectl get service external-db -n service-discovery -o jsonpath='{.spec.type}'",
+      "expected": "ExternalName",
+      "points": 2,
+      "description": "External service configured as ExternalName"
+    },
+    {
+      "command": "kubectl exec -n service-discovery deploy/api-gateway -- nslookup database-headless.service-discovery.svc.cluster.local",
+      "expected": "multiple-ips",
+      "points": 3,
+      "description": "Headless service returns multiple pod IPs"
+    },
+    {
+      "command": "kubectl exec -n service-discovery deploy/api-gateway -- dig +short api-gateway.service-discovery.svc.cluster.local",
+      "expected": "cluster-ip",
+      "points": 2,
+      "description": "ClusterIP service returns single IP"
+    },
+    {
+      "command": "kubectl get pod -n service-discovery -l app=custom-dns -o jsonpath='{.items[0].spec.dnsPolicy}'",
+      "expected": "ClusterFirst",
+      "points": 2,
+      "description": "Custom DNS policy configured for specific pods"
+    },
+    {
+      "command": "kubectl exec -n service-discovery deploy/frontend -- env | grep -c '_SERVICE_'",
+      "expected": "3",
+      "points": 2,
+      "description": "Service discovery environment variables available"
+    }
+  ]
+}

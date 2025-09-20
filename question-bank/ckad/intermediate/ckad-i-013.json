@@ -1,0 +1,89 @@
+{
+  "id": "ckad-i-013",
+  "title": "Helm Chart Creation and Deployment",
+  "description": "Create and deploy a Helm chart for a web application in namespace ||pluto||:\n\n1. Create a new Helm chart named ||pluto-webapp||\n\n2. Customize the chart with the following specifications:\n   - Application name: ||pluto-app||\n   - Image: ||nginx:1.21||\n   - Service type: ||ClusterIP||\n   - Service port: ||80||\n   - Replica count: ||3|| (configurable via values)\n   - Add environment variable ||APP_ENV|| with value ||production||\n\n3. Create custom values for the deployment:\n   - Override replica count to ||2||\n   - Set custom labels: ||tier: frontend||, ||environment: staging||\n\n4. Install the Helm chart with release name ||pluto-release||\n\n5. Verify the deployment is running with correct configuration",
+  "points": 8,
+  "timeLimit": 18,
+  "category": "Application Deployment",
+  "tags": [
+    "helm-package-manager",
+    "chart-creation",
+    "templating",
+    "deployment",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": [
+      "helm"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create new Helm chart:",
+      "   helm create pluto-webapp",
+      "2. Edit values.yaml to set default configuration:",
+      "   # Set replicaCount: 3, image.repository: nginx, image.tag: \"1.21\"",
+      "3. Edit deployment template to add environment variable:",
+      "   # Add env section with APP_ENV: production",
+      "4. Edit deployment template to add custom labels:",
+      "   # Add tier and environment labels to template metadata",
+      "5. Create custom values file (custom-values.yaml):",
+      "   echo 'replicaCount: 2\nlabels:\n  tier: frontend\n  environment: staging' > custom-values.yaml",
+      "6. Install the Helm chart:",
+      "   helm install pluto-release ./pluto-webapp -f custom-values.yaml -n pluto",
+      "7. Verify the installation:",
+      "   kubectl get all -n pluto -l app.kubernetes.io/instance=pluto-release"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm list -n pluto -o json | jq -r '.[0].name'",
+      "expected": "pluto-release",
+      "points": 1,
+      "description": "Helm release should be installed with correct name"
+    },
+    {
+      "command": "kubectl get deployment -n pluto -l app.kubernetes.io/instance=pluto-release -o jsonpath='{.items[0].spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 replicas from custom values"
+    },
+    {
+      "command": "kubectl get deployment -n pluto -l app.kubernetes.io/instance=pluto-release -o jsonpath='{.items[0].spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21",
+      "points": 1,
+      "description": "Deployment should use nginx:1.21 image"
+    },
+    {
+      "command": "kubectl get deployment -n pluto -l app.kubernetes.io/instance=pluto-release -o jsonpath='{.items[0].spec.template.spec.containers[0].env[?(@.name==\"APP_ENV\")].value}'",
+      "expected": "production",
+      "points": 2,
+      "description": "Container should have APP_ENV environment variable set to production"
+    },
+    {
+      "command": "kubectl get deployment -n pluto -l app.kubernetes.io/instance=pluto-release -o jsonpath='{.items[0].metadata.labels.tier}'",
+      "expected": "frontend",
+      "points": 1,
+      "description": "Deployment should have tier: frontend label"
+    },
+    {
+      "command": "kubectl get deployment -n pluto -l app.kubernetes.io/instance=pluto-release -o jsonpath='{.items[0].metadata.labels.environment}'",
+      "expected": "staging",
+      "points": 1,
+      "description": "Deployment should have environment: staging label"
+    },
+    {
+      "command": "kubectl get service -n pluto -l app.kubernetes.io/instance=pluto-release -o jsonpath='{.items[0].spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    }
+  ]
+}

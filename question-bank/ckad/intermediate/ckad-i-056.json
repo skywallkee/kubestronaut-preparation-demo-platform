@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-056",
+  "title": "Service Accounts with Persistent Storage and Health Probes",
+  "description": "Deploy a financial application in the pluto namespace that requires elevated permissions to access cluster resources. Configure service accounts with RBAC for secure resource access, implement persistent storage for transaction data, and add comprehensive health monitoring.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["service-accounts-rbac", "persistent-volumes-claims", "health-probes", "security-contexts"],
+  "points": 11,
+  "timeMinutes": 20,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ServiceAccount ||financial-app-sa|| with appropriate permissions"
+    },
+    {
+      "step": 2,
+      "description": "Create Role ||financial-role|| with permissions to read/write ConfigMaps and Secrets"
+    },
+    {
+      "step": 3,
+      "description": "Create RoleBinding to associate ServiceAccount with Role"
+    },
+    {
+      "step": 4,
+      "description": "Create PVC ||transaction-data|| with ||5Gi|| storage for transaction persistence"
+    },
+    {
+      "step": 5,
+      "description": "Deploy application with security context: ||runAsUser: 2000||, ||fsGroup: 2000||"
+    },
+    {
+      "step": 6,
+      "description": "Configure liveness probe on ||/health|| and readiness probe on ||/ready|| endpoints"
+    },
+    {
+      "step": 7,
+      "description": "Verify RBAC permissions and health probe functionality"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount financial-app-sa -n pluto -o jsonpath='{.metadata.name}'",
+      "expectedOutput": "financial-app-sa",
+      "description": "Verify ServiceAccount exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get role financial-role -n pluto -o jsonpath='{.rules[0].resources[0]}'",
+      "expectedOutput": "configmaps",
+      "description": "Verify Role has ConfigMap permissions",
+      "points": 2
+    },
+    {
+      "command": "kubectl get rolebinding financial-binding -n pluto -o jsonpath='{.subjects[0].name}'",
+      "expectedOutput": "financial-app-sa",
+      "description": "Verify RoleBinding links ServiceAccount",
+      "points": 2
+    },
+    {
+      "command": "kubectl get pvc transaction-data -n pluto -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "5Gi",
+      "description": "Verify PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment financial-app -n pluto -o jsonpath='{.spec.template.spec.securityContext.runAsUser}'",
+      "expectedOutput": "2000",
+      "description": "Verify security context runAsUser",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment financial-app -n pluto -o jsonpath='{.spec.template.spec.securityContext.fsGroup}'",
+      "expectedOutput": "2000",
+      "description": "Verify security context fsGroup",
+      "points": 1
+    },
+    {
+      "command": "kubectl get deployment financial-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}'",
+      "expectedOutput": "/health",
+      "description": "Verify liveness probe path",
+      "points": 2
+    },
+    {
+      "command": "kubectl get deployment financial-app -n pluto -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expectedOutput": "financial-app-sa",
+      "description": "Verify deployment uses ServiceAccount",
+      "points": 1
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "id": "ckad-i-007",
+  "title": "Secrets and Security Context",
+  "description": "Create a secure application setup in namespace ||mars|| with the following requirements:\n\n**1. Secret named ||app-secrets||:**\n- ||username||: ||admin|| (base64 encoded)\n- ||password||: ||secret123|| (base64 encoded)\n- ||api-key||: ||abc123xyz|| (base64 encoded)\n\n**2. Pod named ||secure-app|| with security constraints:**\n- Image: ||nginx:1.21||\n- Run as non-root user ID ||1000||\n- Run as group ID ||3000||\n- Read-only root filesystem\n- Mount secrets as environment variables\n- Add a writable ||emptyDir|| volume at ||/tmp|| for temporary files\n\nVerify the pod runs securely and can access the secret values.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Security",
+  "tags": [
+    "secrets",
+    "security-context",
+    "non-root",
+    "readonly-filesystem",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "secrets",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Secret:",
+      "   kubectl create secret generic app-secrets \\",
+      "     --from-literal=username=admin \\",
+      "     --from-literal=password=secret123 \\",
+      "     --from-literal=api-key=abc123xyz \\",
+      "     -n mars",
+      "2. Create secure Pod YAML:",
+      "   cat <<EOF > secure-app.yaml",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: secure-app",
+      "     namespace: mars",
+      "   spec:",
+      "     securityContext:",
+      "       runAsUser: 1000",
+      "       runAsGroup: 3000",
+      "       runAsNonRoot: true",
+      "     containers:",
+      "     - name: nginx",
+      "       image: nginx:1.21",
+      "       securityContext:",
+      "         readOnlyRootFilesystem: true",
+      "       envFrom:",
+      "       - secretRef:",
+      "           name: app-secrets",
+      "       volumeMounts:",
+      "       - name: tmp-volume",
+      "         mountPath: /tmp",
+      "       - name: var-cache",
+      "         mountPath: /var/cache/nginx",
+      "       - name: var-run",
+      "         mountPath: /var/run",
+      "     volumes:",
+      "     - name: tmp-volume",
+      "       emptyDir: {}",
+      "     - name: var-cache",
+      "       emptyDir: {}",
+      "     - name: var-run",
+      "       emptyDir: {}",
+      "   EOF",
+      "3. Apply the Pod:",
+      "   kubectl apply -f secure-app.yaml",
+      "4. Wait for pod to be ready:",
+      "   kubectl wait --for=condition=Ready pod/secure-app -n mars --timeout=60s",
+      "5. Verify security context:",
+      "   kubectl exec -n mars secure-app -- id",
+      "6. Verify secret access:",
+      "   kubectl exec -n mars secure-app -- env | grep username"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get secret app-secrets -n mars -o jsonpath='{.data.username}' | base64 -d",
+      "expected": "admin",
+      "points": 1,
+      "description": "Secret should contain username"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.securityContext.runAsUser}'",
+      "expected": "1000",
+      "points": 1,
+      "description": "Pod should run as user 1000"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.securityContext.runAsGroup}'",
+      "expected": "3000",
+      "points": 1,
+      "description": "Pod should run as group 3000"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.containers[0].securityContext.readOnlyRootFilesystem}'",
+      "expected": "true",
+      "points": 1,
+      "description": "Container should have read-only root filesystem"
+    },
+    {
+      "command": "kubectl get pod secure-app -n mars -o jsonpath='{.spec.containers[0].envFrom[0].secretRef.name}'",
+      "expected": "app-secrets",
+      "points": 1,
+      "description": "Pod should reference the secret"
+    },
+    {
+      "command": "kubectl exec -n mars secure-app -- sh -c 'echo $username'",
+      "expected": "admin",
+      "points": 1,
+      "description": "Secret values should be accessible as environment variables"
+    },
+    {
+      "command": "kubectl exec -n mars secure-app -- id -u",
+      "expected": "1000",
+      "points": 1,
+      "description": "Pod should actually run as user 1000"
+    }
+  ]
+}

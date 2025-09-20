@@ -1,0 +1,117 @@
+{
+  "id": "ckad-a-043",
+  "title": "Advanced Secret Management and Rotation",
+  "description": "Implement a comprehensive secret management strategy using multiple ||Secret|| types including ||TLS certificates||, ||Docker registry|| credentials, and ||generic secrets||. Create an application that uses secrets for database authentication, TLS termination, and private registry access. Demonstrate secret rotation by updating secrets and showing how applications handle the changes. Include both automated and manual secret rotation scenarios, and implement proper secret mounting strategies (environment variables vs volume mounts) based on security requirements.",
+  "points": 13,
+  "timeLimit": 28,
+  "category": "Configuration",
+  "tags": ["secrets", "tls", "docker-registry", "secret-rotation", "security", "advanced"],
+  "infrastructure": {
+    "namespaces": ["secret-demo"],
+    "resources": ["Secret", "Pod", "ServiceAccount", "Deployment"],
+    "prerequisites": ["TLS certificates for testing"]
+  },
+  "solution": {
+    "steps": [
+      "1. Create namespace and generate TLS certificates:",
+      "   kubectl create namespace secret-demo",
+      "   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj '/CN=example.com'",
+      "2. Create various secret types:",
+      "   kubectl create secret generic db-credentials -n secret-demo --from-literal=username=dbuser --from-literal=password=dbpass123",
+      "   kubectl create secret tls tls-cert -n secret-demo --cert=tls.crt --key=tls.key",
+      "   kubectl create secret docker-registry registry-creds -n secret-demo --docker-server=docker.io --docker-username=user --docker-password=pass --docker-email=user@example.com",
+      "3. Deploy application using all secret types:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: secure-app",
+      "     namespace: secret-demo",
+      "   spec:",
+      "     replicas: 1",
+      "     selector:",
+      "       matchLabels:",
+      "         app: secure-app",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: secure-app",
+      "       spec:",
+      "         imagePullSecrets:",
+      "         - name: registry-creds",
+      "         containers:",
+      "         - name: app",
+      "           image: nginx:alpine",
+      "           env:",
+      "           - name: DB_USERNAME",
+      "             valueFrom:",
+      "               secretKeyRef:",
+      "                 name: db-credentials",
+      "                 key: username",
+      "           - name: DB_PASSWORD",
+      "             valueFrom:",
+      "               secretKeyRef:",
+      "                 name: db-credentials",
+      "                 key: password",
+      "           volumeMounts:",
+      "           - name: tls-volume",
+      "             mountPath: /etc/tls",
+      "             readOnly: true",
+      "           command: ['/bin/sh', '-c']",
+      "           args:",
+      "           - |",
+      "             echo \"Database user: $DB_USERNAME\" > /tmp/app.log",
+      "             echo \"TLS cert available: $(ls /etc/tls/)\" >> /tmp/app.log",
+      "             nginx -g 'daemon off;'",
+      "         volumes:",
+      "         - name: tls-volume",
+      "           secret:",
+      "             secretName: tls-cert",
+      "   EOF",
+      "4. Test secret rotation:",
+      "   kubectl patch secret db-credentials -n secret-demo --patch '{\"data\":{\"password\":\"bmV3cGFzczEyMw==\"}}'",
+      "5. Verify secrets are properly mounted and accessible:",
+      "   kubectl exec -n secret-demo deploy/secure-app -- ls /etc/tls/",
+      "   kubectl exec -n secret-demo deploy/secure-app -- env | grep DB_",
+      "   kubectl get pod -n secret-demo -o jsonpath='{.items[0].spec.imagePullSecrets}'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get secret db-credentials -n secret-demo -o jsonpath='{.type}'",
+      "expected": "Opaque",
+      "points": 2,
+      "description": "Database credentials secret exists"
+    },
+    {
+      "command": "kubectl get secret tls-cert -n secret-demo -o jsonpath='{.type}'",
+      "expected": "kubernetes.io/tls",
+      "points": 2,
+      "description": "TLS certificate secret exists"
+    },
+    {
+      "command": "kubectl get secret registry-creds -n secret-demo -o jsonpath='{.type}'",
+      "expected": "kubernetes.io/dockerconfigjson",
+      "points": 2,
+      "description": "Docker registry secret exists"
+    },
+    {
+      "command": "kubectl get pod -n secret-demo -l app=secure-app --field-selector=status.phase=Running | wc -l",
+      "expected": "2",
+      "points": 3,
+      "description": "Secure application pod is running"
+    },
+    {
+      "command": "kubectl exec -n secret-demo deploy/secure-app -- ls /etc/tls/",
+      "expected": "tls.crt",
+      "points": 2,
+      "description": "TLS certificate is mounted in container"
+    },
+    {
+      "command": "kubectl get pod -n secret-demo -l app=secure-app -o jsonpath='{.items[0].spec.imagePullSecrets[0].name}'",
+      "expected": "registry-creds",
+      "points": 2,
+      "description": "Pod uses docker registry secret for image pulls"
+    }
+  ]
+}

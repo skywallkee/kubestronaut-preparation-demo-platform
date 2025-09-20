@@ -1,0 +1,103 @@
+{
+  "id": "ckad-i-017",
+  "title": "Ingress Controller and Path-based Routing",
+  "description": "Configure Ingress with path-based routing and SSL termination in namespace ||pluto||:\n\n1. Create two Deployments:\n   - ||api-app||: Image ||nginx:1.21||, expose port ||80||\n   - ||web-app||: Image ||httpd:2.4||, expose port ||80||\n\n2. Create corresponding Services:\n   - ||api-service||: ClusterIP, port ||80|| targeting ||api-app||\n   - ||web-service||: ClusterIP, port ||80|| targeting ||web-app||\n\n3. Create an Ingress named ||app-ingress|| with:\n   - Host: ||pluto.local||\n   - Path ||/api|| routes to ||api-service||\n   - Path ||/web|| routes to ||web-service||\n   - Default backend to ||web-service||\n   - Ingress class: ||nginx||\n\n4. Create a TLS secret for SSL termination:\n   - Secret name: ||pluto-tls||\n   - Use self-signed certificate for ||pluto.local||\n\n5. Update Ingress to use TLS with the secret",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Services and Networking",
+  "tags": [
+    "ingress",
+    "path-routing",
+    "tls",
+    "deployment",
+    "service",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "ingresses",
+      "secrets"
+    ],
+    "prerequisites": [
+      "ingress-controller"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create API deployment and service:",
+      "   kubectl create deployment api-app --image=nginx:1.21 -n pluto",
+      "   kubectl expose deployment api-app --name=api-service --port=80 -n pluto",
+      "2. Create Web deployment and service:",
+      "   kubectl create deployment web-app --image=httpd:2.4 -n pluto",
+      "   kubectl expose deployment web-app --name=web-service --port=80 -n pluto",
+      "3. Generate self-signed certificate:",
+      "   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout pluto.key -out pluto.crt -subj '/CN=pluto.local'",
+      "4. Create TLS secret:",
+      "   kubectl create secret tls pluto-tls --cert=pluto.crt --key=pluto.key -n pluto",
+      "5. Create Ingress YAML with path-based routing:",
+      "   # Configure ingress with host, paths, and TLS",
+      "6. Apply the Ingress configuration:",
+      "   kubectl apply -f app-ingress.yaml -n pluto",
+      "7. Verify Ingress is configured correctly:",
+      "   kubectl get ingress app-ingress -n pluto",
+      "8. Test routing (if ingress controller is available):",
+      "   curl -H 'Host: pluto.local' http://localhost/api",
+      "   curl -H 'Host: pluto.local' http://localhost/web"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment api-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "nginx:1.21",
+      "points": 1,
+      "description": "API deployment should use nginx:1.21 image"
+    },
+    {
+      "command": "kubectl get deployment web-app -n pluto -o jsonpath='{.spec.template.spec.containers[0].image}'",
+      "expected": "httpd:2.4",
+      "points": 1,
+      "description": "Web deployment should use httpd:2.4 image"
+    },
+    {
+      "command": "kubectl get service api-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "API service should expose port 80"
+    },
+    {
+      "command": "kubectl get service web-service -n pluto -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Web service should expose port 80"
+    },
+    {
+      "command": "kubectl get ingress app-ingress -n pluto -o jsonpath='{.spec.rules[0].host}'",
+      "expected": "pluto.local",
+      "points": 1,
+      "description": "Ingress should be configured for pluto.local host"
+    },
+    {
+      "command": "kubectl get ingress app-ingress -n pluto -o jsonpath='{.spec.rules[0].http.paths[?(@.path==\"/api\")].backend.service.name}'",
+      "expected": "api-service",
+      "points": 1,
+      "description": "Ingress should route /api path to api-service"
+    },
+    {
+      "command": "kubectl get ingress app-ingress -n pluto -o jsonpath='{.spec.rules[0].http.paths[?(@.path==\"/web\")].backend.service.name}'",
+      "expected": "web-service",
+      "points": 1,
+      "description": "Ingress should route /web path to web-service"
+    },
+    {
+      "command": "kubectl get secret pluto-tls -n pluto -o jsonpath='{.type}'",
+      "expected": "kubernetes.io/tls",
+      "points": 1,
+      "description": "TLS secret should be created with correct type"
+    }
+  ]
+}

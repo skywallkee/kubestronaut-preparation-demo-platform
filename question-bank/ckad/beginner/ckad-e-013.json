@@ -1,0 +1,55 @@
+{
+  "id": "ckad-e-013",
+  "title": "Create a NodePort Service",
+  "description": "Create a NodePort Service named ||web-nodeport|| that exposes the ||web-deploy|| Deployment on port ||80|| with nodePort ||30080|| in the ||jupiter|| namespace.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "services",
+      "deployments"
+    ],
+    "prerequisites": [
+      "web-deploy deployment exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create NodePort service:",
+      "   kubectl expose deployment web-deploy --name=web-nodeport --type=NodePort --port=80 --target-port=80 -n jupiter",
+      "2. Edit service to set nodePort:",
+      "   kubectl edit service web-nodeport -n jupiter",
+      "   # Add nodePort: 30080 under ports",
+      "3. Verify service:",
+      "   kubectl get service web-nodeport -n jupiter"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service web-nodeport -n jupiter -o jsonpath='{.spec.type}'",
+      "expected": "NodePort",
+      "points": 1.5,
+      "description": "Service should be NodePort type"
+    },
+    {
+      "command": "kubectl get service web-nodeport -n jupiter -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl get service web-nodeport -n jupiter -o jsonpath='{.spec.ports[0].nodePort}'",
+      "expected": "30080",
+      "points": 1.5,
+      "description": "Service should have nodePort 30080"
+    }
+  ]
+}

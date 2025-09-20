@@ -5,35 +5,35 @@ Difficulty: beginner
 Namespace: k8s-exam-ckad
 
 Selected Questions for this Exam:
-  - ckad-e-023: Execute Command in Pod
-  - ckad-e-048: Create Pod with Image Pull Policy
-  - ckad-e-045: Create Pod with Node Selector
-  - ckad-e-036: Create Pod with ConfigMap Volume
   - ckad-e-002: Create a Simple Pod
+  - ckad-e-014: Create Pod with Resource Limits
+  - ckad-e-038: Create Pod with Multiple Environment Variables
   - ckad-e-027: Get Pods with Specific Label
-  - ckad-e-004: Create a Deployment
-  - ckad-e-040: Create Pod with TTL
-  - ckad-e-017: Create a CronJob
+  - ckad-e-049: Export Pod YAML
+  - ckad-e-047: Create ReplicaSet
+  - ckad-e-008: Create a Secret
+  - ckad-e-031: Create Pod with Security Context
+  - ckad-e-003: Create a Job
+  - ckad-e-018: Update Deployment Image
+  - ckad-e-050: Create Namespace and Pod
+  - ckad-e-035: Create ConfigMap from File
+  - ckad-e-006: Create a Pod with ReadinessProbe
+  - ckad-e-009: Create Pod with Environment Variables from ConfigMap
+  - ckad-e-005: Expose a Deployment with ClusterIP Service
+  - ckad-e-039: Create Pod with Restart Policy
   - ckad-e-046: Create Pod with Tolerations
   - ckad-e-022: Describe a Pod
-  - ckad-e-049: Export Pod YAML
-  - ckad-e-043: Create Pod with Host Network
   - ckad-e-019: Create Pod with InitContainer
-  - ckad-e-026: Create Pod in Specific Namespace
-  - ckad-e-042: Create Pod with DNS Policy
-  - ckad-e-020: Create Pod with Secret as Volume
-  - ckad-e-003: Create a Job
-  - ckad-e-044: Get Events in Namespace
 
 Infrastructure Deployed:
-  - Namespaces: default, kube-system
+  - Namespaces: pluto, uranus, mars, venus, neptune, saturn, jupiter
   - Deployments: ✓
-  - Services: ✗
+  - Services: ✓
   - ConfigMaps: ✓
   - Secrets: ✓
   - PVCs: ✗
-  - Network Policies: ✓
-  - RBAC: ✗
+  - Network Policies: ✗
+  - RBAC: ✓
 
 To verify your environment:
   kubectl get pods -n k8s-exam-ckad

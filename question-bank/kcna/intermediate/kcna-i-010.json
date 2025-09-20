@@ -1,0 +1,97 @@
+{
+  "id": "kcna-i-010",
+  "title": "Cloud-Native Ecosystem Tools",
+  "description": "Demonstrate understanding of cloud-native ecosystem tools and their integration:\n\n1. Explore and utilize Helm package management:\n   - Add a public Helm repository\n   - Search for available charts\n   - Install a chart (simulate with dry-run)\n   - Show how to customize values\n\n2. Demonstrate kubectl plugins and extensions:\n   - Use ||kubectl get|| with custom output formats\n   - Show resource relationships with ||kubectl describe||\n   - Demonstrate ||kubectl top|| for resource monitoring\n   - Use ||kubectl explain|| for API documentation\n\n3. Work with YAML manifests and kustomization:\n   - Create a base application manifest\n   - Use ||kubectl apply|| with ||--dry-run|| for validation\n   - Show ||kubectl diff|| capabilities\n   - Demonstrate namespace and label management\n\n4. Explore cloud-native debugging tools:\n   - Use ||kubectl logs|| for application debugging\n   - Demonstrate ||kubectl exec|| for container access\n   - Show ||kubectl port-forward|| for local testing\n   - Use ||kubectl proxy|| for API server access\n\n5. Create a comprehensive cloud-native application in namespace ||saturn|| that demonstrates:\n   - Package management concepts\n   - Debugging capabilities\n   - Resource management\n   - Tool integration",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Ecosystem Tools",
+  "tags": [
+    "helm",
+    "kubectl",
+    "tools",
+    "debugging",
+    "ecosystem"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "configmaps"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Demonstrate Helm capabilities:",
+      "   helm repo add bitnami https://charts.bitnami.com/bitnami",
+      "   helm search repo nginx",
+      "   helm install my-nginx bitnami/nginx --dry-run -n saturn",
+      "2. Create application for tool demonstration:",
+      "   kubectl create deployment demo-app --image=nginx:1.21 --replicas=2 -n saturn",
+      "   kubectl expose deployment demo-app --port=80 --name=demo-service -n saturn",
+      "3. Demonstrate kubectl output formats:",
+      "   kubectl get pods -n saturn -o wide",
+      "   kubectl get deployment demo-app -n saturn -o yaml",
+      "   kubectl get service demo-service -n saturn -o json",
+      "4. Show resource relationships:",
+      "   kubectl describe deployment demo-app -n saturn",
+      "   kubectl explain pod.spec.containers",
+      "5. Demonstrate debugging tools:",
+      "   kubectl logs deployment/demo-app -n saturn",
+      "   kubectl exec deployment/demo-app -n saturn -- nginx -v",
+      "6. Show validation tools:",
+      "   kubectl apply --dry-run=client -f - << EOF",
+      "   apiVersion: v1",
+      "   kind: ConfigMap",
+      "   metadata:",
+      "     name: test-config",
+      "     namespace: saturn",
+      "   data:",
+      "     config.yaml: |",
+      "       app:",
+      "         name: demo",
+      "   EOF",
+      "7. Demonstrate resource monitoring:",
+      "   kubectl top pods -n saturn",
+      "   kubectl get events -n saturn",
+      "8. Show port forwarding:",
+      "   kubectl port-forward service/demo-service 8080:80 -n saturn &",
+      "   sleep 2 && kill %1"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm repo list | grep bitnami",
+      "expected": "bitnami",
+      "points": 1,
+      "description": "Should have bitnami Helm repository added"
+    },
+    {
+      "command": "kubectl get deployment demo-app -n saturn -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Demo application should be deployed"
+    },
+    {
+      "command": "kubectl get service demo-service -n saturn -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should be exposed on port 80"
+    },
+    {
+      "command": "kubectl explain pod.spec.containers | grep -c 'KIND'",
+      "expected": "1",
+      "points": 1,
+      "description": "Should demonstrate kubectl explain functionality"
+    },
+    {
+      "command": "kubectl logs deployment/demo-app -n saturn --tail=1 | wc -l",
+      "expected": "1",
+      "points": 1,
+      "description": "Should be able to access application logs"
+    }
+  ]
+}

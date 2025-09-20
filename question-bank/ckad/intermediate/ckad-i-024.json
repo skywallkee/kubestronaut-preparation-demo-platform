@@ -1,0 +1,202 @@
+{
+  "id": "ckad-i-024",
+  "title": "Application Scaling with Resource Management",
+  "description": "Create an auto-scaling web application in namespace ||venus|| with comprehensive resource management:\n\n**Deployment:**\n- Name: ||scalable-web||\n- Image: ||nginx:1.21||\n- Initial replicas: ||2||\n- Resource requests: CPU ||100m||, Memory ||128Mi||\n- Resource limits: CPU ||200m||, Memory ||256Mi||\n- Add label ||app: scalable-web|| for targeting\n\n**Horizontal Pod Autoscaler:**\n- Name: ||web-hpa||\n- Target: deployment ||scalable-web||\n- Min replicas: ||2||, Max replicas: ||10||\n- CPU target: ||70%|| of requested CPU\n- Scale up: ||2|| pods per ||60|| seconds when above threshold\n- Scale down: ||1|| pod per ||120|| seconds when below threshold\n\n**Service:**\n- Name: ||web-service||\n- Type: ||ClusterIP||\n- Port: ||80|| -> target port ||80||\n\n**Resource Quota:**\n- Name: ||venus-quota||\n- Limit total CPU requests to ||2|| cores\n- Limit total memory requests to ||4Gi||\n- Limit total pods to ||20||\n\n**Load Testing:**\n- Create a test pod to generate CPU load\n- Verify HPA scales up the deployment\n- Monitor scaling behavior and resource usage\n\nTest the scaling behavior and verify resource constraints are enforced.",
+  "points": 10,
+  "timeLimit": 16,
+  "category": "Application Deployment",
+  "tags": [
+    "application-scaling",
+    "resource-management",
+    "deployments-rolling-updates",
+    "services",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "horizontalpodautoscalers",
+      "resourcequotas",
+      "pods"
+    ],
+    "prerequisites": [
+      "metrics-server"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create ResourceQuota:",
+      "   cat <<EOF > venus-quota.yaml",
+      "   apiVersion: v1",
+      "   kind: ResourceQuota",
+      "   metadata:",
+      "     name: venus-quota",
+      "     namespace: venus",
+      "   spec:",
+      "     hard:",
+      "       requests.cpu: \"2\"",
+      "       requests.memory: 4Gi",
+      "       pods: \"20\"",
+      "   EOF",
+      "2. Create Deployment with resource specifications:",
+      "   cat <<EOF > scalable-web-deployment.yaml",
+      "   apiVersion: apps/v1",
+      "   kind: Deployment",
+      "   metadata:",
+      "     name: scalable-web",
+      "     namespace: venus",
+      "   spec:",
+      "     replicas: 2",
+      "     selector:",
+      "       matchLabels:",
+      "         app: scalable-web",
+      "     template:",
+      "       metadata:",
+      "         labels:",
+      "           app: scalable-web",
+      "       spec:",
+      "         containers:",
+      "         - name: nginx",
+      "           image: nginx:1.21",
+      "           ports:",
+      "           - containerPort: 80",
+      "           resources:",
+      "             requests:",
+      "               cpu: 100m",
+      "               memory: 128Mi",
+      "             limits:",
+      "               cpu: 200m",
+      "               memory: 256Mi",
+      "   EOF",
+      "3. Create Service:",
+      "   cat <<EOF > web-service.yaml",
+      "   apiVersion: v1",
+      "   kind: Service",
+      "   metadata:",
+      "     name: web-service",
+      "     namespace: venus",
+      "   spec:",
+      "     selector:",
+      "       app: scalable-web",
+      "     ports:",
+      "     - port: 80",
+      "       targetPort: 80",
+      "     type: ClusterIP",
+      "   EOF",
+      "4. Create HorizontalPodAutoscaler:",
+      "   cat <<EOF > web-hpa.yaml",
+      "   apiVersion: autoscaling/v2",
+      "   kind: HorizontalPodAutoscaler",
+      "   metadata:",
+      "     name: web-hpa",
+      "     namespace: venus",
+      "   spec:",
+      "     scaleTargetRef:",
+      "       apiVersion: apps/v1",
+      "       kind: Deployment",
+      "       name: scalable-web",
+      "     minReplicas: 2",
+      "     maxReplicas: 10",
+      "     metrics:",
+      "     - type: Resource",
+      "       resource:",
+      "         name: cpu",
+      "         target:",
+      "           type: Utilization",
+      "           averageUtilization: 70",
+      "     behavior:",
+      "       scaleUp:",
+      "         stabilizationWindowSeconds: 60",
+      "         policies:",
+      "         - type: Pods",
+      "           value: 2",
+      "           periodSeconds: 60",
+      "       scaleDown:",
+      "         stabilizationWindowSeconds: 120",
+      "         policies:",
+      "         - type: Pods",
+      "           value: 1",
+      "           periodSeconds: 120",
+      "   EOF",
+      "5. Apply all resources:",
+      "   kubectl apply -f venus-quota.yaml",
+      "   kubectl apply -f scalable-web-deployment.yaml",
+      "   kubectl apply -f web-service.yaml",
+      "   kubectl apply -f web-hpa.yaml",
+      "6. Wait for deployment readiness:",
+      "   kubectl rollout status deployment/scalable-web -n venus",
+      "7. Verify HPA is active:",
+      "   kubectl get hpa web-hpa -n venus",
+      "8. Create load test pod:",
+      "   kubectl run load-test --image=busybox -n venus --restart=Never -- /bin/sh -c 'while true; do wget -q -O- http://web-service.venus.svc.cluster.local; done'",
+      "9. Monitor scaling:",
+      "   kubectl get hpa web-hpa -n venus --watch"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota venus-quota -n venus -o jsonpath='{.spec.hard.requests\\.cpu}'",
+      "expected": "2",
+      "points": 1,
+      "description": "ResourceQuota should limit CPU requests to 2 cores"
+    },
+    {
+      "command": "kubectl get deployment scalable-web -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Deployment should have correct CPU request"
+    },
+    {
+      "command": "kubectl get deployment scalable-web -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "256Mi",
+      "points": 1,
+      "description": "Deployment should have correct memory limit"
+    },
+    {
+      "command": "kubectl get service web-service -n venus -o jsonpath='{.spec.ports[0].port}'",
+      "expected": "80",
+      "points": 1,
+      "description": "Service should expose port 80"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n venus -o jsonpath='{.spec.scaleTargetRef.name}'",
+      "expected": "scalable-web",
+      "points": 1,
+      "description": "HPA should target the scalable-web deployment"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n venus -o jsonpath='{.spec.minReplicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "HPA should have minimum 2 replicas"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n venus -o jsonpath='{.spec.maxReplicas}'",
+      "expected": "10",
+      "points": 1,
+      "description": "HPA should have maximum 10 replicas"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n venus -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}'",
+      "expected": "70",
+      "points": 1,
+      "description": "HPA should target 70% CPU utilization"
+    },
+    {
+      "command": "kubectl get deployment scalable-web -n venus -o jsonpath='{.status.readyReplicas}'",
+      "expected": "2",
+      "points": 1,
+      "description": "Deployment should have 2 ready replicas initially"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n venus -o jsonpath='{.status.currentReplicas}' | grep -E '^[2-9]|^10$' && echo 'valid' || echo 'invalid'",
+      "expected": "valid",
+      "points": 1,
+      "description": "HPA should show current replicas within valid range"
+    }
+  ]
+}

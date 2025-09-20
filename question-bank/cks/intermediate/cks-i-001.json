@@ -1,0 +1,132 @@
+{
+  "id": "cks-i-001",
+  "title": "Pod Security Standards Implementation",
+  "description": "Implement Pod Security Standards in the ||saturn|| namespace to enforce security policies:\n\n1. Configure the ||saturn|| namespace to use ||restricted|| Pod Security Standard at ||enforce|| level\n2. Set the ||baseline|| standard as a ||warn|| level for visibility\n3. Create a pod named ||secure-app|| in ||saturn|| namespace that complies with restricted security standards\n4. The pod should:\n   - Run as non-root user with UID ||1001||\n   - Use read-only root filesystem\n   - Drop all Linux capabilities\n   - Run with ||runAsNonRoot: true||\n   - Have resource limits: CPU ||100m|| and memory ||128Mi||\n\nEnsure the pod runs successfully under the restricted security policy.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Pod Security",
+  "tags": [
+    "pod-security-standards",
+    "security-context",
+    "capabilities",
+    "non-root",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods",
+      "namespaces"
+    ],
+    "prerequisites": [
+      "Kubernetes cluster with Pod Security Standards enabled"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Configure Pod Security Standards on saturn namespace:",
+      "   kubectl label namespace saturn \\",
+      "     pod-security.kubernetes.io/enforce=restricted \\",
+      "     pod-security.kubernetes.io/warn=baseline \\",
+      "     pod-security.kubernetes.io/audit=restricted",
+      "2. Create secure pod manifest:",
+      "   cat > secure-app.yaml << EOF",
+      "   apiVersion: v1",
+      "   kind: Pod",
+      "   metadata:",
+      "     name: secure-app",
+      "     namespace: saturn",
+      "   spec:",
+      "     securityContext:",
+      "       runAsNonRoot: true",
+      "       runAsUser: 1001",
+      "       runAsGroup: 1001",
+      "       fsGroup: 1001",
+      "       seccompProfile:",
+      "         type: RuntimeDefault",
+      "     containers:",
+      "     - name: app",
+      "       image: nginx:alpine",
+      "       securityContext:",
+      "         allowPrivilegeEscalation: false",
+      "         readOnlyRootFilesystem: true",
+      "         capabilities:",
+      "           drop:",
+      "           - ALL",
+      "       resources:",
+      "         limits:",
+      "           cpu: 100m",
+      "           memory: 128Mi",
+      "         requests:",
+      "           cpu: 50m",
+      "           memory: 64Mi",
+      "       volumeMounts:",
+      "       - name: tmp",
+      "         mountPath: /tmp",
+      "       - name: var-cache",
+      "         mountPath: /var/cache/nginx",
+      "       - name: var-run",
+      "         mountPath: /var/run",
+      "     volumes:",
+      "     - name: tmp",
+      "       emptyDir: {}",
+      "     - name: var-cache",
+      "       emptyDir: {}",
+      "     - name: var-run",
+      "       emptyDir: {}",
+      "   EOF",
+      "3. Apply the pod:",
+      "   kubectl apply -f secure-app.yaml",
+      "4. Verify pod is running:",
+      "   kubectl get pod secure-app -n saturn",
+      "5. Check security context compliance:",
+      "   kubectl get pod secure-app -n saturn -o yaml | grep -A 10 securityContext"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get namespace saturn -o jsonpath='{.metadata.labels.pod-security\\.kubernetes\\.io/enforce}'",
+      "expected": "restricted",
+      "points": 2,
+      "description": "Saturn namespace should enforce restricted Pod Security Standard"
+    },
+    {
+      "command": "kubectl get namespace saturn -o jsonpath='{.metadata.labels.pod-security\\.kubernetes\\.io/warn}'",
+      "expected": "baseline",
+      "points": 1,
+      "description": "Saturn namespace should warn on baseline violations"
+    },
+    {
+      "command": "kubectl get pod secure-app -n saturn -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 2,
+      "description": "Secure app pod should be running"
+    },
+    {
+      "command": "kubectl get pod secure-app -n saturn -o jsonpath='{.spec.securityContext.runAsNonRoot}'",
+      "expected": "true",
+      "points": 1,
+      "description": "Pod should run as non-root user"
+    },
+    {
+      "command": "kubectl get pod secure-app -n saturn -o jsonpath='{.spec.securityContext.runAsUser}'",
+      "expected": "1001",
+      "points": 1,
+      "description": "Pod should run with UID 1001"
+    },
+    {
+      "command": "kubectl get pod secure-app -n saturn -o jsonpath='{.spec.containers[0].securityContext.readOnlyRootFilesystem}'",
+      "expected": "true",
+      "points": 1,
+      "description": "Container should use read-only root filesystem"
+    },
+    {
+      "command": "kubectl get pod secure-app -n saturn -o jsonpath='{.spec.containers[0].resources.limits.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Container should have CPU limit of 100m"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-058",
+  "title": "CronJob with Secrets Management and Resource Quotas",
+  "description": "Create a scheduled backup system in the saturn namespace using CronJobs. The backup process requires access to database credentials stored in Secrets and must operate within strict resource quotas. Implement proper secret rotation and resource management.",
+  "difficulty": "intermediate",
+  "category": "Application Design and Build",
+  "subcategories": ["jobs-cronjobs", "configmaps-secrets", "resource-management", "persistent-volumes-claims"],
+  "points": 9,
+  "timeMinutes": 16,
+  "solution": [
+    {
+      "step": 1,
+      "description": "Create ResourceQuota ||backup-quota|| limiting CPU to ||500m|| and memory to ||1Gi||"
+    },
+    {
+      "step": 2,
+      "description": "Create Secret ||db-backup-creds|| with database connection credentials"
+    },
+    {
+      "step": 3,
+      "description": "Create PVC ||backup-storage|| with ||10Gi|| for storing backup files"
+    },
+    {
+      "step": 4,
+      "description": "Create CronJob ||database-backup|| that runs every hour (||0 * * * *||)"
+    },
+    {
+      "step": 5,
+      "description": "Configure job to mount Secret as environment variables and PVC as volume"
+    },
+    {
+      "step": 6,
+      "description": "Set resource requests and limits within quota: requests ||200m|| CPU, ||256Mi|| memory"
+    },
+    {
+      "step": 7,
+      "description": "Verify backup job runs successfully and stays within resource limits"
+    }
+  ],
+  "validations": [
+    {
+      "command": "kubectl get resourcequota backup-quota -n saturn -o jsonpath='{.spec.hard.\"requests.cpu\"}'",
+      "expectedOutput": "500m",
+      "description": "Verify ResourceQuota CPU limit",
+      "points": 1
+    },
+    {
+      "command": "kubectl get secret db-backup-creds -n saturn -o jsonpath='{.type}'",
+      "expectedOutput": "Opaque",
+      "description": "Verify backup credentials Secret exists",
+      "points": 1
+    },
+    {
+      "command": "kubectl get pvc backup-storage -n saturn -o jsonpath='{.spec.resources.requests.storage}'",
+      "expectedOutput": "10Gi",
+      "description": "Verify backup PVC storage size",
+      "points": 1
+    },
+    {
+      "command": "kubectl get cronjob database-backup -n saturn -o jsonpath='{.spec.schedule}'",
+      "expectedOutput": "0 * * * *",
+      "description": "Verify CronJob schedule is hourly",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob database-backup -n saturn -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].envFrom[0].secretRef.name}'",
+      "expectedOutput": "db-backup-creds",
+      "description": "Verify Secret is mounted as environment variables",
+      "points": 2
+    },
+    {
+      "command": "kubectl get cronjob database-backup -n saturn -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expectedOutput": "200m",
+      "description": "Verify CPU resource request",
+      "points": 1
+    },
+    {
+      "command": "kubectl get cronjob database-backup -n saturn -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].resources.requests.memory}'",
+      "expectedOutput": "256Mi",
+      "description": "Verify memory resource request",
+      "points": 1
+    }
+  ]
+}

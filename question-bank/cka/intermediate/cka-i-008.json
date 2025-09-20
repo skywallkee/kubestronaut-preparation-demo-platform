@@ -1,0 +1,131 @@
+{
+  "id": "cka-i-008",
+  "title": "Cluster Monitoring and Logging",
+  "description": "Set up basic monitoring and logging for cluster health. Your tasks are:\n\n1. Check the resource usage of all nodes using kubectl top commands\n2. Identify any nodes or pods consuming excessive CPU or memory\n3. Set up resource quotas for namespace ||pluto|| with:\n   - Maximum 4 pods\n   - Maximum 2Gi memory\n   - Maximum 2 CPU cores\n4. Create a LimitRange in namespace ||pluto|| with:\n   - Default memory limit: ||256Mi||\n   - Default CPU limit: ||200m||\n   - Maximum memory limit: ||512Mi||\n5. Deploy a test application named ||resource-test|| in namespace ||pluto|| and verify it respects the limits\n6. Monitor cluster events and identify any warnings or errors",
+  "points": 8,
+  "timeLimit": 16,
+  "category": "Monitoring",
+  "tags": [
+    "monitoring",
+    "resource-quotas",
+    "limit-ranges",
+    "cluster-health",
+    "resource-management",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "resourcequotas",
+      "limitranges",
+      "pods"
+    ],
+    "prerequisites": [
+      "Metrics server installed",
+      "kubectl top functionality available"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check node resource usage:",
+      "   kubectl top nodes",
+      "2. Check pod resource usage:",
+      "   kubectl top pods --all-namespaces",
+      "3. Create ResourceQuota:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: ResourceQuota",
+      "   metadata:",
+      "     name: pluto-quota",
+      "     namespace: pluto",
+      "   spec:",
+      "     hard:",
+      "       pods: \"4\"",
+      "       requests.memory: \"2Gi\"",
+      "       requests.cpu: \"2\"",
+      "       limits.memory: \"2Gi\"",
+      "       limits.cpu: \"2\"",
+      "   EOF",
+      "4. Create LimitRange:",
+      "   kubectl apply -f - <<EOF",
+      "   apiVersion: v1",
+      "   kind: LimitRange",
+      "   metadata:",
+      "     name: pluto-limits",
+      "     namespace: pluto",
+      "   spec:",
+      "     limits:",
+      "     - default:",
+      "         memory: \"256Mi\"",
+      "         cpu: \"200m\"",
+      "       defaultRequest:",
+      "         memory: \"128Mi\"",
+      "         cpu: \"100m\"",
+      "       max:",
+      "         memory: \"512Mi\"",
+      "         cpu: \"500m\"",
+      "       type: Container",
+      "   EOF",
+      "5. Create test pod:",
+      "   kubectl run resource-test --image=nginx -n pluto",
+      "6. Check applied limits:",
+      "   kubectl describe pod resource-test -n pluto",
+      "7. Monitor cluster events:",
+      "   kubectl get events --all-namespaces --sort-by='.lastTimestamp'",
+      "8. Check resource quota usage:",
+      "   kubectl describe resourcequota pluto-quota -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota pluto-quota -n pluto -o jsonpath='{.spec.hard.pods}'",
+      "expected": "4",
+      "points": 1,
+      "description": "ResourceQuota should limit pods to 4"
+    },
+    {
+      "command": "kubectl get resourcequota pluto-quota -n pluto -o jsonpath='{.spec.hard.\"requests\\.memory\"}'",
+      "expected": "2Gi",
+      "points": 1,
+      "description": "ResourceQuota should limit memory requests to 2Gi"
+    },
+    {
+      "command": "kubectl get limitrange pluto-limits -n pluto -o jsonpath='{.spec.limits[0].default.memory}'",
+      "expected": "256Mi",
+      "points": 1,
+      "description": "LimitRange should set default memory limit to 256Mi"
+    },
+    {
+      "command": "kubectl get limitrange pluto-limits -n pluto -o jsonpath='{.spec.limits[0].default.cpu}'",
+      "expected": "200m",
+      "points": 1,
+      "description": "LimitRange should set default CPU limit to 200m"
+    },
+    {
+      "command": "kubectl get limitrange pluto-limits -n pluto -o jsonpath='{.spec.limits[0].max.memory}'",
+      "expected": "512Mi",
+      "points": 1,
+      "description": "LimitRange should set maximum memory limit to 512Mi"
+    },
+    {
+      "command": "kubectl get pod resource-test -n pluto -o jsonpath='{.spec.containers[0].resources.limits.memory}'",
+      "expected": "256Mi",
+      "points": 1,
+      "description": "Test pod should have default memory limit applied"
+    },
+    {
+      "command": "kubectl get pod resource-test -n pluto -o jsonpath='{.spec.containers[0].resources.limits.cpu}'",
+      "expected": "200m",
+      "points": 1,
+      "description": "Test pod should have default CPU limit applied"
+    },
+    {
+      "command": "kubectl describe resourcequota pluto-quota -n pluto | grep 'Used.*pods'",
+      "expected": ".*pods.*1.*",
+      "points": 1,
+      "description": "ResourceQuota should track pod usage"
+    }
+  ]
+}

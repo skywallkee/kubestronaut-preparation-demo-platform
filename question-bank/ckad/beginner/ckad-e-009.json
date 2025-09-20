@@ -1,0 +1,73 @@
+{
+  "id": "ckad-e-009",
+  "title": "Create Pod with Environment Variables from ConfigMap",
+  "description": "Create a Pod named ||env-pod|| using image ||busybox:1.31.0|| that gets the ||database_url|| from the ||app-config|| ConfigMap as an environment variable named ||DB_URL|| in the ||venus|| namespace.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "configmaps-secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods",
+      "configmaps"
+    ],
+    "prerequisites": [
+      "app-config ConfigMap exists"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run env-pod --image=busybox:1.31.0 --dry-run=client -o yaml > env-pod.yaml",
+      "2. Add env section:",
+      "   env:",
+      "   - name: DB_URL",
+      "     valueFrom:",
+      "       configMapKeyRef:",
+      "         name: app-config",
+      "         key: database_url",
+      "3. Add command to keep pod running:",
+      "   command: ['sleep', '3600']",
+      "4. Apply pod:",
+      "   kubectl apply -f env-pod.yaml -n venus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod env-pod -n venus -o jsonpath='{.status.phase}'",
+      "expected": "Running",
+      "points": 2,
+      "description": "Pod should be running"
+    },
+    {
+      "command": "kubectl get pod env-pod -n venus -o jsonpath='{.spec.containers[0].image}'",
+      "expected": "busybox:1.31.0",
+      "points": 0.5,
+      "description": "Pod should use correct image"
+    },
+    {
+      "command": "kubectl get pod env-pod -n venus -o jsonpath='{.spec.containers[0].env[0].name}'",
+      "expected": "DB_URL",
+      "points": 1,
+      "description": "Pod should have DB_URL environment variable defined"
+    },
+    {
+      "command": "kubectl get pod env-pod -n venus -o jsonpath='{.spec.containers[0].env[0].valueFrom.configMapKeyRef.name}'",
+      "expected": "app-config",
+      "points": 0.75,
+      "description": "Environment variable should reference app-config ConfigMap"
+    },
+    {
+      "command": "kubectl get pod env-pod -n venus -o jsonpath='{.spec.containers[0].env[0].valueFrom.configMapKeyRef.key}'",
+      "expected": "database_url",
+      "points": 0.75,
+      "description": "Environment variable should reference database_url key"
+    }
+  ]
+}

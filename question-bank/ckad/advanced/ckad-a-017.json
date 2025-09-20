@@ -1,0 +1,126 @@
+{
+  "id": "ckad-a-017",
+  "title": "Resource Optimization and Performance Tuning",
+  "description": "Optimize resource allocation and performance for a high-traffic application in namespace ||venus|| with advanced resource management:\n\n1. **Application Setup**:\n   - Deploy ||web-app|| with 5 replicas using ||nginx:1.21|| serving web content\n   - Deploy ||api-app|| with 3 replicas using ||node:16-alpine|| running API services\n   - Deploy ||cache-app|| with 2 replicas using ||redis:6.2|| for caching\n   - Deploy ||worker-app|| with 4 replicas using ||python:3.9-slim|| for background processing\n\n2. **Resource Optimization Requirements**:\n   - **Web App**: CPU requests 100m, limits 200m; Memory requests 128Mi, limits 256Mi\n   - **API App**: CPU requests 200m, limits 500m; Memory requests 256Mi, limits 512Mi\n   - **Cache App**: CPU requests 50m, limits 100m; Memory requests 512Mi, limits 1Gi\n   - **Worker App**: CPU requests 150m, limits 300m; Memory requests 200Mi, limits 400Mi\n\n3. **Advanced Resource Management**:\n   - Create ResourceQuota ||venus-quota|| limiting total namespace resources:\n     - CPU requests: 2 cores, limits: 4 cores\n     - Memory requests: 4Gi, limits: 8Gi\n     - Pods: 20, Services: 10, PVCs: 5\n   - Create LimitRange ||venus-limits|| with:\n     - Default CPU requests: 50m, limits: 100m\n     - Default Memory requests: 64Mi, limits: 128Mi\n     - Minimum and maximum resource bounds\n\n4. **Performance Tuning**:\n   - Configure HorizontalPodAutoscaler ||web-hpa|| for web-app:\n     - Scale based on CPU utilization (target 70%)\n     - Min replicas: 3, Max replicas: 10\n   - Configure HorizontalPodAutoscaler ||api-hpa|| for api-app:\n     - Scale based on memory utilization (target 80%)\n     - Min replicas: 2, Max replicas: 8\n   - Add custom metrics autoscaling for worker-app based on queue length\n\n5. **Quality of Service and Prioritization**:\n   - Set PriorityClass ||high-priority|| for critical web and API applications\n   - Set PriorityClass ||low-priority|| for worker applications\n   - Configure appropriate QoS classes (Guaranteed, Burstable, BestEffort)\n   - Add node affinity rules for optimal pod placement\n\n6. **Monitoring and Observability**:\n   - Deploy monitoring stack with Prometheus metrics collection\n   - Create ServiceMonitor ||app-metrics|| for application monitoring\n   - Configure resource usage alerts and dashboards\n   - Add resource utilization annotations to all deployments\n\n7. **Resource Testing and Validation**:\n   - Create stress test Job ||resource-stress-test|| to validate autoscaling\n   - Create monitoring Job ||resource-monitor|| to track resource utilization\n   - Implement resource leak detection and cleanup procedures\n\nEnsure optimal resource utilization while maintaining application performance and cost efficiency.",
+  "points": 11,
+  "timeLimit": 24,
+  "category": "Resource Management",
+  "tags": [
+    "resource-optimization",
+    "performance-tuning",
+    "autoscaling",
+    "resource-quotas",
+    "quality-of-service",
+    "advanced"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments",
+      "services",
+      "resourcequotas",
+      "limitranges",
+      "horizontalpodautoscalers",
+      "priorityclasses",
+      "servicemonitors",
+      "jobs"
+    ],
+    "prerequisites": [
+      "metrics-server",
+      "prometheus-operator"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create resource management objects:",
+      "   kubectl create namespace venus",
+      "   kubectl create priorityclass high-priority --value=1000 --description='High priority for critical apps'",
+      "   kubectl create priorityclass low-priority --value=100 --description='Low priority for worker apps'",
+      "2. Create ResourceQuota and LimitRange:",
+      "   kubectl create resourcequota venus-quota --hard=requests.cpu=2,limits.cpu=4,requests.memory=4Gi,limits.memory=8Gi,pods=20 -n venus",
+      "   Create LimitRange YAML with default and min/max values",
+      "3. Deploy applications with optimized resource specifications:",
+      "   Create deployment manifests with proper resource requests/limits",
+      "   Set appropriate priority classes and QoS classes",
+      "   Configure node affinity and tolerations",
+      "4. Configure autoscaling:",
+      "   kubectl autoscale deployment web-app --cpu-percent=70 --min=3 --max=10 -n venus",
+      "   kubectl autoscale deployment api-app --cpu-percent=80 --min=2 --max=8 -n venus",
+      "5. Deploy monitoring and metrics collection:",
+      "   Create ServiceMonitor for Prometheus metrics collection",
+      "   Deploy resource monitoring dashboard",
+      "6. Create stress testing and validation jobs",
+      "7. Verify resource optimization and autoscaling behavior"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota venus-quota -n venus -o jsonpath='{.spec.hard.requests\\.cpu}'",
+      "expected": "2",
+      "points": 1,
+      "description": "ResourceQuota should limit CPU requests to 2 cores"
+    },
+    {
+      "command": "kubectl get limitrange venus-limits -n venus -o jsonpath='{.spec.limits[0].default.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "LimitRange should set default CPU limit to 100m"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1,
+      "description": "Web app should have CPU request of 100m"
+    },
+    {
+      "command": "kubectl get deployment api-app -n venus -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "512Mi",
+      "points": 1,
+      "description": "API app should have memory limit of 512Mi"
+    },
+    {
+      "command": "kubectl get hpa web-hpa -n venus -o jsonpath='{.spec.targetCPUUtilizationPercentage}'",
+      "expected": "70",
+      "points": 1,
+      "description": "Web app HPA should target 70% CPU utilization"
+    },
+    {
+      "command": "kubectl get deployment web-app -n venus -o jsonpath='{.spec.template.spec.priorityClassName}'",
+      "expected": "high-priority",
+      "points": 1,
+      "description": "Web app should use high-priority class"
+    },
+    {
+      "command": "kubectl get deployment worker-app -n venus -o jsonpath='{.spec.template.spec.priorityClassName}'",
+      "expected": "low-priority",
+      "points": 1,
+      "description": "Worker app should use low-priority class"
+    },
+    {
+      "command": "kubectl get servicemonitor app-metrics -n venus -o jsonpath='{.metadata.name}'",
+      "expected": "app-metrics",
+      "points": 1,
+      "description": "Should have ServiceMonitor for metrics collection"
+    },
+    {
+      "command": "kubectl get job resource-stress-test -n venus -o jsonpath='{.status.succeeded}'",
+      "expected": "1",
+      "points": 1,
+      "description": "Resource stress test should complete successfully"
+    },
+    {
+      "command": "kubectl get pods -n venus --field-selector=status.phase=Running --no-headers | wc -l",
+      "expected": "14",
+      "points": 1,
+      "description": "Should have 14 running pods (5+3+2+4 app replicas)"
+    },
+    {
+      "command": "kubectl top pods -n venus --no-headers | wc -l",
+      "expected": "14",
+      "points": 1,
+      "description": "Metrics should be available for all pods"
+    }
+  ]
+}
