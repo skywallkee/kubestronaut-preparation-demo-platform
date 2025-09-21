@@ -182,6 +182,37 @@ else
     print_success "Using custom network: $network_input"
 fi
 
+# Build variant selection
+echo ""
+print_input "Docker build variant:"
+print_default "Press Enter for default: ${BOLD_GREEN}standard${NC} (full featured)"
+echo -e "  ${DIM}Or type:${NC}"
+echo -e "  ${DIM}- 'lightweight' for minimal resource usage (256MB RAM, smaller image)${NC}"
+read -p "Build variant: " build_variant_input
+
+if [ -z "$build_variant_input" ]; then
+    # Default: standard build
+    BUILD_VARIANT="standard"
+    DOCKERFILE="Dockerfile"
+    IMAGE_TAG="k8s-exam-simulator"
+    MEMORY_LIMIT=""
+    print_success "Using default: standard build"
+elif [ "$build_variant_input" = "lightweight" ]; then
+    BUILD_VARIANT="lightweight"
+    DOCKERFILE="Dockerfile.lightweight"
+    IMAGE_TAG="k8s-exam-simulator:lightweight"
+    MEMORY_LIMIT="-m 512m --memory-swap 1g"
+    print_success "Using lightweight build (optimized for low memory usage)"
+    print_warning "Some exam types may be limited (only CKAD included by default)"
+else
+    # Unknown variant, default to standard
+    print_warning "Unknown variant '$build_variant_input'. Using standard build."
+    BUILD_VARIANT="standard"
+    DOCKERFILE="Dockerfile"
+    IMAGE_TAG="k8s-exam-simulator"
+    MEMORY_LIMIT=""
+fi
+
 # Docker options
 echo ""
 print_input "Docker options:"
@@ -209,6 +240,7 @@ fi
 echo ""
 echo "📋 Configuration Summary"
 echo "================================================"
+echo -e "Build Variant: ${GREEN}$BUILD_VARIANT${NC}"
 echo -e "Port: ${GREEN}$APP_PORT${NC}"
 echo -e "Network: ${GREEN}$NETWORK_MODE${NC}"
 if [ -n "$KUBE_CONTEXT" ]; then
@@ -220,6 +252,9 @@ if [ -n "$ADDITIONAL_OPTIONS" ]; then
     echo -e "Docker Options: ${GREEN}$ADDITIONAL_OPTIONS${NC}"
 else
     echo -e "Docker Options: ${GREEN}Standard${NC}"
+fi
+if [ "$BUILD_VARIANT" = "lightweight" ]; then
+    echo -e "Memory Limit: ${GREEN}512MB${NC}"
 fi
 echo ""
 
@@ -314,19 +349,34 @@ print_success "Existing containers cleaned up"
 if [ "$1" = "--clean" ]; then
     print_status "Removing old Docker images..."
     docker rmi k8s-exam-simulator 2>/dev/null || true
+    docker rmi k8s-exam-simulator:lightweight 2>/dev/null || true
     docker system prune -f
     print_success "Old images cleaned up"
 fi
 
 # Step 7: Build Docker image with optimizations
-print_status "Building Docker image with caching optimizations (this may take a few minutes)..."
-print_status "Using Docker layer caching for faster builds on subsequent runs"
+if [ "$BUILD_VARIANT" = "lightweight" ]; then
+    print_status "Building lightweight Docker image (optimized for minimal resources)..."
+    print_status "This build will use less memory and disk space"
+else
+    print_status "Building standard Docker image with full features..."
+    print_status "Using Docker layer caching for faster builds on subsequent runs"
+fi
 
 # Use BuildKit for better performance and caching
 export DOCKER_BUILDKIT=1
 
-if docker build -t k8s-exam-simulator .; then
-    print_success "Docker image built successfully"
+# Check if Dockerfile exists
+if [ ! -f "$DOCKERFILE" ]; then
+    print_error "Dockerfile not found: $DOCKERFILE"
+    if [ "$BUILD_VARIANT" = "lightweight" ]; then
+        print_error "Please ensure Dockerfile.lightweight exists in the project root"
+    fi
+    exit 1
+fi
+
+if docker build -f "$DOCKERFILE" -t "$IMAGE_TAG" .; then
+    print_success "Docker image built successfully: $IMAGE_TAG"
 else
     print_error "Docker build failed"
     exit 1
@@ -339,6 +389,11 @@ print_status "Starting Docker container with selected configuration..."
 DOCKER_CMD="docker run -d --name k8s-exam-simulator"
 DOCKER_CMD="$DOCKER_CMD $NETWORK_CONFIG"
 DOCKER_CMD="$DOCKER_CMD -e NODE_ENV=production -e PORT=8080"
+
+# Add memory limits for lightweight variant
+if [ -n "$MEMORY_LIMIT" ]; then
+    DOCKER_CMD="$DOCKER_CMD $MEMORY_LIMIT"
+fi
 
 # Add host networking fix for Kubernetes cluster access
 # This allows the container to reach the host machine's services
@@ -356,7 +411,7 @@ if [ -n "$ADDITIONAL_OPTIONS" ]; then
     DOCKER_CMD="$DOCKER_CMD $ADDITIONAL_OPTIONS"
 fi
 
-DOCKER_CMD="$DOCKER_CMD k8s-exam-simulator"
+DOCKER_CMD="$DOCKER_CMD $IMAGE_TAG"
 
 # Execute the command
 print_status "Executing: $DOCKER_CMD"
@@ -474,6 +529,9 @@ echo -e "   ${GREEN}✅${NC} Helm chart generation with infrastructure requireme
 echo -e "   ${GREEN}✅${NC} Custom NOTES.txt with selected question IDs"
 echo -e "   ${GREEN}✅${NC} kubectl and helm tools available in container"
 echo -e "   ${GREEN}✅${NC} Kubernetes cluster integration (if configured)"
+if [ "$BUILD_VARIANT" = "lightweight" ]; then
+    echo -e "   ${GREEN}✅${NC} Lightweight build: ~50% smaller image, 256MB RAM usage"
+fi
 echo ""
 echo -e "🎯 Complete Exam Workflow:"
 echo -e "   ${BOLD_GREEN}1.${NC} Visit $TEST_URL"

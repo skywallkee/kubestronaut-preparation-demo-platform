@@ -15,6 +15,7 @@ const ExamSelection: React.FC = () => {
   const [helmChartReady, setHelmChartReady] = useState<boolean>(false);
   const [isApplying, setIsApplying] = useState<boolean>(false);
   const [helmApplied, setHelmApplied] = useState<boolean>(false);
+  const [helmDownloaded, setHelmDownloaded] = useState<boolean>(false);
   const [applyError, setApplyError] = useState<string>('');
   const [streamingLogs, setStreamingLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState<boolean>(false);
@@ -36,13 +37,20 @@ const ExamSelection: React.FC = () => {
     if (!selectedExam || !selectedDifficulty) return;
 
     setIsGenerating(true);
+    // Reset states when generating new chart
+    setHelmChartReady(false);
+    setHelmApplied(false);
+    setHelmDownloaded(false);
+    setApplyError('');
+    setStreamingLogs([]);
+
     try {
       const response = await axios.post('/api/helm/generate', {
         type: selectedExam,
         difficulty: selectedDifficulty,
         practiceMode: practiceMode
       });
-      
+
       if (response.data.success) {
         setHelmChartReady(true);
       }
@@ -72,6 +80,9 @@ const ExamSelection: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+
+      // Mark as downloaded - user will apply it themselves
+      setHelmDownloaded(true);
     } catch (error) {
       console.error('Error downloading Helm chart:', error);
       alert('Failed to download Helm chart. Please try again.');
@@ -209,7 +220,15 @@ const ExamSelection: React.FC = () => {
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
-                onClick={() => setSelectedExam(exam.id)}
+                onClick={() => {
+                  setSelectedExam(exam.id);
+                  // Reset helm chart when exam type changes
+                  setHelmChartReady(false);
+                  setHelmApplied(false);
+                  setHelmDownloaded(false);
+                  setApplyError('');
+                  setStreamingLogs([]);
+                }}
               >
                 <h3 className="font-semibold text-gray-900">{exam.name}</h3>
                 <p className="text-sm text-gray-600">{exam.description}</p>
@@ -229,7 +248,15 @@ const ExamSelection: React.FC = () => {
                     ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
-                onClick={() => setSelectedDifficulty(level.id)}
+                onClick={() => {
+                  setSelectedDifficulty(level.id);
+                  // Reset helm chart when difficulty changes
+                  setHelmChartReady(false);
+                  setHelmApplied(false);
+                  setHelmDownloaded(false);
+                  setApplyError('');
+                  setStreamingLogs([]);
+                }}
               >
                 <h3 className="font-semibold text-gray-900">{level.name}</h3>
                 <p className="text-sm text-gray-600">{level.description}</p>
@@ -245,7 +272,15 @@ const ExamSelection: React.FC = () => {
               <input
                 type="checkbox"
                 checked={practiceMode}
-                onChange={(e) => setPracticeMode(e.target.checked)}
+                onChange={(e) => {
+                  setPracticeMode(e.target.checked);
+                  // Reset helm chart when practice mode changes
+                  setHelmChartReady(false);
+                  setHelmApplied(false);
+                  setHelmDownloaded(false);
+                  setApplyError('');
+                  setStreamingLogs([]);
+                }}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <span className="text-sm font-medium text-gray-900">All Questions Practice Mode</span>
@@ -292,12 +327,21 @@ const ExamSelection: React.FC = () => {
                     </p>
                   </div>
 
-                  <button
-                    onClick={downloadHelmChart}
-                    className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-                  >
-                    📥 Download Helm Chart
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={downloadHelmChart}
+                      className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+                    >
+                      📥 Download Helm Chart
+                    </button>
+                    <button
+                      onClick={generateHelmChart}
+                      disabled={isGenerating}
+                      className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGenerating ? '⏳ Regenerating...' : '🔄 Regenerate Chart'}
+                    </button>
+                  </div>
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
@@ -357,6 +401,12 @@ const ExamSelection: React.FC = () => {
                     </div>
                   )}
 
+                  {helmDownloaded && !helmApplied && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-sm text-yellow-800">📥 Helm chart downloaded. Apply it to your cluster with: <code className="bg-yellow-100 px-1 rounded">helm install k8s-exam ./chart</code></p>
+                    </div>
+                  )}
+
                   {helmApplied && (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                       <p className="text-sm text-blue-800">✅ Helm chart has been applied to your cluster successfully!</p>
@@ -365,14 +415,14 @@ const ExamSelection: React.FC = () => {
 
                   <button
                     onClick={createExamAndNavigate}
-                    disabled={!helmApplied && !applyError}
+                    disabled={!helmApplied && !helmDownloaded}
                     className={`w-full py-2 px-4 rounded-md text-white font-medium transition-colors ${
-                      helmApplied || applyError
+                      helmApplied || helmDownloaded
                         ? 'bg-purple-600 hover:bg-purple-700'
                         : 'bg-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    {helmApplied ? '▶️ Start Exam' : '⏸️ Start Exam (apply Helm chart first)'}
+                    {helmApplied || helmDownloaded ? '▶️ Start Exam' : '⏸️ Start Exam (apply Helm chart first)'}
                   </button>
                 </div>
               )}

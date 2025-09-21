@@ -23,9 +23,9 @@ class QuestionService {
       // For practice mode, load all questions directly from directory
       if (practiceMode) {
         const difficultyMapping = {
-          'beginner': 'easy',
+          'beginner': 'beginner',
           'intermediate': 'intermediate',
-          'advanced': 'hard'
+          'advanced': 'advanced'
         };
 
         const mappedDifficulty = difficultyMapping[difficulty] || difficulty;
@@ -77,9 +77,9 @@ class QuestionService {
 
       // Map difficulty levels to directory names
       const difficultyMapping = {
-        'beginner': 'easy',
+        'beginner': 'beginner',
         'intermediate': 'intermediate',
-        'advanced': 'hard'
+        'advanced': 'advanced'
       };
 
       const mappedDifficulty = difficultyMapping[difficulty] || difficulty;
