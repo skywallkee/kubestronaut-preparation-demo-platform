@@ -9,9 +9,9 @@
     "certification": "Certified Kubernetes Application Developer",
     "provider": "Cloud Native Computing Foundation (CNCF)",
     "difficulties": {
-      "easy": {
+      "beginner": {
         "count": 50,
-        "directory": "easy",
+        "directory": "beginner",
         "description": "Beginner-level questions focusing on fundamental CKAD concepts"
       },
       "intermediate": {
@@ -19,9 +19,9 @@
         "directory": "intermediate",
         "description": "Intermediate-level questions requiring deeper understanding"
       },
-      "hard": {
-        "count": 0,
-        "directory": "hard",
+      "advanced": {
+        "count": 77,
+        "directory": "advanced",
         "description": "Advanced-level questions for complex scenarios"
       }
     }
@@ -64,7 +64,7 @@
     }
   ],
   "questionFiles": {
-    "easy": [
+    "beginner": [
       "ckad-e-001.json",
       "ckad-e-002.json",
       "ckad-e-003.json",
@@ -198,6 +198,84 @@
       "ckad-i-079.json",
       "ckad-i-080.json"
     ],
-    "hard": []
+    "advanced": [
+      "ckad-a-001.json",
+      "ckad-a-002.json",
+      "ckad-a-003.json",
+      "ckad-a-004.json",
+      "ckad-a-005.json",
+      "ckad-a-006.json",
+      "ckad-a-007.json",
+      "ckad-a-008.json",
+      "ckad-a-009.json",
+      "ckad-a-010.json",
+      "ckad-a-011.json",
+      "ckad-a-012.json",
+      "ckad-a-013.json",
+      "ckad-a-014.json",
+      "ckad-a-015.json",
+      "ckad-a-016.json",
+      "ckad-a-017.json",
+      "ckad-a-018.json",
+      "ckad-a-019.json",
+      "ckad-a-020.json",
+      "ckad-a-021.json",
+      "ckad-a-022.json",
+      "ckad-a-023.json",
+      "ckad-a-024.json",
+      "ckad-a-025.json",
+      "ckad-a-026.json",
+      "ckad-a-027.json",
+      "ckad-a-028.json",
+      "ckad-a-029.json",
+      "ckad-a-030.json",
+      "ckad-a-031.json",
+      "ckad-a-032.json",
+      "ckad-a-033.json",
+      "ckad-a-034.json",
+      "ckad-a-036.json",
+      "ckad-a-037.json",
+      "ckad-a-038.json",
+      "ckad-a-039.json",
+      "ckad-a-040.json",
+      "ckad-a-041.json",
+      "ckad-a-042.json",
+      "ckad-a-043.json",
+      "ckad-a-044.json",
+      "ckad-a-045.json",
+      "ckad-a-046.json",
+      "ckad-a-048.json",
+      "ckad-a-049.json",
+      "ckad-a-050.json",
+      "ckad-a-051.json",
+      "ckad-a-052.json",
+      "ckad-a-053.json",
+      "ckad-a-054.json",
+      "ckad-a-055.json",
+      "ckad-a-057.json",
+      "ckad-a-058.json",
+      "ckad-a-059.json",
+      "ckad-a-060.json",
+      "ckad-a-061.json",
+      "ckad-a-062.json",
+      "ckad-a-063.json",
+      "ckad-a-064.json",
+      "ckad-a-065.json",
+      "ckad-a-066.json",
+      "ckad-a-067.json",
+      "ckad-a-068.json",
+      "ckad-a-069.json",
+      "ckad-a-070.json",
+      "ckad-a-071.json",
+      "ckad-a-072.json",
+      "ckad-a-073.json",
+      "ckad-a-074.json",
+      "ckad-a-075.json",
+      "ckad-a-076.json",
+      "ckad-a-077.json",
+      "ckad-a-078.json",
+      "ckad-a-079.json",
+      "ckad-a-080.json"
+    ]
   }
 }

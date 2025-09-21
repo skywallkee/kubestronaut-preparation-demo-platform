@@ -469,3 +469,29 @@ MIT License - see LICENSE file for details
 - **Improved Question Bank**: Hierarchical structure with individual JSON files per question
 - **Advanced Validation**: Detailed feedback with command outputs and point breakdowns
 - **UI/UX Improvements**: QuestionWithCopyables component for better value highlighting
+
+### 🛠️ Latest Production Fixes (2025-09-21):
+- **Unified Helm Release Names**: Fixed namespace conflicts by using consistent release names (`ckad`, `ckad-practice`) across all difficulty levels instead of separate releases per difficulty
+- **Practice Mode Namespace Separation**: Resolved conflicts between practice and normal modes by appending `-practice` suffix to namespace names in practice mode
+- **Advanced Question Bank**: Fixed advanced mode showing mock questions by correcting directory mappings and adding 77 valid advanced questions
+- **Namespace Exclusion System**: Enhanced namespace filtering to prevent conflicts with existing system namespaces (debug, production, monitoring, etc.)
+- **Corrupted File Handling**: Identified and excluded 3 corrupted JSON files from advanced question bank to prevent parsing errors
+- **Download-to-Start Flow**: Implemented feature where downloading Helm chart enables "Start Exam" button for better user experience
+- **Docker Start Script**: Enhanced docker-start.sh with numbered menu options for easier configuration while keeping port input direct
+
+### 🎮 Current Deployment Model:
+- **Helm Release Strategy**: Single release per exam type and mode combination
+  - Normal mode: `ckad`, `cka`, `cks`, `kcna`
+  - Practice mode: `ckad-practice`, `cka-practice`, `cks-practice`, `kcna-practice`
+- **Namespace Strategy**: Mode-specific namespaces to prevent conflicts
+  - Normal mode: `tracing-demo`, `metrics-demo`, etc.
+  - Practice mode: `tracing-demo-practice`, `metrics-demo-practice`, etc.
+- **Shared Infrastructure**: All difficulty levels (beginner/intermediate/advanced) share the same Helm release and can reuse resources seamlessly
+
+### ✅ Tested Configurations (as of 2025-09-21):
+All exam mode combinations are fully functional:
+- ✅ **CKAD Beginner** - Normal & Practice modes
+- ✅ **CKAD Intermediate** - Normal & Practice modes
+- ✅ **CKAD Advanced** - Normal & Practice modes (77 valid questions)
+- ✅ **Seamless Difficulty Switching** - Users can switch between difficulties without conflicts
+- ✅ **Cross-Mode Switching** - Users can switch between practice and normal modes without conflicts

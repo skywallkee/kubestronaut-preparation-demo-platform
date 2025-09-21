@@ -109,7 +109,7 @@ class HelmService {
     await this.ensureDirectoryExists(templatesPath);
 
     // Generate namespace template
-    await this.generateNamespaceTemplate(templatesPath, examType, difficulty, infrastructure);
+    await this.generateNamespaceTemplate(templatesPath, examType, difficulty, infrastructure, practiceMode);
 
     // Generate exam environment templates based on type and infrastructure requirements
     switch (examType) {
@@ -133,15 +133,30 @@ class HelmService {
     await this.generateNotes(templatesPath, examType, difficulty, infrastructure, practiceMode);
   }
 
-  async generateNamespaceTemplate(templatesPath, examType, difficulty, infrastructure) {
+  async generateNamespaceTemplate(templatesPath, examType, difficulty, infrastructure, practiceMode = false) {
     const planetaryNamespaces = ['saturn', 'venus', 'pluto', 'mars', 'mercury', 'jupiter', 'uranus', 'neptune'];
 
     // Get all unique namespaces from infrastructure requirements
     let allNamespaces = new Set([...planetaryNamespaces]);
 
-    // Add namespaces from infrastructure requirements
+    // Add namespaces from infrastructure requirements (excluding existing ones)
     if (infrastructure && infrastructure.namespaces) {
-      infrastructure.namespaces.forEach(ns => allNamespaces.add(ns));
+      // List of namespaces that typically already exist and shouldn't be managed by Helm
+      const existingNamespaces = [
+        'default', 'kube-system', 'kube-public', 'kube-node-lease',
+        'production', 'monitoring', 'debug',
+        'cattle-system', 'cattle-global-data', 'cattle-impersonation-system',
+        'rancher-system', 'fleet-system', 'local'
+      ];
+
+      infrastructure.namespaces.forEach(ns => {
+        // Skip namespaces that already exist or are system namespaces
+        if (!existingNamespaces.includes(ns) && !ns.startsWith('kube-') && !ns.startsWith('cattle-') && !ns.startsWith('rancher-')) {
+          // Add suffix for practice mode to avoid conflicts
+          const namespaceName = practiceMode ? `${ns}-practice` : ns;
+          allNamespaces.add(namespaceName);
+        }
+      });
     }
 
     let namespaceTemplate = '';
@@ -207,11 +222,32 @@ data:
     const templates = [];
     const planetaryNamespaces = ['saturn', 'venus', 'pluto', 'mars', 'mercury', 'jupiter', 'uranus', 'neptune'];
 
+    // Helper function to check if namespace should be excluded
+    const isExcludedNamespace = (namespace) => {
+      const existingNamespaces = [
+        'default', 'kube-system', 'kube-public', 'kube-node-lease',
+        'production', 'monitoring', 'debug',
+        'cattle-system', 'cattle-global-data', 'cattle-impersonation-system',
+        'rancher-system', 'fleet-system', 'local'
+      ];
+      return existingNamespaces.includes(namespace) ||
+             namespace.startsWith('kube-') ||
+             namespace.startsWith('cattle-') ||
+             namespace.startsWith('rancher-');
+    };
+
     // Generate specific prerequisites first (these are exact resources needed by questions)
     if (infrastructure.parsedPrerequisites) {
-      // Generate specific deployments from prerequisites
+      // Generate specific deployments from prerequisites (excluding existing namespaces)
       Object.entries(infrastructure.parsedPrerequisites.deployments).forEach(([key, resource]) => {
         const {name: deploymentName, namespace} = resource;
+
+        // Skip resources in excluded namespaces
+        if (isExcludedNamespace(namespace)) {
+          console.log(`Skipping prerequisite deployment ${deploymentName} in excluded namespace: ${namespace}`);
+          return;
+        }
+
         templates.push({
           name: `prereq-deployment-${deploymentName}-${namespace}.yaml`,
           content: `apiVersion: apps/v1
@@ -250,9 +286,16 @@ spec:
         console.log(`Created prerequisite deployment: ${deploymentName} in namespace ${namespace}`);
       });
 
-      // Generate specific ConfigMaps from prerequisites
+      // Generate specific ConfigMaps from prerequisites (excluding existing namespaces)
       Object.entries(infrastructure.parsedPrerequisites.configMaps).forEach(([key, resource]) => {
         const {name: configMapName, namespace} = resource;
+
+        // Skip resources in excluded namespaces
+        if (isExcludedNamespace(namespace)) {
+          console.log(`Skipping prerequisite ConfigMap ${configMapName} in excluded namespace: ${namespace}`);
+          return;
+        }
+
         templates.push({
           name: `prereq-configmap-${configMapName}-${namespace}.yaml`,
           content: `apiVersion: v1
@@ -277,9 +320,16 @@ data:
         console.log(`Created prerequisite configmap: ${configMapName} in namespace ${namespace}`);
       });
 
-      // Generate specific Secrets from prerequisites
+      // Generate specific Secrets from prerequisites (excluding existing namespaces)
       Object.entries(infrastructure.parsedPrerequisites.secrets).forEach(([key, resource]) => {
         const {name: secretName, namespace} = resource;
+
+        // Skip resources in excluded namespaces
+        if (isExcludedNamespace(namespace)) {
+          console.log(`Skipping prerequisite Secret ${secretName} in excluded namespace: ${namespace}`);
+          return;
+        }
+
         templates.push({
           name: `prereq-secret-${secretName}-${namespace}.yaml`,
           content: `apiVersion: v1
@@ -298,9 +348,16 @@ data:
         console.log(`Created prerequisite secret: ${secretName} in namespace ${namespace}`);
       });
 
-      // Generate specific ServiceAccounts from prerequisites
+      // Generate specific ServiceAccounts from prerequisites (excluding existing namespaces)
       Object.entries(infrastructure.parsedPrerequisites.serviceAccounts).forEach(([key, resource]) => {
         const {name: saName, namespace} = resource;
+
+        // Skip resources in excluded namespaces
+        if (isExcludedNamespace(namespace)) {
+          console.log(`Skipping prerequisite ServiceAccount ${saName} in excluded namespace: ${namespace}`);
+          return;
+        }
+
         templates.push({
           name: `prereq-serviceaccount-${saName}-${namespace}.yaml`,
           content: `apiVersion: v1
@@ -315,9 +372,17 @@ metadata:
         console.log(`Created prerequisite serviceaccount: ${saName} in namespace ${namespace}`);
       });
 
-      // Generate specific Pods from prerequisites
+
+      // Generate specific Pods from prerequisites (excluding existing namespaces)
       Object.entries(infrastructure.parsedPrerequisites.pods).forEach(([key, resource]) => {
         const {name: podName, namespace} = resource;
+
+        // Skip resources in excluded namespaces
+        if (isExcludedNamespace(namespace)) {
+          console.log(`Skipping prerequisite pod ${podName} in excluded namespace: ${namespace}`);
+          return;
+        }
+
         templates.push({
           name: `prereq-pod-${podName}-${namespace}.yaml`,
           content: `apiVersion: v1
@@ -349,9 +414,16 @@ spec:
         console.log(`Created prerequisite pod: ${podName} in namespace ${namespace}`);
       });
 
-      // Generate specific PVCs from prerequisites
+      // Generate specific PVCs from prerequisites (excluding existing namespaces)
       Object.entries(infrastructure.parsedPrerequisites.pvcs).forEach(([key, resource]) => {
         const {name: pvcName, namespace} = resource;
+
+        // Skip resources in excluded namespaces
+        if (isExcludedNamespace(namespace)) {
+          console.log(`Skipping prerequisite PVC ${pvcName} in excluded namespace: ${namespace}`);
+          return;
+        }
+
         templates.push({
           name: `prereq-pvc-${pvcName}-${namespace}.yaml`,
           content: `apiVersion: v1
@@ -633,7 +705,21 @@ Selected Questions for this ${practiceMode ? 'Practice Session' : 'Exam'}:
 ${selectedQuestions.length > 0 ? selectedQuestions.map(q => `  - ${q}`).join('\n') : '  - Questions will be loaded dynamically'}
 
 Infrastructure Deployed:
-  - Namespaces: ${infrastructure.namespaces.join(', ') || 'default'}
+  - Namespaces: ${(() => {
+    const existingNamespaces = [
+      'default', 'kube-system', 'kube-public', 'kube-node-lease',
+      'production', 'monitoring', 'debug',
+      'cattle-system', 'cattle-global-data', 'cattle-impersonation-system',
+      'rancher-system', 'fleet-system', 'local'
+    ];
+    const filteredNs = infrastructure.namespaces.filter(ns =>
+      !existingNamespaces.includes(ns) &&
+      !ns.startsWith('kube-') &&
+      !ns.startsWith('cattle-') &&
+      !ns.startsWith('rancher-')
+    );
+    return filteredNs.length > 0 ? filteredNs.join(', ') : 'planetary namespaces only';
+  })()}
   - Deployments: ${infrastructure.deployments.length > 0 ? '✓' : '✗'}
   - Services: ${infrastructure.services.length > 0 ? '✓' : '✗'}
   - ConfigMaps: ${infrastructure.configMaps.length > 0 ? '✓' : '✗'}
@@ -739,7 +825,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
       const { stdout: helmList } = await execPromise('helm list -A -o json');
       const releases = JSON.parse(helmList || '[]');
       const examReleases = releases.filter(release =>
-        release.name.match(/^(ckad|cka|cks|kcna)-(beginner|intermediate|advanced|easy|hard)$/)
+        release.name.match(/^(ckad|cka|cks|kcna)(-practice)?$/)
       );
 
       // Uninstall exam-related Helm releases
@@ -801,7 +887,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
         const { stdout: allReleases } = await execPromise('helm list -A -o json');
         const allReleasesList = JSON.parse(allReleases || '[]');
         const remainingExamReleases = allReleasesList.filter(release =>
-          release.name.match(/^(ckad|cka|cks|kcna)-(beginner|intermediate|advanced|easy|hard)$/)
+          release.name.match(/^(ckad|cka|cks|kcna)(-practice)?$/)
         );
 
         for (const release of remainingExamReleases) {
@@ -834,7 +920,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
 
     const chartId = `${examType}-${difficulty}${practiceMode ? '-practice' : ''}`;
     const chartPath = path.join(this.generatedChartsPath, chartId);
-    const releaseName = chartId;
+    const releaseName = `${examType}${practiceMode ? '-practice' : ''}`;
     const namespace = `k8s-exam-${examType}-${difficulty}`;
 
     try {
@@ -903,7 +989,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
     const execPromise = util.promisify(exec);
     const chartId = `${examType}-${difficulty}${practiceMode ? '-practice' : ''}`;
     const chartPath = path.join(this.generatedChartsPath, chartId);
-    const releaseName = chartId;
+    const releaseName = `${examType}${practiceMode ? '-practice' : ''}`;
     const namespace = `k8s-exam-${examType}-${difficulty}`;
 
     try {
@@ -1064,7 +1150,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
       const { stdout: helmList } = await execPromise('helm list -A -o json');
       const releases = JSON.parse(helmList || '[]');
       const examReleases = releases.filter(release =>
-        release.name.match(/^(ckad|cka|cks|kcna)-(beginner|intermediate|advanced|easy|hard)$/)
+        release.name.match(/^(ckad|cka|cks|kcna)(-practice)?$/)
       );
 
       // Uninstall exam-related Helm releases
@@ -1125,7 +1211,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
         const { stdout: allReleases } = await execPromise('helm list -A -o json');
         const allReleasesList = JSON.parse(allReleases || '[]');
         const remainingExamReleases = allReleasesList.filter(release =>
-          release.name.match(/^(ckad|cka|cks|kcna)-(beginner|intermediate|advanced|easy|hard)$/)
+          release.name.match(/^(ckad|cka|cks|kcna)(-practice)?$/)
         );
 
         for (const release of remainingExamReleases) {
@@ -1156,7 +1242,7 @@ Good luck with your ${examType.toUpperCase()} exam!`;
     const util = require('util');
     const execPromise = util.promisify(exec);
 
-    const releaseName = `${examType}-${difficulty}${practiceMode ? '-practice' : ''}`;
+    const releaseName = `${examType}${practiceMode ? '-practice' : ''}`;
     const namespace = `k8s-exam-${examType}-${difficulty}`;
 
     try {

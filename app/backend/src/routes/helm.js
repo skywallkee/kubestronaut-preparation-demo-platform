@@ -45,18 +45,31 @@ router.post('/generate', async (req, res) => {
 router.get('/download', async (req, res) => {
   try {
     let { type, difficulty, practiceMode } = req.query;
-    
+
+    // Convert string parameters to proper types
+    if (practiceMode !== undefined) {
+      practiceMode = practiceMode === 'true' || practiceMode === true;
+    }
+
     // If not provided in query, try to get from current exam session
     if (!type || !difficulty) {
       const ExamService = require('../services/exam-service');
       const currentExam = ExamService.getCurrentExam();
-      
+
       if (currentExam) {
         type = type || currentExam.type;
         difficulty = difficulty || currentExam.difficulty;
-        practiceMode = practiceMode || currentExam.practiceMode;
-        console.log(`Using current exam parameters: ${type}-${difficulty}${practiceMode ? ' (Practice Mode)' : ''}`);
+        // Only use current exam's practiceMode if it wasn't explicitly provided in query
+        if (practiceMode === undefined) {
+          practiceMode = currentExam.practiceMode;
+        }
+        console.log(`Using parameters: ${type}-${difficulty}${practiceMode ? ' (Practice Mode)' : ''}`);
       }
+    }
+
+    // Default practiceMode to false if still undefined
+    if (practiceMode === undefined) {
+      practiceMode = false;
     }
     
     if (!type || !difficulty) {
@@ -94,6 +107,18 @@ router.get('/download', async (req, res) => {
 // Apply Helm chart to cluster with streaming output (supports both POST and GET)
 const handleStreamingApply = (req, res) => {
   let { type, difficulty, practiceMode } = req.method === 'POST' ? req.body : req.query;
+
+  // Convert string parameters to proper types for GET requests
+  if (req.method === 'GET' && practiceMode !== undefined) {
+    practiceMode = practiceMode === 'true' || practiceMode === true;
+  }
+
+  // Default practiceMode to false if undefined
+  if (practiceMode === undefined) {
+    practiceMode = false;
+  }
+
+  console.log(`Apply request: ${type}-${difficulty}, practiceMode: ${practiceMode}`);
 
   if (!type || !difficulty) {
     return res.status(400).json({

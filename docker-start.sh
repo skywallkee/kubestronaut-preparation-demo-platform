@@ -57,25 +57,22 @@ print_success "Project root verified"
 
 # Step 2: Streamlined Interactive Configuration
 echo ""
-echo "🔧 Configuration (press Enter for defaults)"
-echo "================================================"
+echo "🔧 Configuration (select numbered options or press Enter for defaults)"
+echo "=============================================================="
 
-# Port selection with input field
+# Port selection with direct input
 print_input "Application port:"
 print_default "Press Enter for default: ${BOLD_GREEN}8080${NC}"
 read -p "Port: " port_input
 if [[ "$port_input" =~ ^[0-9]+$ ]] && [ "$port_input" -ge 1000 ] && [ "$port_input" -le 65535 ]; then
     APP_PORT=$port_input
+    print_success "Using port: $APP_PORT"
 elif [ -z "$port_input" ]; then
     APP_PORT=8080
     print_success "Using default port: 8080"
 else
     print_warning "Invalid port '$port_input'. Using default 8080."
     APP_PORT=8080
-fi
-
-if [ "$APP_PORT" != "8080" ]; then
-    print_success "Using port: $APP_PORT"
 fi
 
 # Kubernetes context selection
@@ -99,47 +96,64 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
     # Check for kubeconfig
     if [ -f "$HOME/.kube/config" ]; then
         print_success "Found kubeconfig at $HOME/.kube/config"
-        
+
         # Get current context
         current_context=$(kubectl config current-context 2>/dev/null || echo "")
-        
+
         if [ -n "$current_context" ]; then
-            print_input "Kubernetes context:"
-            print_default "Press Enter for default: ${BOLD_GREEN}$current_context${NC}"
-            echo -e "  ${DIM}Or type:${NC}"
-            echo -e "  ${DIM}- 'none' to run without kubeconfig${NC}"
-            echo -e "  ${DIM}- context name to use specific context${NC}"
-            
+            print_input "Kubernetes context options:"
+            echo -e "  ${BOLD_GREEN}1.${NC} Use current context: ${GREEN}$current_context${NC} (default)"
+            echo -e "  ${CYAN}2.${NC} Run without kubeconfig (isolated)"
+
             # Get available contexts for reference
             contexts=$(kubectl config get-contexts -o name 2>/dev/null || echo "")
             if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
-                echo -e "  ${DIM}Available: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
+                echo -e "  ${CYAN}3.${NC} Select different context"
+                echo -e "  ${DIM}Available contexts: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
             fi
-            
-            read -p "Context: " context_input
-            
-            if [ -z "$context_input" ]; then
-                # Default: use current context
-                KUBE_CONTEXT=$current_context
-                MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
-                print_success "Using default context: $current_context"
-            elif [ "$context_input" = "none" ]; then
-                # Run isolated
-                KUBE_CONTEXT=""
-                MOUNT_KUBECONFIG=""
-                print_status "Container will run isolated (no kubeconfig)"
-            else
-                # Check if specified context exists
-                if echo "$contexts" | grep -q "^$context_input$"; then
-                    KUBE_CONTEXT=$context_input
-                    MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
-                    print_success "Using context: $context_input"
-                else
-                    print_warning "Context '$context_input' not found. Using default: $current_context"
+
+            read -p "Choose option (1-3, default 1): " context_choice
+
+            case "$context_choice" in
+                "" | "1")
+                    # Default: use current context
                     KUBE_CONTEXT=$current_context
                     MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
-                fi
-            fi
+                    print_success "Using current context: $current_context"
+                    ;;
+                "2")
+                    # Run isolated
+                    KUBE_CONTEXT=""
+                    MOUNT_KUBECONFIG=""
+                    print_status "Container will run isolated (no kubeconfig)"
+                    ;;
+                "3")
+                    if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
+                        echo "Available contexts:"
+                        echo "$contexts" | nl -w2 -s'. '
+                        read -p "Enter context name: " selected_context
+
+                        if echo "$contexts" | grep -q "^$selected_context$"; then
+                            KUBE_CONTEXT=$selected_context
+                            MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                            print_success "Using context: $selected_context"
+                        else
+                            print_warning "Context '$selected_context' not found. Using default: $current_context"
+                            KUBE_CONTEXT=$current_context
+                            MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                        fi
+                    else
+                        print_warning "No other contexts available. Using default: $current_context"
+                        KUBE_CONTEXT=$current_context
+                        MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                    fi
+                    ;;
+                *)
+                    print_warning "Invalid choice. Using default: $current_context"
+                    KUBE_CONTEXT=$current_context
+                    MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                    ;;
+            esac
         else
             print_warning "No current context found in kubeconfig"
             MOUNT_KUBECONFIG=""
@@ -158,83 +172,112 @@ fi
 
 # Networking configuration
 echo ""
-print_input "Container networking:"
-print_default "Press Enter for default: ${BOLD_GREEN}bridge${NC} (isolated with port mapping)"
-echo -e "  ${DIM}Or type:${NC}"
-echo -e "  ${DIM}- 'host' for host networking${NC}"
-echo -e "  ${DIM}- network name for custom network${NC}"
-read -p "Network: " network_input
+print_input "Container networking options:"
+echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - isolated with port mapping"
+echo -e "  ${CYAN}2.${NC} Host network - shares host network stack"
+echo -e "  ${CYAN}3.${NC} Custom network - specify network name"
+read -p "Choose option (1-3, default 1): " network_choice
 
-if [ -z "$network_input" ]; then
-    # Default: bridge network
-    NETWORK_CONFIG="-p $APP_PORT:8080"
-    NETWORK_MODE="bridge"
-    print_success "Using default: bridge network"
-elif [ "$network_input" = "host" ]; then
-    NETWORK_CONFIG="--network host"
-    NETWORK_MODE="host"
-    print_success "Using host network"
-    print_warning "Application accessible on all host interfaces"
-else
-    # Custom network
-    NETWORK_CONFIG="--network $network_input -p $APP_PORT:8080"
-    NETWORK_MODE="custom ($network_input)"
-    print_success "Using custom network: $network_input"
-fi
+case "$network_choice" in
+    "" | "1")
+        # Default: bridge network
+        NETWORK_CONFIG="-p $APP_PORT:8080"
+        NETWORK_MODE="bridge"
+        print_success "Using bridge network (default)"
+        ;;
+    "2")
+        NETWORK_CONFIG="--network host"
+        NETWORK_MODE="host"
+        print_success "Using host network"
+        print_warning "Application accessible on all host interfaces"
+        ;;
+    "3")
+        read -p "Enter custom network name: " custom_network
+        if [ -n "$custom_network" ]; then
+            NETWORK_CONFIG="--network $custom_network -p $APP_PORT:8080"
+            NETWORK_MODE="custom ($custom_network)"
+            print_success "Using custom network: $custom_network"
+        else
+            # Fallback to default
+            NETWORK_CONFIG="-p $APP_PORT:8080"
+            NETWORK_MODE="bridge"
+            print_warning "No network name provided. Using default bridge network"
+        fi
+        ;;
+    *)
+        print_warning "Invalid choice. Using default bridge network"
+        NETWORK_CONFIG="-p $APP_PORT:8080"
+        NETWORK_MODE="bridge"
+        ;;
+esac
 
 # Build variant selection
 echo ""
-print_input "Docker build variant:"
-print_default "Press Enter for default: ${BOLD_GREEN}standard${NC} (full featured)"
-echo -e "  ${DIM}Or type:${NC}"
-echo -e "  ${DIM}- 'lightweight' for minimal resource usage (256MB RAM, smaller image)${NC}"
-read -p "Build variant: " build_variant_input
+print_input "Docker build variant options:"
+echo -e "  ${BOLD_GREEN}1.${NC} Standard build (default) - full featured, all exam types"
+echo -e "  ${CYAN}2.${NC} Lightweight build - minimal resources (256MB RAM, smaller image)"
+read -p "Choose option (1-2, default 1): " build_choice
 
-if [ -z "$build_variant_input" ]; then
-    # Default: standard build
-    BUILD_VARIANT="standard"
-    DOCKERFILE="Dockerfile"
-    IMAGE_TAG="k8s-exam-simulator"
-    MEMORY_LIMIT=""
-    print_success "Using default: standard build"
-elif [ "$build_variant_input" = "lightweight" ]; then
-    BUILD_VARIANT="lightweight"
-    DOCKERFILE="Dockerfile.lightweight"
-    IMAGE_TAG="k8s-exam-simulator:lightweight"
-    MEMORY_LIMIT="-m 512m --memory-swap 1g"
-    print_success "Using lightweight build (optimized for low memory usage)"
-    print_warning "Some exam types may be limited (only CKAD included by default)"
-else
-    # Unknown variant, default to standard
-    print_warning "Unknown variant '$build_variant_input'. Using standard build."
-    BUILD_VARIANT="standard"
-    DOCKERFILE="Dockerfile"
-    IMAGE_TAG="k8s-exam-simulator"
-    MEMORY_LIMIT=""
-fi
+case "$build_choice" in
+    "" | "1")
+        # Default: standard build
+        BUILD_VARIANT="standard"
+        DOCKERFILE="Dockerfile"
+        IMAGE_TAG="k8s-exam-simulator"
+        MEMORY_LIMIT=""
+        print_success "Using standard build (default)"
+        ;;
+    "2")
+        BUILD_VARIANT="lightweight"
+        DOCKERFILE="Dockerfile.lightweight"
+        IMAGE_TAG="k8s-exam-simulator:lightweight"
+        MEMORY_LIMIT="-m 512m --memory-swap 1g"
+        print_success "Using lightweight build (optimized for low memory usage)"
+        print_warning "Optimized for minimal resource usage"
+        ;;
+    *)
+        print_warning "Invalid choice. Using default standard build"
+        BUILD_VARIANT="standard"
+        DOCKERFILE="Dockerfile"
+        IMAGE_TAG="k8s-exam-simulator"
+        MEMORY_LIMIT=""
+        ;;
+esac
 
 # Docker options
 echo ""
-print_input "Docker options:"
-print_default "Press Enter for default: ${BOLD_GREEN}standard${NC} (no special privileges)"
-echo -e "  ${DIM}Or type:${NC}"
-echo -e "  ${DIM}- 'privileged' for privileged mode${NC}"
-echo -e "  ${DIM}- custom options (e.g., '--privileged --cap-add=SYS_ADMIN')${NC}"
-read -p "Options: " docker_options_input
+print_input "Docker runtime options:"
+echo -e "  ${BOLD_GREEN}1.${NC} Standard (default) - no special privileges"
+echo -e "  ${CYAN}2.${NC} Privileged mode - elevated privileges"
+echo -e "  ${CYAN}3.${NC} Custom options - specify custom Docker flags"
+read -p "Choose option (1-3, default 1): " docker_choice
 
-if [ -z "$docker_options_input" ]; then
-    # Default: standard run
-    ADDITIONAL_OPTIONS=""
-    print_success "Using default: standard Docker options"
-elif [ "$docker_options_input" = "privileged" ]; then
-    ADDITIONAL_OPTIONS="--privileged"
-    print_success "Using privileged mode"
-    print_warning "Running with elevated privileges"
-else
-    # Custom options
-    ADDITIONAL_OPTIONS="$docker_options_input"
-    print_success "Using custom options: $docker_options_input"
-fi
+case "$docker_choice" in
+    "" | "1")
+        # Default: standard run
+        ADDITIONAL_OPTIONS=""
+        print_success "Using standard Docker options (default)"
+        ;;
+    "2")
+        ADDITIONAL_OPTIONS="--privileged"
+        print_success "Using privileged mode"
+        print_warning "Running with elevated privileges"
+        ;;
+    "3")
+        read -p "Enter custom Docker options: " custom_options
+        if [ -n "$custom_options" ]; then
+            ADDITIONAL_OPTIONS="$custom_options"
+            print_success "Using custom options: $custom_options"
+        else
+            ADDITIONAL_OPTIONS=""
+            print_warning "No options provided. Using standard mode"
+        fi
+        ;;
+    *)
+        print_warning "Invalid choice. Using default standard options"
+        ADDITIONAL_OPTIONS=""
+        ;;
+esac
 
 # Step 3: Display configuration summary
 echo ""
@@ -260,12 +303,22 @@ echo ""
 
 # Quick confirmation
 print_input "Continue with this configuration?"
-print_default "Press Enter for ${BOLD_GREEN}Yes${NC}, or type 'n' for No"
-read -p "Continue? " confirm
-if [[ "$confirm" =~ ^[Nn] ]]; then
-    print_status "Aborted by user"
-    exit 0
-fi
+echo -e "  ${BOLD_GREEN}1.${NC} Yes, proceed with build and deployment (default)"
+echo -e "  ${CYAN}2.${NC} No, exit and restart configuration"
+read -p "Choose option (1-2, default 1): " confirm_choice
+
+case "$confirm_choice" in
+    "" | "1")
+        print_success "Proceeding with deployment..."
+        ;;
+    "2")
+        print_status "Exiting. Run the script again to reconfigure."
+        exit 0
+        ;;
+    *)
+        print_warning "Invalid choice. Proceeding with deployment..."
+        ;;
+esac
 
 # Step 4: Verify project structure
 print_status "Verifying project structure..."

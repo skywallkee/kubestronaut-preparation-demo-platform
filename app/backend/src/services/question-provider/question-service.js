@@ -462,9 +462,9 @@ class QuestionService {
     try {
       // Map difficulty levels to directory names
       const difficultyMapping = {
-        'beginner': 'easy',
+        'beginner': 'beginner',
         'intermediate': 'intermediate',
-        'advanced': 'hard'
+        'advanced': 'advanced'
       };
 
       // Try to find the question file in any difficulty level

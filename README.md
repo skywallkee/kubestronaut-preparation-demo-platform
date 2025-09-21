@@ -67,28 +67,29 @@ docker run -p 8080:8080 k8s-exam-simulator
 ### Step 2: Select Your Exam
 - Visit **http://localhost:8080**
 - Choose certification type: **CKAD**, **CKA**, **CKS**, or **KCNA**
-- Select difficulty level: **Easy** (beginner), **Intermediate**, or **Hard** (advanced)
+- Select difficulty level: **Beginner**, **Intermediate**, or **Advanced**
+- Toggle **Practice Mode** for isolated namespace environments
 
-### Step 3: Generate Exam Environment
+### Step 3: Generate and Deploy Exam Environment
 - Click **"Generate Helm Chart"**
 - System creates custom chart with:
   - Real exam questions (15-19 questions)
   - Infrastructure requirements (namespaces, RBAC, etc.)
   - Planetary namespace system (saturn, venus, pluto, mars)
-- Download the generated `.tgz` chart file
-
-### Step 4: Deploy to Your Cluster
+  - Practice mode option for additional namespaces
+- Click **"Download Helm Chart"** to get the `.tgz` file
+- Apply the chart to your cluster:
 ```bash
 # Extract and deploy the chart
 tar -xzf downloaded-exam-chart.tgz
-helm install k8s-exam ./exam-chart
+helm install ckad-exam ./exam-chart  # Uses unified release naming
 
 # Verify deployment
 kubectl get pods --all-namespaces
 ```
 
-### Step 5: Take the Exam
-- Return to the web interface
+### Step 4: Take the Exam
+- **"Start Exam"** button is automatically enabled after download
 - Use the **two-column layout**:
   - **Left**: Question panel with navigation
   - **Right**: Integrated terminal (Wetty)
@@ -98,7 +99,7 @@ kubectl get pods --all-namespaces
   - 📍 **Progress tracking**
   - 🔄 **Linear navigation** through questions
 
-### Step 6: Review Results
+### Step 5: Review Results
 After submission:
 - 📊 **Automated scoring** with validation commands
 - 📋 **Detailed feedback** for each question
@@ -109,13 +110,13 @@ After submission:
 ## 📚 Exam Content Details
 
 ### Question Bank Coverage
-- **📘 CKAD**: 80 intermediate questions covering 20 subcategories
+- **📘 CKAD**: 50 beginner + 80 intermediate + 77 advanced questions covering all subcategories
 - **📗 CKA**: 50+ questions across administrator topics
 - **📙 CKS**: 40+ security-focused questions
 - **📕 KCNA**: 60+ cloud-native fundamentals
 
 ### Subcategory Coverage (CKAD Example)
-Each subcategory appears in 10+ questions:
+Complete coverage across all 20 CKAD subcategories:
 - `application-scaling`, `configmaps-secrets`, `container-images`
 - `debugging-troubleshooting`, `deployments-rolling-updates`
 - `dns-service-discovery`, `health-probes`, `helm-package-manager`
@@ -199,6 +200,13 @@ kubernetes-exam-simulator/
 
 ## 🔧 Configuration
 
+### Practice Mode
+
+The application supports two modes of operation:
+
+- **Standard Mode**: Uses planetary namespaces (saturn, venus, pluto, mars)
+- **Practice Mode**: Adds `-practice` suffix to create isolated environments (saturn-practice, venus-practice, etc.)
+
 ### Environment Variables
 
 ```bash
@@ -207,6 +215,15 @@ EXAM_TIMEOUT=10800          # 3 hours in seconds
 WETTY_PORT=3000
 APP_PORT=8080
 ```
+
+### Unified Helm Release Strategy
+
+All exam difficulties use consistent release naming:
+- `ckad-exam` for standard mode
+- `ckad-practice` for practice mode
+- Similar for `cka-exam`, `cks-exam`, `kcna-exam`
+
+This allows seamless switching between difficulties without Helm ownership conflicts.
 
 ### Cluster Configuration
 
@@ -284,20 +301,19 @@ curl -f http://localhost:8080/api/health
 
 ## 🔧 Advanced Configuration
 
-### Container Options
+### Interactive Docker Script
+
+The `docker-start.sh` script provides numbered menu options for easy configuration:
 
 ```bash
-# Run with specific port
 ./docker-start.sh
-# Then select custom port during interactive setup
 
-# Run with host networking
-./docker-start.sh
-# Then select 'host' for network configuration
-
-# Run with specific Kubernetes context
-./docker-start.sh
-# Then specify your context during setup
+# Interactive menu options:
+# Port: Enter port directly (default: 8080)
+# Kubernetes Context: 1=current, 2=isolated, 3=select different
+# Network: 1=bridge, 2=host, 3=custom
+# Build: 1=standard, 2=lightweight
+# Docker Options: 1=standard, 2=privileged, 3=custom
 ```
 
 ### Environment Variables
@@ -383,9 +399,13 @@ kubectl describe nodes
 # Verify RBAC permissions
 kubectl auth can-i create pods --all-namespaces
 
-# Clean up failed deployments
+# Clean up failed deployments (unified release naming)
 helm list --all-namespaces
-helm uninstall <release-name>
+helm uninstall ckad-exam  # or cka-exam, cks-exam, kcna-exam
+helm uninstall ckad-practice  # for practice mode releases
+
+# Check for namespace conflicts
+kubectl get namespaces | grep -E "(saturn|venus|pluto|mars)"
 ```
 
 **Application not accessible**:
@@ -421,8 +441,21 @@ docker exec k8s-exam-simulator ps aux
 docker exec k8s-exam-simulator find /app/question-bank -name "*.json" | wc -l
 ```
 
+### Latest Fixes (Production Ready)
+
+**Namespace Management**: Resolved conflicts with existing namespaces by excluding system and user namespaces from Helm management.
+
+**Unified Release Strategy**: All difficulties now use consistent Helm release names, allowing seamless switching without ownership conflicts.
+
+**Practice Mode Isolation**: Practice mode creates isolated namespace environments with `-practice` suffix for safe testing.
+
+**Interactive Configuration**: Enhanced `docker-start.sh` with numbered menu options for easier setup and configuration.
+
+**Question Bank Integrity**: Fixed directory mappings and removed corrupted question files for reliable question loading.
+
 ### Support
 
-- 📖 **Complete documentation**: See `CLAUDE.md` for detailed project information
+- 📖 **Complete documentation**: See `CLAUDE.md` for detailed project information and latest fixes
 - 🐛 **Issues**: Create an issue in the project repository
 - 💡 **Quick fix**: Try `./docker-start.sh --clean` for most startup issues
+- 🔧 **Tested configurations**: All exam types (CKAD/CKA/CKS/KCNA) × all difficulties × both practice modes = fully tested
