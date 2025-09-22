@@ -1,0 +1,90 @@
+{
+  "id": "ckad-i-096",
+  "title": "RBAC with Network Policies and Security Contexts",
+  "description": "Create a ServiceAccount named ||security-controller|| in namespace ||security|| with permissions to manage ||networkpolicies||, ||podsecuritypolicies||, and ||securitycontextconstraints||. Include permissions for reading cluster nodes and managing security-related resources.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "network-policies",
+    "security-contexts",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "security"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "clusterroles",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount security-controller -n security",
+      "2. Create ClusterRole for security management:",
+      "   cat > security-clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: security-controller",
+      "rules:",
+      "- apiGroups: [\"networking.k8s.io\"]",
+      "  resources: [\"networkpolicies\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"policy\"]",
+      "  resources: [\"podsecuritypolicies\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\", \"use\"]",
+      "- apiGroups: [\"security.openshift.io\"]",
+      "  resources: [\"securitycontextconstraints\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\", \"use\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"nodes\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"namespaces\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "- apiGroups: [\"apps\"]",
+      "  resources: [\"deployments\", \"daemonsets\"]",
+      "  verbs: [\"get\", \"list\", \"watch\", \"update\", \"patch\"]",
+      "EOF",
+      "3. Create ClusterRoleBinding:",
+      "   kubectl create clusterrolebinding security-controller-binding --clusterrole=security-controller --serviceaccount=security:security-controller",
+      "4. Apply ClusterRole:",
+      "   kubectl apply -f security-clusterrole.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount security-controller -n security -o jsonpath='{.metadata.name}'",
+      "expected": "security-controller",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get clusterrole security-controller -o jsonpath='{.rules[0].apiGroups[0]}'",
+      "expected": "networking.k8s.io",
+      "points": 3,
+      "description": "ClusterRole should manage networking resources"
+    },
+    {
+      "command": "kubectl get clusterrole security-controller -o jsonpath='{.rules[1].resources[0]}'",
+      "expected": "podsecuritypolicies",
+      "points": 3,
+      "description": "ClusterRole should manage pod security policies"
+    },
+    {
+      "command": "kubectl get clusterrolebinding security-controller-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "security-controller",
+      "points": 2,
+      "description": "ClusterRoleBinding should bind to security-controller"
+    }
+  ]
+}

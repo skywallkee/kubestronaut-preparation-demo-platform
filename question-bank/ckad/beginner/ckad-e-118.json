@@ -1,0 +1,71 @@
+{
+  "id": "ckad-e-118",
+  "title": "CronJob with ServiceAccount",
+  "description": "Create a ServiceAccount named ||cronjob-sa|| in namespace ||saturn|| and a CronJob named ||backup-job|| that runs every ||5 minutes|| using image ||busybox:1.35|| with this ServiceAccount.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "service-accounts",
+    "cronjobs",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount cronjob-sa -n saturn",
+      "2. Create CronJob with ServiceAccount:",
+      "   cat > cronjob.yaml << EOF",
+      "apiVersion: batch/v1",
+      "kind: CronJob",
+      "metadata:",
+      "  name: backup-job",
+      "  namespace: saturn",
+      "spec:",
+      "  schedule: \"*/5 * * * *\"",
+      "  jobTemplate:",
+      "    spec:",
+      "      template:",
+      "        spec:",
+      "          serviceAccountName: cronjob-sa",
+      "          containers:",
+      "          - name: backup",
+      "            image: busybox:1.35",
+      "            command: ['sh', '-c', 'echo \"Backup done\"']",
+      "          restartPolicy: OnFailure",
+      "EOF",
+      "3. Apply CronJob:",
+      "   kubectl apply -f cronjob.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount cronjob-sa -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "cronjob-sa",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n saturn -o jsonpath='{.spec.schedule}'",
+      "expected": "*/5 * * * *",
+      "points": 2,
+      "description": "CronJob should run every 5 minutes"
+    },
+    {
+      "command": "kubectl get cronjob backup-job -n saturn -o jsonpath='{.spec.jobTemplate.spec.template.spec.serviceAccountName}'",
+      "expected": "cronjob-sa",
+      "points": 2,
+      "description": "CronJob should use cronjob-sa ServiceAccount"
+    }
+  ]
+}

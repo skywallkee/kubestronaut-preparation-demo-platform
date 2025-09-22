@@ -1,0 +1,65 @@
+{
+  "id": "ckad-e-078",
+  "title": "DaemonSet with Node Taints",
+  "description": "Create a DaemonSet named ||monitoring-daemon|| in namespace ||jupiter|| using image ||prom/node-exporter:latest|| that tolerates all taints.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "tolerations",
+    "daemonsets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "daemonsets",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create daemonset yaml:",
+      "   cat > daemonset.yaml << EOF",
+      "apiVersion: apps/v1",
+      "kind: DaemonSet",
+      "metadata:",
+      "  name: monitoring-daemon",
+      "  namespace: jupiter",
+      "spec:",
+      "  selector:",
+      "    matchLabels:",
+      "      app: node-exporter",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: node-exporter",
+      "    spec:",
+      "      tolerations:",
+      "      - operator: Exists",
+      "      containers:",
+      "      - name: node-exporter",
+      "        image: prom/node-exporter:latest",
+      "EOF",
+      "2. Apply daemonset:",
+      "   kubectl apply -f daemonset.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get daemonset monitoring-daemon -n jupiter -o jsonpath='{.metadata.name}'",
+      "expected": "monitoring-daemon",
+      "points": 2,
+      "description": "DaemonSet should exist"
+    },
+    {
+      "command": "kubectl get daemonset monitoring-daemon -n jupiter -o jsonpath='{.spec.template.spec.tolerations[0].operator}'",
+      "expected": "Exists",
+      "points": 4,
+      "description": "DaemonSet should tolerate all taints"
+    }
+  ]
+}

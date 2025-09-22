@@ -1,0 +1,51 @@
+{
+  "id": "ckad-e-103",
+  "title": "Create Helm Values File",
+  "description": "Create a values file named ||custom-values.yaml|| with ||service.type=NodePort|| and ||service.nodePort=30100||, then install a Helm chart named ||nginx|| with release name ||my-nginx|| in namespace ||neptune|| using this values file.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "values",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "neptune"
+    ],
+    "resources": [
+      "services",
+      "deployments"
+    ],
+    "prerequisites": [
+      "helm create /tmp/nginx"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create values file:",
+      "   cat > custom-values.yaml << EOF",
+      "service:",
+      "  type: NodePort",
+      "  nodePort: 30100",
+      "EOF",
+      "2. Install chart with custom values:",
+      "   helm install my-nginx /tmp/nginx -f custom-values.yaml -n neptune"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get service my-nginx -n neptune -o jsonpath='{.spec.type}'",
+      "expected": "NodePort",
+      "points": 2.5,
+      "description": "Service should be NodePort type"
+    },
+    {
+      "command": "kubectl get service my-nginx -n neptune -o jsonpath='{.spec.ports[0].nodePort}'",
+      "expected": "30100",
+      "points": 2.5,
+      "description": "Service should use nodePort 30100"
+    }
+  ]
+}

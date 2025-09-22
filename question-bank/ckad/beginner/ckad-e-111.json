@@ -1,0 +1,51 @@
+{
+  "id": "ckad-e-111",
+  "title": "ServiceAccount with ClusterRole",
+  "description": "Create a ServiceAccount named ||cluster-viewer|| in namespace ||venus|| and bind it to the ClusterRole ||view|| using a ClusterRoleBinding named ||viewer-binding||.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "rbac",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount cluster-viewer -n venus",
+      "2. Create ClusterRoleBinding:",
+      "   kubectl create clusterrolebinding viewer-binding --clusterrole=view --serviceaccount=venus:cluster-viewer"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount cluster-viewer -n venus -o jsonpath='{.metadata.name}'",
+      "expected": "cluster-viewer",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get clusterrolebinding viewer-binding -o jsonpath='{.roleRef.name}'",
+      "expected": "view",
+      "points": 2,
+      "description": "Binding should reference view ClusterRole"
+    },
+    {
+      "command": "kubectl get clusterrolebinding viewer-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "cluster-viewer",
+      "points": 2,
+      "description": "Binding should reference cluster-viewer ServiceAccount"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "id": "ckad-e-086",
+  "title": "RBAC for Group Binding",
+  "description": "Create a ClusterRole named ||node-viewer|| that allows ||get|| and ||list|| on ||nodes|| and bind it to Group ||devops||.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "groups",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "clusterroles",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create clusterrole:",
+      "   kubectl create clusterrole node-viewer --verb=get,list --resource=nodes",
+      "2. Create clusterrolebinding for group:",
+      "   kubectl create clusterrolebinding node-viewer-binding --clusterrole=node-viewer --group=devops"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole node-viewer -o jsonpath='{.rules[0].resources}'",
+      "expected": "[\"nodes\"]",
+      "points": 3,
+      "description": "ClusterRole should target nodes resource"
+    },
+    {
+      "command": "kubectl get clusterrolebinding node-viewer-binding -o jsonpath='{.subjects[0].kind}'",
+      "expected": "Group",
+      "points": 1.5,
+      "description": "Binding should be for a Group"
+    },
+    {
+      "command": "kubectl get clusterrolebinding node-viewer-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "devops",
+      "points": 1.5,
+      "description": "Binding should be for devops group"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "id": "ckad-e-117",
+  "title": "ServiceAccount with Namespace Role",
+  "description": "Create a ServiceAccount named ||namespace-admin|| in namespace ||uranus||, create a Role that allows all operations on all resources, and bind them with a RoleBinding named ||admin-binding||.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "rbac",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "uranus"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "roles",
+      "rolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount namespace-admin -n uranus",
+      "2. Create Role with full permissions:",
+      "   kubectl create role admin-role --verb='*' --resource='*' -n uranus",
+      "3. Create RoleBinding:",
+      "   kubectl create rolebinding admin-binding --role=admin-role --serviceaccount=uranus:namespace-admin -n uranus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount namespace-admin -n uranus -o jsonpath='{.metadata.name}'",
+      "expected": "namespace-admin",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get role admin-role -n uranus -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"*\"]",
+      "points": 2,
+      "description": "Role should allow all verbs"
+    },
+    {
+      "command": "kubectl get rolebinding admin-binding -n uranus -o jsonpath='{.subjects[0].name}'",
+      "expected": "namespace-admin",
+      "points": 3,
+      "description": "RoleBinding should bind to namespace-admin ServiceAccount"
+    }
+  ]
+}

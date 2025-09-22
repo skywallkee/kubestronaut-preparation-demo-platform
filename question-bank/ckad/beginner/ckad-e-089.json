@@ -1,0 +1,59 @@
+{
+  "id": "ckad-e-089",
+  "title": "RBAC Aggregation",
+  "description": "Create a ClusterRole named ||viewer|| with label ||rbac.example.com/aggregate-to-viewer: 'true'|| that allows ||get|| and ||list|| on ||pods|| and ||services||.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "aggregation",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "clusterroles"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create clusterrole with aggregation label:",
+      "   cat > clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: viewer",
+      "  labels:",
+      "    rbac.example.com/aggregate-to-viewer: \"true\"",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\", \"services\"]",
+      "  verbs: [\"get\", \"list\"]",
+      "EOF",
+      "2. Apply clusterrole:",
+      "   kubectl apply -f clusterrole.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole viewer -o jsonpath='{.metadata.labels.rbac\\.example\\.com/aggregate-to-viewer}'",
+      "expected": "true",
+      "points": 3,
+      "description": "ClusterRole should have aggregation label"
+    },
+    {
+      "command": "kubectl get clusterrole viewer -o jsonpath='{.rules[0].resources}' | grep -c pods",
+      "expected": "1",
+      "points": 2,
+      "description": "ClusterRole should include pods"
+    },
+    {
+      "command": "kubectl get clusterrole viewer -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"get\",\"list\"]",
+      "points": 2,
+      "description": "ClusterRole should have correct verbs"
+    }
+  ]
+}

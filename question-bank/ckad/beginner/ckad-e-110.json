@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-110",
+  "title": "ServiceAccount with Token",
+  "description": "Create a ServiceAccount named ||api-sa|| in namespace ||saturn|| and retrieve its token value.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "tokens",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount api-sa -n saturn",
+      "2. Get ServiceAccount token:",
+      "   kubectl get secret -n saturn | grep api-sa",
+      "3. Retrieve token value:",
+      "   kubectl get secret <secret-name> -n saturn -o jsonpath='{.data.token}' | base64 -d"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount api-sa -n saturn -o jsonpath='{.metadata.name}'",
+      "expected": "api-sa",
+      "points": 4,
+      "description": "ServiceAccount api-sa should exist"
+    }
+  ]
+}

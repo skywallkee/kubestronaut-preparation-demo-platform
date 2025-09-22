@@ -1,0 +1,36 @@
+{
+  "id": "ckad-e-071",
+  "title": "Apply Node Taint",
+  "description": "Apply a taint to the single cluster node with key ||environment||, value ||production||, and effect ||NoExecute||.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "taints",
+    "node-management",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "nodes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Get the node name:",
+      "   NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')",
+      "2. Apply taint to node:",
+      "   kubectl taint nodes $NODE environment=production:NoExecute"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | xargs kubectl describe node | grep -A1 Taints | grep environment=production:NoExecute",
+      "expected": "environment=production:NoExecute",
+      "points": 4,
+      "description": "Node should have the correct taint applied"
+    }
+  ]
+}

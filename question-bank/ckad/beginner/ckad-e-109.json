@@ -1,0 +1,46 @@
+{
+  "id": "ckad-e-109",
+  "title": "Helm Package Chart",
+  "description": "Package a Helm chart located at ||/tmp/api-chart|| and create a ||.tgz|| package file. Then install this packaged chart with release name ||api|| in namespace ||mars||.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "package",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "helm create /tmp/api-chart"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Package Helm chart:",
+      "   helm package /tmp/api-chart",
+      "2. Install from package:",
+      "   helm install api api-chart-0.1.0.tgz -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "ls api-chart-*.tgz >/dev/null 2>&1 && echo 'exists' || echo 'missing'",
+      "expected": "exists",
+      "points": 2,
+      "description": "Package file should exist"
+    },
+    {
+      "command": "helm list -n mars -o json | jq -r '.[0].name'",
+      "expected": "api",
+      "points": 3,
+      "description": "Helm release api should exist"
+    }
+  ]
+}

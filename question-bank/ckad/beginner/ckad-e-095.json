@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-095",
+  "title": "ResourceQuota for Object Count",
+  "description": "Create a ResourceQuota named ||object-quota|| in namespace ||neptune|| that limits the namespace to maximum ||10|| pods and ||5|| services.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "resourcequota",
+    "objects",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "neptune"
+    ],
+    "resources": [
+      "resourcequotas"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ResourceQuota for object counts:",
+      "   kubectl create quota object-quota --hard=pods=10,services=5 -n neptune"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota object-quota -n neptune -o jsonpath='{.spec.hard.pods}'",
+      "expected": "10",
+      "points": 2.5,
+      "description": "ResourceQuota should limit pods to 10"
+    },
+    {
+      "command": "kubectl get resourcequota object-quota -n neptune -o jsonpath='{.spec.hard.services}'",
+      "expected": "5",
+      "points": 2.5,
+      "description": "ResourceQuota should limit services to 5"
+    }
+  ]
+}

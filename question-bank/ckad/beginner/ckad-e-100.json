@@ -1,0 +1,47 @@
+{
+  "id": "ckad-e-100",
+  "title": "Install Helm Chart",
+  "description": "Install a Helm chart from the ||bitnami|| repository. Add the repository as ||https://charts.bitnami.com/bitnami||, then install ||redis|| chart with release name ||my-redis|| in namespace ||mars||.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "deployment",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Add Helm repository:",
+      "   helm repo add bitnami https://charts.bitnami.com/bitnami",
+      "2. Update repositories:",
+      "   helm repo update",
+      "3. Install Redis chart:",
+      "   helm install my-redis bitnami/redis -n mars"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm list -n mars -o json | jq -r '.[0].name'",
+      "expected": "my-redis",
+      "points": 2.5,
+      "description": "Helm release my-redis should exist"
+    },
+    {
+      "command": "helm list -n mars -o json | jq -r '.[0].chart' | grep -c redis",
+      "expected": "1",
+      "points": 2.5,
+      "description": "Release should be Redis chart"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "id": "ckad-i-085",
+  "title": "Advanced DaemonSet with Node Affinity and Taints",
+  "description": "Create a DaemonSet named ||monitoring-advanced|| in namespace ||monitoring|| that tolerates all taints, has node affinity for nodes with label ||monitoring=enabled||, and runs ||prometheus/node-exporter|| with host network and privilege escalation.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "daemonsets",
+    "tolerations",
+    "node-affinity",
+    "privileged",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "monitoring"
+    ],
+    "resources": [
+      "daemonsets"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl label nodes $NODE monitoring=enabled"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create advanced DaemonSet:",
+      "   cat > daemonset.yaml << EOF",
+      "apiVersion: apps/v1",
+      "kind: DaemonSet",
+      "metadata:",
+      "  name: monitoring-advanced",
+      "  namespace: monitoring",
+      "spec:",
+      "  selector:",
+      "    matchLabels:",
+      "      app: node-exporter",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: node-exporter",
+      "    spec:",
+      "      hostNetwork: true",
+      "      hostPID: true",
+      "      tolerations:",
+      "      - operator: Exists",
+      "      affinity:",
+      "        nodeAffinity:",
+      "          requiredDuringSchedulingIgnoredDuringExecution:",
+      "            nodeSelectorTerms:",
+      "            - matchExpressions:",
+      "              - key: monitoring",
+      "                operator: In",
+      "                values: ['enabled']",
+      "      containers:",
+      "      - name: node-exporter",
+      "        image: prometheus/node-exporter",
+      "        securityContext:",
+      "          privileged: true",
+      "        ports:",
+      "        - containerPort: 9100",
+      "          hostPort: 9100",
+      "        volumeMounts:",
+      "        - name: proc",
+      "          mountPath: /host/proc",
+      "          readOnly: true",
+      "        - name: sys",
+      "          mountPath: /host/sys",
+      "          readOnly: true",
+      "      volumes:",
+      "      - name: proc",
+      "        hostPath:",
+      "          path: /proc",
+      "      - name: sys",
+      "        hostPath:",
+      "          path: /sys",
+      "EOF",
+      "2. Apply DaemonSet:",
+      "   kubectl apply -f daemonset.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get daemonset monitoring-advanced -n monitoring -o jsonpath='{.spec.template.spec.tolerations[0].operator}'",
+      "expected": "Exists",
+      "points": 3,
+      "description": "DaemonSet should tolerate all taints"
+    },
+    {
+      "command": "kubectl get daemonset monitoring-advanced -n monitoring -o jsonpath='{.spec.template.spec.hostNetwork}'",
+      "expected": "true",
+      "points": 2,
+      "description": "DaemonSet should use host network"
+    },
+    {
+      "command": "kubectl get daemonset monitoring-advanced -n monitoring -o jsonpath='{.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key}'",
+      "expected": "monitoring",
+      "points": 5,
+      "description": "DaemonSet should have node affinity for monitoring=enabled"
+    }
+  ]
+}

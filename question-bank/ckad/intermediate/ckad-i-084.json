@@ -1,0 +1,111 @@
+{
+  "id": "ckad-i-084",
+  "title": "StatefulSet with Persistent Taints",
+  "description": "Create a StatefulSet named ||data-store|| in namespace ||database|| with ||3|| replicas using ||postgres:13||. Configure it to tolerate node taints ||storage=database:NoSchedule|| and ||performance=high:PreferNoSchedule||, and include persistent volume claims.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "statefulsets",
+    "tolerations",
+    "persistent-storage",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "database"
+    ],
+    "resources": [
+      "statefulsets",
+      "persistentvolumeclaims",
+      "services"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE storage=database:NoSchedule",
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE performance=high:PreferNoSchedule"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create StatefulSet with tolerations and PVC:",
+      "   cat > statefulset.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Service",
+      "metadata:",
+      "  name: data-store-headless",
+      "  namespace: database",
+      "spec:",
+      "  clusterIP: None",
+      "  selector:",
+      "    app: data-store",
+      "  ports:",
+      "  - port: 5432",
+      "---",
+      "apiVersion: apps/v1",
+      "kind: StatefulSet",
+      "metadata:",
+      "  name: data-store",
+      "  namespace: database",
+      "spec:",
+      "  serviceName: data-store-headless",
+      "  replicas: 3",
+      "  selector:",
+      "    matchLabels:",
+      "      app: data-store",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: data-store",
+      "    spec:",
+      "      tolerations:",
+      "      - key: storage",
+      "        operator: Equal",
+      "        value: database",
+      "        effect: NoSchedule",
+      "      - key: performance",
+      "        operator: Equal",
+      "        value: high",
+      "        effect: PreferNoSchedule",
+      "      containers:",
+      "      - name: postgres",
+      "        image: postgres:13",
+      "        env:",
+      "        - name: POSTGRES_PASSWORD",
+      "          value: secretpass",
+      "        volumeMounts:",
+      "        - name: data-volume",
+      "          mountPath: /var/lib/postgresql/data",
+      "  volumeClaimTemplates:",
+      "  - metadata:",
+      "      name: data-volume",
+      "    spec:",
+      "      accessModes: ['ReadWriteOnce']",
+      "      resources:",
+      "        requests:",
+      "          storage: 1Gi",
+      "EOF",
+      "2. Apply StatefulSet:",
+      "   kubectl apply -f statefulset.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get statefulset data-store -n database -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 2,
+      "description": "StatefulSet should have 3 replicas"
+    },
+    {
+      "command": "kubectl get statefulset data-store -n database -o jsonpath='{.spec.template.spec.tolerations[0].key}'",
+      "expected": "storage",
+      "points": 4,
+      "description": "StatefulSet should tolerate storage taint"
+    },
+    {
+      "command": "kubectl get statefulset data-store -n database -o jsonpath='{.spec.volumeClaimTemplates[0].metadata.name}'",
+      "expected": "data-volume",
+      "points": 4,
+      "description": "StatefulSet should have volume claim template"
+    }
+  ]
+}

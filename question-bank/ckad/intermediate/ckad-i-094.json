@@ -1,0 +1,85 @@
+{
+  "id": "ckad-i-094",
+  "title": "RBAC with Admission Controllers and Webhooks",
+  "description": "Create a ServiceAccount named ||webhook-sa|| in namespace ||admission|| with permissions to read ||admissionregistration.k8s.io|| resources and manage ||validatingwebhookconfigurations||. Create a ClusterRole that allows webhook operations and certificate management.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "admission-controllers",
+    "webhooks",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "admission"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "clusterroles",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount webhook-sa -n admission",
+      "2. Create ClusterRole for webhook operations:",
+      "   cat > webhook-clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: webhook-operator",
+      "rules:",
+      "- apiGroups: [\"admissionregistration.k8s.io\"]",
+      "  resources: [\"validatingwebhookconfigurations\", \"mutatingwebhookconfigurations\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"certificates.k8s.io\"]",
+      "  resources: [\"certificatesigningrequests\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]",
+      "- apiGroups: [\"certificates.k8s.io\"]",
+      "  resources: [\"certificatesigningrequests/approval\"]",
+      "  verbs: [\"update\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"secrets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]",
+      "  resourceNames: [\"webhook-certs\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"configmaps\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]",
+      "EOF",
+      "3. Create ClusterRoleBinding:",
+      "   kubectl create clusterrolebinding webhook-operator-binding --clusterrole=webhook-operator --serviceaccount=admission:webhook-sa",
+      "4. Apply ClusterRole:",
+      "   kubectl apply -f webhook-clusterrole.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount webhook-sa -n admission -o jsonpath='{.metadata.name}'",
+      "expected": "webhook-sa",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get clusterrole webhook-operator -o jsonpath='{.rules[0].apiGroups[0]}'",
+      "expected": "admissionregistration.k8s.io",
+      "points": 3,
+      "description": "ClusterRole should target admission registration API"
+    },
+    {
+      "command": "kubectl get clusterrole webhook-operator -o jsonpath='{.rules[0].resources}' | grep -c validatingwebhookconfigurations",
+      "expected": "1",
+      "points": 3,
+      "description": "ClusterRole should manage validating webhooks"
+    },
+    {
+      "command": "kubectl get clusterrolebinding webhook-operator-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "webhook-sa",
+      "points": 2,
+      "description": "ClusterRoleBinding should bind to webhook-sa"
+    }
+  ]
+}

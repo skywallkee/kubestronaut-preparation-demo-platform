@@ -1,0 +1,48 @@
+{
+  "id": "ckad-e-115",
+  "title": "ServiceAccount with Multiple Secrets",
+  "description": "Create a ServiceAccount named ||multi-secret-sa|| in namespace ||neptune|| and attach two secrets ||app-secret|| and ||db-secret|| to it.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "neptune"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "secrets"
+    ],
+    "prerequisites": [
+      "kubectl create secret generic app-secret --from-literal=key1=value1 -n neptune",
+      "kubectl create secret generic db-secret --from-literal=key2=value2 -n neptune"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount multi-secret-sa -n neptune",
+      "2. Add multiple secrets:",
+      "   kubectl patch serviceaccount multi-secret-sa -n neptune --type json -p '[{\"op\":\"add\",\"path\":\"/secrets\",\"value\":[{\"name\":\"app-secret\"},{\"name\":\"db-secret\"}]}]'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount multi-secret-sa -n neptune -o jsonpath='{.secrets}' | grep -c app-secret",
+      "expected": "1",
+      "points": 2.5,
+      "description": "ServiceAccount should have app-secret"
+    },
+    {
+      "command": "kubectl get serviceaccount multi-secret-sa -n neptune -o jsonpath='{.secrets}' | grep -c db-secret",
+      "expected": "1",
+      "points": 2.5,
+      "description": "ServiceAccount should have db-secret"
+    }
+  ]
+}

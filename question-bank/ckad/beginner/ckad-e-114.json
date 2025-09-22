@@ -1,0 +1,52 @@
+{
+  "id": "ckad-e-114",
+  "title": "Deployment with ServiceAccount",
+  "description": "Create a ServiceAccount named ||app-account|| in namespace ||jupiter|| and a Deployment named ||secure-app|| with ||2|| replicas using image ||nginx:1.21|| that uses this ServiceAccount.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "service-accounts",
+    "deployments",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount app-account -n jupiter",
+      "2. Create Deployment with ServiceAccount:",
+      "   kubectl create deployment secure-app --image=nginx:1.21 --replicas=2 -n jupiter --dry-run=client -o yaml > deploy.yaml",
+      "3. Add serviceAccountName to spec:",
+      "   spec:",
+      "     template:",
+      "       spec:",
+      "         serviceAccountName: app-account",
+      "4. Apply deployment:",
+      "   kubectl apply -f deploy.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount app-account -n jupiter -o jsonpath='{.metadata.name}'",
+      "expected": "app-account",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get deployment secure-app -n jupiter -o jsonpath='{.spec.template.spec.serviceAccountName}'",
+      "expected": "app-account",
+      "points": 4,
+      "description": "Deployment should use app-account ServiceAccount"
+    }
+  ]
+}

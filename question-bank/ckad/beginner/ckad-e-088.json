@@ -1,0 +1,57 @@
+{
+  "id": "ckad-e-088",
+  "title": "RBAC for API Groups",
+  "description": "Create a ClusterRole named ||apps-admin|| that allows all operations on ||deployments|| and ||replicasets|| in the ||apps|| API group.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "apiGroups",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "clusterroles"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create clusterrole with API group:",
+      "   cat > clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: apps-admin",
+      "rules:",
+      "- apiGroups: [\"apps\"]",
+      "  resources: [\"deployments\", \"replicasets\"]",
+      "  verbs: [\"*\"]",
+      "EOF",
+      "2. Apply clusterrole:",
+      "   kubectl apply -f clusterrole.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole apps-admin -o jsonpath='{.rules[0].apiGroups}'",
+      "expected": "[\"apps\"]",
+      "points": 2,
+      "description": "ClusterRole should specify apps API group"
+    },
+    {
+      "command": "kubectl get clusterrole apps-admin -o jsonpath='{.rules[0].resources}' | grep -c deployments",
+      "expected": "1",
+      "points": 2,
+      "description": "ClusterRole should include deployments"
+    },
+    {
+      "command": "kubectl get clusterrole apps-admin -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"*\"]",
+      "points": 2,
+      "description": "ClusterRole should allow all verbs"
+    }
+  ]
+}

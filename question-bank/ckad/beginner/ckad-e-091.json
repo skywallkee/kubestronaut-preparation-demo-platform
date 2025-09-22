@@ -1,0 +1,49 @@
+{
+  "id": "ckad-e-091",
+  "title": "Set Pod Resource Limits",
+  "description": "Create a Pod named ||limited-pod|| in namespace ||venus|| with image ||redis:6-alpine|| that has CPU limit of ||200m|| and memory limit of ||256Mi||.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "resources",
+    "limits",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod with resource limits:",
+      "   kubectl run limited-pod --image=redis:6-alpine -n venus --dry-run=client -o yaml > pod.yaml",
+      "2. Add resource limits:",
+      "   resources:",
+      "     limits:",
+      "       cpu: 200m",
+      "       memory: 256Mi",
+      "3. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod limited-pod -n venus -o jsonpath='{.spec.containers[0].resources.limits.cpu}'",
+      "expected": "200m",
+      "points": 2,
+      "description": "Pod should have 200m CPU limit"
+    },
+    {
+      "command": "kubectl get pod limited-pod -n venus -o jsonpath='{.spec.containers[0].resources.limits.memory}'",
+      "expected": "256Mi",
+      "points": 2,
+      "description": "Pod should have 256Mi memory limit"
+    }
+  ]
+}

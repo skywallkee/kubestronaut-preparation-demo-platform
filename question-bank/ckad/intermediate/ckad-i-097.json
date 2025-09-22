@@ -1,0 +1,84 @@
+{
+  "id": "ckad-i-097",
+  "title": "Dynamic RBAC with SubResource Permissions",
+  "description": "Create a ClusterRole named ||pod-manager|| that allows ||get||, ||list|| on pods, but also allows ||create|| on ||pods/exec|| and ||pods/portforward|| subresources, and ||patch|| on ||pods/status||. Create a ServiceAccount ||pod-operator|| and bind these permissions.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "subresources",
+    "dynamic-permissions",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "operations"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "clusterroles",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount pod-operator -n operations",
+      "2. Create ClusterRole with subresource permissions:",
+      "   cat > pod-manager-clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: pod-manager",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods/exec\", \"pods/portforward\"]",
+      "  verbs: [\"create\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods/status\"]",
+      "  verbs: [\"get\", \"patch\", \"update\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods/log\"]",
+      "  verbs: [\"get\", \"list\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods/attach\"]",
+      "  verbs: [\"create\"]",
+      "EOF",
+      "3. Create ClusterRoleBinding:",
+      "   kubectl create clusterrolebinding pod-manager-binding --clusterrole=pod-manager --serviceaccount=operations:pod-operator",
+      "4. Apply ClusterRole:",
+      "   kubectl apply -f pod-manager-clusterrole.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount pod-operator -n operations -o jsonpath='{.metadata.name}'",
+      "expected": "pod-operator",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get clusterrole pod-manager -o jsonpath='{.rules[1].resources}' | grep -c 'pods/exec'",
+      "expected": "1",
+      "points": 3,
+      "description": "ClusterRole should allow pods/exec operations"
+    },
+    {
+      "command": "kubectl get clusterrole pod-manager -o jsonpath='{.rules[2].resources[0]}'",
+      "expected": "pods/status",
+      "points": 2,
+      "description": "ClusterRole should manage pods/status"
+    },
+    {
+      "command": "kubectl get clusterrolebinding pod-manager-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "pod-operator",
+      "points": 2,
+      "description": "ClusterRoleBinding should bind to pod-operator"
+    }
+  ]
+}

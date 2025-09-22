@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-080",
+  "title": "Create Role for Pod Management",
+  "description": "Create a Role named ||pod-reader|| in namespace ||development|| that allows ||get||, ||list||, and ||watch|| operations on ||pods||.",
+  "points": 5,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "roles",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "development"
+    ],
+    "resources": [
+      "roles"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create role:",
+      "   kubectl create role pod-reader --verb=get,list,watch --resource=pods -n development"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get role pod-reader -n development -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"get\",\"list\",\"watch\"]",
+      "points": 3,
+      "description": "Role should have correct verbs"
+    },
+    {
+      "command": "kubectl get role pod-reader -n development -o jsonpath='{.rules[0].resources}'",
+      "expected": "[\"pods\"]",
+      "points": 2,
+      "description": "Role should target pods resource"
+    }
+  ]
+}

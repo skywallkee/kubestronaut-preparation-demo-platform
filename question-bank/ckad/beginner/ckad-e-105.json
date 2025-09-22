@@ -1,0 +1,52 @@
+{
+  "id": "ckad-e-105",
+  "title": "Helm Chart with Dependencies",
+  "description": "Create a Helm chart named ||myapp|| that has ||redis|| as a dependency. Add the dependency in Chart.yaml and update dependencies before installing with release name ||full-app|| in namespace ||uranus||.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "dependencies",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "uranus"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create Helm chart:",
+      "   helm create myapp",
+      "2. Add dependency to Chart.yaml:",
+      "   dependencies:",
+      "   - name: redis",
+      "     version: \"17.x.x\"",
+      "     repository: \"https://charts.bitnami.com/bitnami\"",
+      "3. Update dependencies:",
+      "   helm dependency update myapp",
+      "4. Install chart:",
+      "   helm install full-app myapp -n uranus"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm list -n uranus -o json | jq -r '.[0].name'",
+      "expected": "full-app",
+      "points": 3,
+      "description": "Helm release full-app should exist"
+    },
+    {
+      "command": "kubectl get deployment -n uranus | grep -c redis",
+      "expected": "1",
+      "points": 3,
+      "description": "Redis deployment should exist from dependency"
+    }
+  ]
+}

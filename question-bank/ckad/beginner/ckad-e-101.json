@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-101",
+  "title": "Upgrade Helm Release",
+  "description": "Upgrade an existing Helm release named ||my-app|| in namespace ||pluto|| by setting the value ||replicaCount=3|| using the ||--set|| flag.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "upgrade",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "helm create /tmp/my-app",
+      "helm install my-app /tmp/my-app -n pluto"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Upgrade Helm release with new values:",
+      "   helm upgrade my-app /tmp/my-app --set replicaCount=3 -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment my-app -n pluto -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 4,
+      "description": "Deployment should have 3 replicas after upgrade"
+    }
+  ]
+}

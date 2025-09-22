@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-102",
+  "title": "Rollback Helm Release",
+  "description": "Rollback a Helm release named ||web-app|| in namespace ||jupiter|| to its previous revision.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "rollback",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "helm create /tmp/web-app",
+      "helm install web-app /tmp/web-app -n jupiter",
+      "helm upgrade web-app /tmp/web-app --set image.tag=v2 -n jupiter"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check release history:",
+      "   helm history web-app -n jupiter",
+      "2. Rollback to previous revision:",
+      "   helm rollback web-app -n jupiter"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm history web-app -n jupiter -o json | jq -r '.[-1].revision'",
+      "expected": "3",
+      "points": 4,
+      "description": "Release should be rolled back (revision 3)"
+    }
+  ]
+}

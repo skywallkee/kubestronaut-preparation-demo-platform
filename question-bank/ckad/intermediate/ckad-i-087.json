@@ -1,0 +1,93 @@
+{
+  "id": "ckad-i-087",
+  "title": "CronJob with Multiple Taint Tolerations and Resource Limits",
+  "description": "Create a CronJob named ||scheduled-backup|| in namespace ||backups|| that runs every ||30 minutes||, tolerates taints ||backup-node=dedicated:NoSchedule|| and ||storage=fast:PreferNoSchedule||, with resource limits ||200m|| CPU and ||512Mi|| memory.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "cronjobs",
+    "tolerations",
+    "resource-limits",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "backups"
+    ],
+    "resources": [
+      "cronjobs"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE backup-node=dedicated:NoSchedule",
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE storage=fast:PreferNoSchedule"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create CronJob with multiple tolerations and resources:",
+      "   cat > cronjob.yaml << EOF",
+      "apiVersion: batch/v1",
+      "kind: CronJob",
+      "metadata:",
+      "  name: scheduled-backup",
+      "  namespace: backups",
+      "spec:",
+      "  schedule: '*/30 * * * *'",
+      "  jobTemplate:",
+      "    spec:",
+      "      template:",
+      "        spec:",
+      "          tolerations:",
+      "          - key: backup-node",
+      "            operator: Equal",
+      "            value: dedicated",
+      "            effect: NoSchedule",
+      "          - key: storage",
+      "            operator: Equal",
+      "            value: fast",
+      "            effect: PreferNoSchedule",
+      "          containers:",
+      "          - name: backup",
+      "            image: alpine:3.16",
+      "            command: ['sh', '-c', 'echo Starting backup; sleep 60; echo Backup complete']",
+      "            resources:",
+      "              limits:",
+      "                cpu: 200m",
+      "                memory: 512Mi",
+      "              requests:",
+      "                cpu: 100m",
+      "                memory: 256Mi",
+      "          restartPolicy: OnFailure",
+      "EOF",
+      "2. Apply CronJob:",
+      "   kubectl apply -f cronjob.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get cronjob scheduled-backup -n backups -o jsonpath='{.spec.schedule}'",
+      "expected": "*/30 * * * *",
+      "points": 2,
+      "description": "CronJob should run every 30 minutes"
+    },
+    {
+      "command": "kubectl get cronjob scheduled-backup -n backups -o jsonpath='{.spec.jobTemplate.spec.template.spec.tolerations}' | grep -c backup-node",
+      "expected": "1",
+      "points": 3,
+      "description": "CronJob should tolerate backup-node taint"
+    },
+    {
+      "command": "kubectl get cronjob scheduled-backup -n backups -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].resources.limits.cpu}'",
+      "expected": "200m",
+      "points": 2,
+      "description": "CronJob should have 200m CPU limit"
+    },
+    {
+      "command": "kubectl get cronjob scheduled-backup -n backups -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "512Mi",
+      "points": 2,
+      "description": "CronJob should have 512Mi memory limit"
+    }
+  ]
+}

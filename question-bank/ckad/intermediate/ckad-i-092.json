@@ -1,0 +1,91 @@
+{
+  "id": "ckad-i-092",
+  "title": "ServiceAccount RBAC with Custom Resources",
+  "description": "Create a ServiceAccount named ||operator-sa|| in namespace ||operators||. Create a ClusterRole that allows full access to custom resources ||workflows.argoproj.io|| and bind it. Also create a Role for managing ||configmaps|| and ||secrets|| in the same namespace.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "serviceaccounts",
+    "custom-resources",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "operators"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "clusterroles",
+      "clusterrolebindings",
+      "roles",
+      "rolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount operator-sa -n operators",
+      "2. Create ClusterRole for custom resources:",
+      "   cat > clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: workflow-operator",
+      "rules:",
+      "- apiGroups: [\"argoproj.io\"]",
+      "  resources: [\"workflows\"]",
+      "  verbs: [\"*\"]",
+      "- apiGroups: [\"argoproj.io\"]",
+      "  resources: [\"workflows/status\"]",
+      "  verbs: [\"get\", \"patch\", \"update\"]",
+      "EOF",
+      "3. Create Role for config management:",
+      "   cat > role.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: Role",
+      "metadata:",
+      "  name: config-manager",
+      "  namespace: operators",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"configmaps\", \"secrets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "EOF",
+      "4. Create bindings:",
+      "   kubectl create clusterrolebinding operator-workflow-binding --clusterrole=workflow-operator --serviceaccount=operators:operator-sa",
+      "   kubectl create rolebinding operator-config-binding --role=config-manager --serviceaccount=operators:operator-sa -n operators",
+      "5. Apply roles:",
+      "   kubectl apply -f clusterrole.yaml",
+      "   kubectl apply -f role.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount operator-sa -n operators -o jsonpath='{.metadata.name}'",
+      "expected": "operator-sa",
+      "points": 1.5,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get clusterrole workflow-operator -o jsonpath='{.rules[0].apiGroups[0]}'",
+      "expected": "argoproj.io",
+      "points": 3,
+      "description": "ClusterRole should target argoproj.io API group"
+    },
+    {
+      "command": "kubectl get role config-manager -n operators -o jsonpath='{.rules[0].resources}' | grep -c configmaps",
+      "expected": "1",
+      "points": 2,
+      "description": "Role should manage configmaps"
+    },
+    {
+      "command": "kubectl get clusterrolebinding operator-workflow-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "operator-sa",
+      "points": 2.5,
+      "description": "ClusterRoleBinding should bind to operator-sa"
+    }
+  ]
+}

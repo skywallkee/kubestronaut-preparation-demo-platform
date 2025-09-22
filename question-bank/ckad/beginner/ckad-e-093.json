@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-093",
+  "title": "Create ResourceQuota",
+  "description": "Create a ResourceQuota named ||compute-quota|| in namespace ||pluto|| that limits total CPU requests to ||2|| cores and total memory requests to ||1Gi||.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "resourcequota",
+    "resources",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "resourcequotas"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ResourceQuota:",
+      "   kubectl create quota compute-quota --hard=requests.cpu=2,requests.memory=1Gi -n pluto"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get resourcequota compute-quota -n pluto -o jsonpath='{.spec.hard.requests\\.cpu}'",
+      "expected": "2",
+      "points": 2.5,
+      "description": "ResourceQuota should limit CPU requests to 2 cores"
+    },
+    {
+      "command": "kubectl get resourcequota compute-quota -n pluto -o jsonpath='{.spec.hard.requests\\.memory}'",
+      "expected": "1Gi",
+      "points": 2.5,
+      "description": "ResourceQuota should limit memory requests to 1Gi"
+    }
+  ]
+}

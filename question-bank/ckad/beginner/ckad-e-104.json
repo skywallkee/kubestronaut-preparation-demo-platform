@@ -1,0 +1,39 @@
+{
+  "id": "ckad-e-104",
+  "title": "Uninstall Helm Release",
+  "description": "List all Helm releases in namespace ||mercury||, then uninstall the release named ||old-app||.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "uninstall",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [],
+    "prerequisites": [
+      "helm create /tmp/old-app",
+      "helm install old-app /tmp/old-app -n mercury"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. List Helm releases:",
+      "   helm list -n mercury",
+      "2. Uninstall release:",
+      "   helm uninstall old-app -n mercury"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm list -n mercury -o json | jq -r '.[].name' | grep -c old-app || echo 0",
+      "expected": "0",
+      "points": 3,
+      "description": "Release old-app should be uninstalled"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "id": "ckad-i-098",
+  "title": "RBAC with Conditional Access and Time-Based Permissions",
+  "description": "Create a ServiceAccount named ||temp-admin|| in namespace ||staging|| with a Role that includes annotations for conditional access. Create a CronJob that uses this ServiceAccount and runs with elevated permissions only during business hours (9 AM - 5 PM UTC).",
+  "points": 11,
+  "timeLimit": 22,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "conditional-access",
+    "time-based",
+    "cronjobs",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "staging"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "roles",
+      "rolebindings",
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount temp-admin -n staging",
+      "2. Create Role with conditional access annotations:",
+      "   cat > conditional-role.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: Role",
+      "metadata:",
+      "  name: temp-admin-role",
+      "  namespace: staging",
+      "  annotations:",
+      "    rbac.authorization.kubernetes.io/access-hours: \"09:00-17:00\"",
+      "    rbac.authorization.kubernetes.io/timezone: \"UTC\"",
+      "    rbac.authorization.kubernetes.io/description: \"Temporary admin access during business hours\"",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\", \"services\", \"configmaps\", \"secrets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"apps\"]",
+      "  resources: [\"deployments\", \"replicasets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\", \"scale\"]",
+      "- apiGroups: [\"batch\"]",
+      "  resources: [\"jobs\", \"cronjobs\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"delete\"]",
+      "EOF",
+      "3. Create RoleBinding:",
+      "   kubectl create rolebinding temp-admin-binding --role=temp-admin-role --serviceaccount=staging:temp-admin -n staging",
+      "4. Create time-controlled CronJob:",
+      "   cat > time-controlled-cronjob.yaml << EOF",
+      "apiVersion: batch/v1",
+      "kind: CronJob",
+      "metadata:",
+      "  name: business-hours-admin",
+      "  namespace: staging",
+      "spec:",
+      "  schedule: \"0 9-17 * * 1-5\"",
+      "  jobTemplate:",
+      "    spec:",
+      "      template:",
+      "        metadata:",
+      "          annotations:",
+      "            rbac.access.time/active-hours: \"09:00-17:00\"",
+      "        spec:",
+      "          serviceAccountName: temp-admin",
+      "          containers:",
+      "          - name: admin-tasks",
+      "            image: bitnami/kubectl:latest",
+      "            command:",
+      "            - sh",
+      "            - -c",
+      "            - |",
+      "              CURRENT_HOUR=$(date +%H)",
+      "              if [ $CURRENT_HOUR -ge 9 ] && [ $CURRENT_HOUR -lt 17 ]; then",
+      "                echo \"Business hours: Running admin tasks\"",
+      "                kubectl get pods -n staging",
+      "                kubectl get deployments -n staging",
+      "              else",
+      "                echo \"Outside business hours: Limited access\"",
+      "                kubectl get pods -n staging --field-selector=status.phase=Running",
+      "              fi",
+      "          restartPolicy: OnFailure",
+      "EOF",
+      "5. Apply all resources:",
+      "   kubectl apply -f conditional-role.yaml",
+      "   kubectl apply -f time-controlled-cronjob.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount temp-admin -n staging -o jsonpath='{.metadata.name}'",
+      "expected": "temp-admin",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get role temp-admin-role -n staging -o jsonpath='{.metadata.annotations.rbac\\.authorization\\.kubernetes\\.io/access-hours}'",
+      "expected": "09:00-17:00",
+      "points": 3,
+      "description": "Role should have access hours annotation"
+    },
+    {
+      "command": "kubectl get cronjob business-hours-admin -n staging -o jsonpath='{.spec.schedule}'",
+      "expected": "0 9-17 * * 1-5",
+      "points": 3,
+      "description": "CronJob should run during business hours"
+    },
+    {
+      "command": "kubectl get cronjob business-hours-admin -n staging -o jsonpath='{.spec.jobTemplate.spec.template.spec.serviceAccountName}'",
+      "expected": "temp-admin",
+      "points": 3,
+      "description": "CronJob should use temp-admin ServiceAccount"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-112",
+  "title": "Default ServiceAccount Configuration",
+  "description": "Modify the ||default|| ServiceAccount in namespace ||mars|| to automatically mount the ServiceAccount token by setting ||automountServiceAccountToken|| to ||false||.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "configuration",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "serviceaccounts"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Edit default ServiceAccount:",
+      "   kubectl edit serviceaccount default -n mars",
+      "2. Add automountServiceAccountToken:",
+      "   automountServiceAccountToken: false",
+      "3. Or use patch command:",
+      "   kubectl patch serviceaccount default -n mars -p '{\"automountServiceAccountToken\":false}'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount default -n mars -o jsonpath='{.automountServiceAccountToken}'",
+      "expected": "false",
+      "points": 4,
+      "description": "Default ServiceAccount should not automount token"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "ckad-e-092",
+  "title": "Create LimitRange",
+  "description": "Create a LimitRange named ||mem-limit|| in namespace ||mars|| that sets default memory request to ||64Mi|| and default memory limit to ||128Mi|| for containers.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "limitrange",
+    "resources",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "limitranges"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create LimitRange:",
+      "   cat > limitrange.yaml << EOF",
+      "apiVersion: v1",
+      "kind: LimitRange",
+      "metadata:",
+      "  name: mem-limit",
+      "  namespace: mars",
+      "spec:",
+      "  limits:",
+      "  - default:",
+      "      memory: 128Mi",
+      "    defaultRequest:",
+      "      memory: 64Mi",
+      "    type: Container",
+      "EOF",
+      "2. Apply LimitRange:",
+      "   kubectl apply -f limitrange.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get limitrange mem-limit -n mars -o jsonpath='{.spec.limits[0].default.memory}'",
+      "expected": "128Mi",
+      "points": 2.5,
+      "description": "LimitRange should set default memory limit to 128Mi"
+    },
+    {
+      "command": "kubectl get limitrange mem-limit -n mars -o jsonpath='{.spec.limits[0].defaultRequest.memory}'",
+      "expected": "64Mi",
+      "points": 2.5,
+      "description": "LimitRange should set default memory request to 64Mi"
+    }
+  ]
+}

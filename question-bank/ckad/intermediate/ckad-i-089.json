@@ -1,0 +1,99 @@
+{
+  "id": "ckad-i-089",
+  "title": "Single-Node Taint Strategy with Topology Simulation",
+  "description": "Apply simulated zone taint to the single cluster node with ||zone=us-west-1a:NoSchedule||. Create a Deployment named ||geo-distributed|| with ||4|| replicas that tolerates the zone taint and includes topology spread constraints for single-node deployment.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "taints",
+    "topology-spread",
+    "multi-zone",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "distributed"
+    ],
+    "resources": [
+      "deployments",
+      "nodes"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl label nodes $NODE topology.kubernetes.io/zone=us-west-1a"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Get node name and apply zone taint:",
+      "   NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')",
+      "   kubectl taint nodes $NODE zone=us-west-1a:NoSchedule",
+      "2. Create deployment with topology spread and tolerations:",
+      "   cat > deployment.yaml << EOF",
+      "apiVersion: apps/v1",
+      "kind: Deployment",
+      "metadata:",
+      "  name: geo-distributed",
+      "  namespace: distributed",
+      "spec:",
+      "  replicas: 4",
+      "  selector:",
+      "    matchLabels:",
+      "      app: geo-app",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: geo-app",
+      "    spec:",
+      "      tolerations:",
+      "      - key: zone",
+      "        operator: Equal",
+      "        value: us-west-1a",
+      "        effect: NoSchedule",
+      "      topologySpreadConstraints:",
+      "      - maxSkew: 1",
+      "        topologyKey: topology.kubernetes.io/zone",
+      "        whenUnsatisfiable: DoNotSchedule",
+      "        labelSelector:",
+      "          matchLabels:",
+      "            app: geo-app",
+      "      containers:",
+      "      - name: app",
+      "        image: nginx:1.21",
+      "        resources:",
+      "          requests:",
+      "            cpu: 100m",
+      "            memory: 128Mi",
+      "EOF",
+      "3. Apply deployment:",
+      "   kubectl apply -f deployment.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | xargs kubectl describe node | grep -c 'zone=us-west-1a:NoSchedule'",
+      "expected": "1",
+      "points": 3,
+      "description": "Node01 should have zone taint"
+    },
+    {
+      "command": "kubectl get deployment geo-distributed -n distributed -o jsonpath='{.spec.template.spec.tolerations[0].value}'",
+      "expected": "us-west-1a",
+      "expected": "1",
+      "points": 3,
+      "description": "Deployment should tolerate both zone taints"
+    },
+    {
+      "command": "kubectl get deployment geo-distributed -n distributed -o jsonpath='{.spec.template.spec.topologySpreadConstraints[0].topologyKey}'",
+      "expected": "topology.kubernetes.io/zone",
+      "points": 3,
+      "description": "Deployment should have topology spread constraint"
+    },
+    {
+      "command": "kubectl get deployment geo-distributed -n distributed -o jsonpath='{.spec.replicas}'",
+      "expected": "4",
+      "points": 3,
+      "description": "Deployment should have 4 replicas"
+    }
+  ]
+}

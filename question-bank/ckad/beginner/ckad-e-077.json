@@ -1,0 +1,73 @@
+{
+  "id": "ckad-e-077",
+  "title": "StatefulSet with Tolerations",
+  "description": "Create a StatefulSet named ||db-stateful|| in namespace ||neptune|| with ||2|| replicas using image ||postgres:13-alpine|| that tolerates taint ||database=postgres:NoSchedule||.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "tolerations",
+    "statefulsets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "neptune"
+    ],
+    "resources": [
+      "statefulsets",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create statefulset yaml:",
+      "   cat > statefulset.yaml << EOF",
+      "apiVersion: apps/v1",
+      "kind: StatefulSet",
+      "metadata:",
+      "  name: db-stateful",
+      "  namespace: neptune",
+      "spec:",
+      "  serviceName: postgres",
+      "  replicas: 2",
+      "  selector:",
+      "    matchLabels:",
+      "      app: postgres",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: postgres",
+      "    spec:",
+      "      tolerations:",
+      "      - key: database",
+      "        operator: Equal",
+      "        value: postgres",
+      "        effect: NoSchedule",
+      "      containers:",
+      "      - name: postgres",
+      "        image: postgres:13-alpine",
+      "        env:",
+      "        - name: POSTGRES_PASSWORD",
+      "          value: mypass",
+      "EOF",
+      "2. Apply statefulset:",
+      "   kubectl apply -f statefulset.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get statefulset db-stateful -n neptune -o jsonpath='{.spec.replicas}'",
+      "expected": "2",
+      "points": 2,
+      "description": "StatefulSet should have 2 replicas"
+    },
+    {
+      "command": "kubectl get statefulset db-stateful -n neptune -o jsonpath='{.spec.template.spec.tolerations[0].value}'",
+      "expected": "postgres",
+      "points": 5,
+      "description": "StatefulSet pods should tolerate database=postgres"
+    }
+  ]
+}

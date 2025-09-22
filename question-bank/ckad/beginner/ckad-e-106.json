@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-106",
+  "title": "Helm Template Rendering",
+  "description": "Use ||helm template|| command to render a chart named ||test-app|| located at ||/tmp/test-app|| with release name ||preview|| and save the output to ||rendered.yaml||.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "template",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [],
+    "prerequisites": [
+      "helm create /tmp/test-app"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Render Helm template:",
+      "   helm template preview /tmp/test-app > rendered.yaml",
+      "2. Verify rendered file:",
+      "   cat rendered.yaml | head -20"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f rendered.yaml && echo 'exists' || echo 'missing'",
+      "expected": "exists",
+      "points": 2,
+      "description": "Rendered file should exist"
+    },
+    {
+      "command": "grep -c 'kind: Deployment' rendered.yaml",
+      "expected": "1",
+      "points": 2,
+      "description": "Rendered file should contain Deployment"
+    }
+  ]
+}

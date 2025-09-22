@@ -1,0 +1,55 @@
+{
+  "id": "ckad-e-087",
+  "title": "RBAC with Resource Names",
+  "description": "Create a Role named ||specific-pod-reader|| in namespace ||production|| that allows ||get|| and ||delete|| operations only on pods named ||web-app|| and ||api-server||.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "resourceNames",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "roles"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create role with resourceNames:",
+      "   cat > role.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: Role",
+      "metadata:",
+      "  name: specific-pod-reader",
+      "  namespace: production",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\"]",
+      "  resourceNames: [\"web-app\", \"api-server\"]",
+      "  verbs: [\"get\", \"delete\"]",
+      "EOF",
+      "2. Apply role:",
+      "   kubectl apply -f role.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get role specific-pod-reader -n production -o jsonpath='{.rules[0].resourceNames}'",
+      "expected": "[\"web-app\",\"api-server\"]",
+      "points": 4,
+      "description": "Role should specify resourceNames"
+    },
+    {
+      "command": "kubectl get role specific-pod-reader -n production -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"get\",\"delete\"]",
+      "points": 3,
+      "description": "Role should have correct verbs"
+    }
+  ]
+}

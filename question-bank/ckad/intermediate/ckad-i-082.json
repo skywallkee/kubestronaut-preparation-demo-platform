@@ -1,0 +1,80 @@
+{
+  "id": "ckad-i-082",
+  "title": "Conditional Taints with Node Selectors",
+  "description": "Create a Deployment named ||selective-deploy|| in namespace ||staging|| with ||3|| replicas that has both nodeSelector ||disktype=ssd|| and tolerates taint ||specialized=gpu:NoSchedule||. The deployment should use image ||tensorflow/tensorflow:latest-gpu||.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "taints",
+    "nodeSelector",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "staging"
+    ],
+    "resources": [
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl label nodes $NODE disktype=ssd",
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE specialized=gpu:NoSchedule"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment with nodeSelector and tolerations:",
+      "   cat > deploy.yaml << EOF",
+      "apiVersion: apps/v1",
+      "kind: Deployment",
+      "metadata:",
+      "  name: selective-deploy",
+      "  namespace: staging",
+      "spec:",
+      "  replicas: 3",
+      "  selector:",
+      "    matchLabels:",
+      "      app: selective-app",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: selective-app",
+      "    spec:",
+      "      nodeSelector:",
+      "        disktype: ssd",
+      "      tolerations:",
+      "      - key: specialized",
+      "        operator: Equal",
+      "        value: gpu",
+      "        effect: NoSchedule",
+      "      containers:",
+      "      - name: tensorflow",
+      "        image: tensorflow/tensorflow:latest-gpu",
+      "EOF",
+      "2. Apply deployment:",
+      "   kubectl apply -f deploy.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment selective-deploy -n staging -o jsonpath='{.spec.template.spec.nodeSelector.disktype}'",
+      "expected": "ssd",
+      "points": 3,
+      "description": "Deployment should have nodeSelector for disktype=ssd"
+    },
+    {
+      "command": "kubectl get deployment selective-deploy -n staging -o jsonpath='{.spec.template.spec.tolerations[0].key}'",
+      "expected": "specialized",
+      "points": 3,
+      "description": "Deployment should tolerate specialized taint"
+    },
+    {
+      "command": "kubectl get deployment selective-deploy -n staging -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 2,
+      "description": "Deployment should have 3 replicas"
+    }
+  ]
+}

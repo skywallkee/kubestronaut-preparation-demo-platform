@@ -1,0 +1,54 @@
+{
+  "id": "ckad-e-073",
+  "title": "Pod with Multiple Tolerations",
+  "description": "Create a Pod named ||multi-toleration-pod|| in namespace ||saturn|| with image ||redis:6-alpine|| that tolerates both ||gpu=true:NoSchedule|| and ||disk=ssd:NoExecute|| taints.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "tolerations",
+    "pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod with tolerations:",
+      "   kubectl run multi-toleration-pod --image=redis:6-alpine -n saturn --dry-run=client -o yaml > pod.yaml",
+      "2. Add tolerations to pod spec:",
+      "   tolerations:",
+      "   - key: gpu",
+      "     operator: Equal",
+      "     value: \"true\"",
+      "     effect: NoSchedule",
+      "   - key: disk",
+      "     operator: Equal",
+      "     value: ssd",
+      "     effect: NoExecute",
+      "3. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod multi-toleration-pod -n saturn -o jsonpath='{.spec.tolerations[?(@.key==\"gpu\")].value}'",
+      "expected": "true",
+      "points": 3,
+      "description": "Pod should tolerate gpu=true"
+    },
+    {
+      "command": "kubectl get pod multi-toleration-pod -n saturn -o jsonpath='{.spec.tolerations[?(@.key==\"disk\")].value}'",
+      "expected": "ssd",
+      "points": 3,
+      "description": "Pod should tolerate disk=ssd"
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "id": "ckad-i-100",
+  "title": "Advanced RBAC with Policy Engine Integration",
+  "description": "Create a comprehensive RBAC setup for a policy engine: ServiceAccount ||policy-engine|| with permissions for OPA Gatekeeper, create ClusterRole for managing ||constraints||, ||constrainttemplates||, and ||configs||. Include permissions for audit logging and policy violations reporting.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "policy-engine",
+    "opa-gatekeeper",
+    "audit-logging",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "gatekeeper-system",
+      "policy-audit"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "clusterroles",
+      "clusterrolebindings",
+      "roles",
+      "rolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount policy-engine -n gatekeeper-system",
+      "2. Create ClusterRole for policy engine operations:",
+      "   cat > policy-engine-clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: policy-engine-operator",
+      "rules:",
+      "- apiGroups: [\"templates.gatekeeper.sh\"]",
+      "  resources: [\"constrainttemplates\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"config.gatekeeper.sh\"]",
+      "  resources: [\"configs\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"status.gatekeeper.sh\"]",
+      "  resources: [\"constraintpodstatuses\", \"constrainttemplatepodstatuses\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]",
+      "- apiGroups: [\"admissionregistration.k8s.io\"]",
+      "  resources: [\"validatingwebhookconfigurations\", \"mutatingwebhookconfigurations\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"*\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "- apiGroups: [\"apps\"]",
+      "  resources: [\"*\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "- apiGroups: [\"policy\"]",
+      "  resources: [\"podsecuritypolicies\"]",
+      "  verbs: [\"use\"]",
+      "EOF",
+      "3. Create audit logging role:",
+      "   cat > audit-logger-role.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: Role",
+      "metadata:",
+      "  name: audit-logger",
+      "  namespace: policy-audit",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"configmaps\", \"secrets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"events\"]",
+      "  verbs: [\"create\", \"patch\"]",
+      "- apiGroups: [\"batch\"]",
+      "  resources: [\"jobs\", \"cronjobs\"]",
+      "  verbs: [\"get\", \"list\", \"create\"]",
+      "EOF",
+      "4. Create bindings:",
+      "   kubectl create clusterrolebinding policy-engine-binding --clusterrole=policy-engine-operator --serviceaccount=gatekeeper-system:policy-engine",
+      "   kubectl create rolebinding audit-logger-binding --role=audit-logger --serviceaccount=gatekeeper-system:policy-engine -n policy-audit",
+      "5. Create dynamic constraints ClusterRole:",
+      "   cat > constraints-manager.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: constraints-manager",
+      "rules:",
+      "- apiGroups: [\"*\"]",
+      "  resources: [\"*\"]",
+      "  verbs: [\"get\", \"list\"]",
+      "  resourceNames: []",
+      "- nonResourceURLs: [\"/metrics\", \"/healthz\"]",
+      "  verbs: [\"get\"]",
+      "EOF",
+      "6. Apply all resources:",
+      "   kubectl apply -f policy-engine-clusterrole.yaml",
+      "   kubectl apply -f audit-logger-role.yaml",
+      "   kubectl apply -f constraints-manager.yaml",
+      "   kubectl create clusterrolebinding constraints-manager-binding --clusterrole=constraints-manager --serviceaccount=gatekeeper-system:policy-engine"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount policy-engine -n gatekeeper-system -o jsonpath='{.metadata.name}'",
+      "expected": "policy-engine",
+      "points": 2,
+      "description": "ServiceAccount should exist"
+    },
+    {
+      "command": "kubectl get clusterrole policy-engine-operator -o jsonpath='{.rules[0].apiGroups[0]}'",
+      "expected": "templates.gatekeeper.sh",
+      "points": 3,
+      "description": "ClusterRole should manage Gatekeeper templates"
+    },
+    {
+      "command": "kubectl get role audit-logger -n policy-audit -o jsonpath='{.rules[1].resources[0]}'",
+      "expected": "events",
+      "points": 3,
+      "description": "Role should manage audit events"
+    },
+    {
+      "command": "kubectl get clusterrolebinding policy-engine-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "policy-engine",
+      "points": 2,
+      "description": "ClusterRoleBinding should bind to policy-engine"
+    },
+    {
+      "command": "kubectl get clusterrolebinding constraints-manager-binding -o jsonpath='{.roleRef.name}'",
+      "expected": "constraints-manager",
+      "points": 2,
+      "description": "Constraints manager binding should exist"
+    }
+  ]
+}

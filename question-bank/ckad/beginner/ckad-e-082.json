@@ -1,0 +1,40 @@
+{
+  "id": "ckad-e-082",
+  "title": "Create ClusterRole",
+  "description": "Create a ClusterRole named ||secret-reader|| that allows ||get|| and ||list|| operations on ||secrets|| across all namespaces.",
+  "points": 5,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "clusterroles",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "clusterroles"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create clusterrole:",
+      "   kubectl create clusterrole secret-reader --verb=get,list --resource=secrets"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole secret-reader -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"get\",\"list\"]",
+      "points": 3,
+      "description": "ClusterRole should have correct verbs"
+    },
+    {
+      "command": "kubectl get clusterrole secret-reader -o jsonpath='{.rules[0].resources}'",
+      "expected": "[\"secrets\"]",
+      "points": 2,
+      "description": "ClusterRole should target secrets resource"
+    }
+  ]
+}

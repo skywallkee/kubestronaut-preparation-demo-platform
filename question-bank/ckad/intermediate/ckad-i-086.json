@@ -1,0 +1,76 @@
+{
+  "id": "ckad-i-086",
+  "title": "Job with Taint-Based Node Selection",
+  "description": "Create a Job named ||batch-processor|| in namespace ||batch|| that runs ||5|| parallel pods with ||busybox:1.35||. Configure it to tolerate taint ||batch-node=processing:NoSchedule|| and ensure it completes ||20|| successful executions total.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Application Design and Build",
+  "tags": [
+    "jobs",
+    "tolerations",
+    "parallel-processing",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "batch"
+    ],
+    "resources": [
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE batch-node=processing:NoSchedule"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create parallel job with tolerations:",
+      "   cat > job.yaml << EOF",
+      "apiVersion: batch/v1",
+      "kind: Job",
+      "metadata:",
+      "  name: batch-processor",
+      "  namespace: batch",
+      "spec:",
+      "  completions: 20",
+      "  parallelism: 5",
+      "  template:",
+      "    spec:",
+      "      tolerations:",
+      "      - key: batch-node",
+      "        operator: Equal",
+      "        value: processing",
+      "        effect: NoSchedule",
+      "      containers:",
+      "      - name: processor",
+      "        image: busybox:1.35",
+      "        command: ['sh', '-c', 'echo Processing job $JOB_COMPLETION_INDEX; sleep 10; echo Complete']",
+      "      restartPolicy: Never",
+      "  backoffLimit: 6",
+      "EOF",
+      "2. Apply job:",
+      "   kubectl apply -f job.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get job batch-processor -n batch -o jsonpath='{.spec.completions}'",
+      "expected": "20",
+      "points": 3,
+      "description": "Job should require 20 completions"
+    },
+    {
+      "command": "kubectl get job batch-processor -n batch -o jsonpath='{.spec.parallelism}'",
+      "expected": "5",
+      "points": 2,
+      "description": "Job should run 5 parallel pods"
+    },
+    {
+      "command": "kubectl get job batch-processor -n batch -o jsonpath='{.spec.template.spec.tolerations[0].value}'",
+      "expected": "processing",
+      "points": 3,
+      "description": "Job should tolerate batch-node taint"
+    }
+  ]
+}

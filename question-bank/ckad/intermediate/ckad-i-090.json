@@ -1,0 +1,108 @@
+{
+  "id": "ckad-i-090",
+  "title": "Custom Scheduler with Taint Integration",
+  "description": "Create a custom scheduler configuration and a Pod named ||custom-scheduled|| in namespace ||scheduler-test|| that uses a custom scheduler named ||custom-scheduler|| and tolerates taint ||custom-workload=special:NoSchedule||. Configure the pod with specific scheduling policies.",
+  "points": 12,
+  "timeLimit": 25,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "custom-scheduler",
+    "tolerations",
+    "advanced-scheduling",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "scheduler-test"
+    ],
+    "resources": [
+      "pods",
+      "configmaps"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE custom-workload=special:NoSchedule"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create custom scheduler config:",
+      "   cat > scheduler-config.yaml << EOF",
+      "apiVersion: v1",
+      "kind: ConfigMap",
+      "metadata:",
+      "  name: scheduler-config",
+      "  namespace: scheduler-test",
+      "data:",
+      "  config.yaml: |",
+      "    apiVersion: kubescheduler.config.k8s.io/v1beta3",
+      "    kind: KubeSchedulerConfiguration",
+      "    profiles:",
+      "    - schedulerName: custom-scheduler",
+      "      plugins:",
+      "        filter:",
+      "          enabled:",
+      "          - name: TaintToleration",
+      "        score:",
+      "          enabled:",
+      "          - name: TaintToleration",
+      "EOF",
+      "2. Create pod with custom scheduler and tolerations:",
+      "   cat > pod.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Pod",
+      "metadata:",
+      "  name: custom-scheduled",
+      "  namespace: scheduler-test",
+      "  annotations:",
+      "    scheduler.alpha.kubernetes.io/preferred-zone: 'us-west-1a'",
+      "spec:",
+      "  schedulerName: custom-scheduler",
+      "  tolerations:",
+      "  - key: custom-workload",
+      "    operator: Equal",
+      "    value: special",
+      "    effect: NoSchedule",
+      "  affinity:",
+      "    nodeAffinity:",
+      "      preferredDuringSchedulingIgnoredDuringExecution:",
+      "      - weight: 100",
+      "        preference:",
+      "          matchExpressions:",
+      "          - key: workload-type",
+      "            operator: In",
+      "            values: ['special']",
+      "  containers:",
+      "  - name: app",
+      "    image: alpine:3.16",
+      "    command: ['sh', '-c', 'echo Custom scheduled pod; sleep 3600']",
+      "    resources:",
+      "      requests:",
+      "        cpu: 200m",
+      "        memory: 256Mi",
+      "EOF",
+      "3. Apply config and pod:",
+      "   kubectl apply -f scheduler-config.yaml",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod custom-scheduled -n scheduler-test -o jsonpath='{.spec.schedulerName}'",
+      "expected": "custom-scheduler",
+      "points": 4,
+      "description": "Pod should use custom scheduler"
+    },
+    {
+      "command": "kubectl get pod custom-scheduled -n scheduler-test -o jsonpath='{.spec.tolerations[0].value}'",
+      "expected": "special",
+      "points": 4,
+      "description": "Pod should tolerate custom-workload taint"
+    },
+    {
+      "command": "kubectl get configmap scheduler-config -n scheduler-test -o jsonpath='{.data.config\\.yaml}' | grep -c custom-scheduler",
+      "expected": "1",
+      "points": 4,
+      "description": "Custom scheduler config should exist"
+    }
+  ]
+}

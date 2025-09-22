@@ -1,0 +1,46 @@
+{
+  "id": "ckad-e-081",
+  "title": "Create RoleBinding",
+  "description": "Create a RoleBinding named ||dev-binding|| in namespace ||development|| that binds the Role ||pod-reader|| to ServiceAccount ||developer||.",
+  "points": 5,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "rolebindings",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "development"
+    ],
+    "resources": [
+      "rolebindings",
+      "serviceaccounts"
+    ],
+    "prerequisites": [
+      "kubectl create role pod-reader --verb=get,list,watch --resource=pods -n development",
+      "kubectl create serviceaccount developer -n development"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create rolebinding:",
+      "   kubectl create rolebinding dev-binding --role=pod-reader --serviceaccount=development:developer -n development"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get rolebinding dev-binding -n development -o jsonpath='{.roleRef.name}'",
+      "expected": "pod-reader",
+      "points": 2,
+      "description": "RoleBinding should reference pod-reader role"
+    },
+    {
+      "command": "kubectl get rolebinding dev-binding -n development -o jsonpath='{.subjects[0].name}'",
+      "expected": "developer",
+      "points": 3,
+      "description": "RoleBinding should bind to developer ServiceAccount"
+    }
+  ]
+}

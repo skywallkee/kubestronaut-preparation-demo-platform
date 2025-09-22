@@ -1,0 +1,54 @@
+{
+  "id": "ckad-e-075",
+  "title": "Deployment with Tolerations",
+  "description": "Create a Deployment named ||taint-deploy|| in namespace ||mars|| with ||3|| replicas using image ||nginx:stable-alpine|| that tolerates taint ||zone=restricted:PreferNoSchedule||.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "tolerations",
+    "deployments",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mars"
+    ],
+    "resources": [
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment:",
+      "   kubectl create deployment taint-deploy --image=nginx:stable-alpine --replicas=3 -n mars --dry-run=client -o yaml > deploy.yaml",
+      "2. Add tolerations to pod template spec:",
+      "   spec:",
+      "     template:",
+      "       spec:",
+      "         tolerations:",
+      "         - key: zone",
+      "           operator: Equal",
+      "           value: restricted",
+      "           effect: PreferNoSchedule",
+      "3. Apply deployment:",
+      "   kubectl apply -f deploy.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment taint-deploy -n mars -o jsonpath='{.spec.replicas}'",
+      "expected": "3",
+      "points": 2,
+      "description": "Deployment should have 3 replicas"
+    },
+    {
+      "command": "kubectl get deployment taint-deploy -n mars -o jsonpath='{.spec.template.spec.tolerations[0].value}'",
+      "expected": "restricted",
+      "points": 4,
+      "description": "Deployment pods should tolerate zone=restricted"
+    }
+  ]
+}

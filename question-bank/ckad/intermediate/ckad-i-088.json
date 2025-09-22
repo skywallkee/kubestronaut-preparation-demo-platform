@@ -1,0 +1,97 @@
+{
+  "id": "ckad-i-088",
+  "title": "Taint Propagation and Pod Disruption Budget",
+  "description": "Create a Deployment named ||resilient-app|| in namespace ||production|| with ||6|| replicas that tolerates ||maintenance=planned:NoExecute|| for ||600|| seconds. Create a PodDisruptionBudget that ensures at least ||3|| pods remain available during disruptions.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "tolerations",
+    "pod-disruption-budget",
+    "high-availability",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "deployments",
+      "poddisruptionbudgets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment with long toleration:",
+      "   cat > deployment.yaml << EOF",
+      "apiVersion: apps/v1",
+      "kind: Deployment",
+      "metadata:",
+      "  name: resilient-app",
+      "  namespace: production",
+      "spec:",
+      "  replicas: 6",
+      "  selector:",
+      "    matchLabels:",
+      "      app: resilient-app",
+      "  template:",
+      "    metadata:",
+      "      labels:",
+      "        app: resilient-app",
+      "    spec:",
+      "      tolerations:",
+      "      - key: maintenance",
+      "        operator: Equal",
+      "        value: planned",
+      "        effect: NoExecute",
+      "        tolerationSeconds: 600",
+      "      containers:",
+      "      - name: app",
+      "        image: nginx:1.21",
+      "        readinessProbe:",
+      "          httpGet:",
+      "            path: /",
+      "            port: 80",
+      "          initialDelaySeconds: 5",
+      "          periodSeconds: 10",
+      "EOF",
+      "2. Create PodDisruptionBudget:",
+      "   cat > pdb.yaml << EOF",
+      "apiVersion: policy/v1",
+      "kind: PodDisruptionBudget",
+      "metadata:",
+      "  name: resilient-app-pdb",
+      "  namespace: production",
+      "spec:",
+      "  minAvailable: 3",
+      "  selector:",
+      "    matchLabels:",
+      "      app: resilient-app",
+      "EOF",
+      "3. Apply both resources:",
+      "   kubectl apply -f deployment.yaml",
+      "   kubectl apply -f pdb.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment resilient-app -n production -o jsonpath='{.spec.replicas}'",
+      "expected": "6",
+      "points": 2,
+      "description": "Deployment should have 6 replicas"
+    },
+    {
+      "command": "kubectl get deployment resilient-app -n production -o jsonpath='{.spec.template.spec.tolerations[0].tolerationSeconds}'",
+      "expected": "600",
+      "points": 4,
+      "description": "Deployment should tolerate maintenance taint for 600 seconds"
+    },
+    {
+      "command": "kubectl get pdb resilient-app-pdb -n production -o jsonpath='{.spec.minAvailable}'",
+      "expected": "3",
+      "points": 4,
+      "description": "PDB should ensure 3 pods remain available"
+    }
+  ]
+}

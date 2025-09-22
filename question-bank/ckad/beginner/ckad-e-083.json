@@ -1,0 +1,42 @@
+{
+  "id": "ckad-e-083",
+  "title": "Create ClusterRoleBinding",
+  "description": "Create a ClusterRoleBinding named ||secret-viewer|| that binds ClusterRole ||secret-reader|| to User ||john||.",
+  "points": 5,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "clusterrolebindings",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "clusterrolebindings"
+    ],
+    "prerequisites": [
+      "kubectl create clusterrole secret-reader --verb=get,list --resource=secrets"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create clusterrolebinding:",
+      "   kubectl create clusterrolebinding secret-viewer --clusterrole=secret-reader --user=john"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrolebinding secret-viewer -o jsonpath='{.roleRef.name}'",
+      "expected": "secret-reader",
+      "points": 2,
+      "description": "ClusterRoleBinding should reference secret-reader"
+    },
+    {
+      "command": "kubectl get clusterrolebinding secret-viewer -o jsonpath='{.subjects[0].name}'",
+      "expected": "john",
+      "points": 3,
+      "description": "ClusterRoleBinding should bind to user john"
+    }
+  ]
+}

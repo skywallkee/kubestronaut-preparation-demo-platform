@@ -1,0 +1,47 @@
+{
+  "id": "ckad-e-107",
+  "title": "Helm Show Values",
+  "description": "Show the default values for the ||nginx|| chart from the ||bitnami|| repository and save them to ||nginx-values.yaml||. Then install the chart with release name ||web|| in namespace ||saturn|| using these values.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "values",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "services"
+    ],
+    "prerequisites": [
+      "helm repo add bitnami https://charts.bitnami.com/bitnami"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Show chart values:",
+      "   helm show values bitnami/nginx > nginx-values.yaml",
+      "2. Install chart with values:",
+      "   helm install web bitnami/nginx -f nginx-values.yaml -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "test -f nginx-values.yaml && echo 'exists' || echo 'missing'",
+      "expected": "exists",
+      "points": 2,
+      "description": "Values file should exist"
+    },
+    {
+      "command": "helm list -n saturn -o json | jq -r '.[0].name'",
+      "expected": "web",
+      "points": 3,
+      "description": "Helm release web should exist"
+    }
+  ]
+}

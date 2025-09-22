@@ -1,0 +1,49 @@
+{
+  "id": "ckad-e-090",
+  "title": "Set Pod Resource Requests",
+  "description": "Create a Pod named ||resource-pod|| in namespace ||saturn|| with image ||nginx:1.21|| that requests ||100m|| CPU and ||128Mi|| memory.",
+  "points": 4,
+  "timeLimit": 8,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "resources",
+    "requests",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod with resource requests:",
+      "   kubectl run resource-pod --image=nginx:1.21 -n saturn --dry-run=client -o yaml > pod.yaml",
+      "2. Add resource requests:",
+      "   resources:",
+      "     requests:",
+      "       cpu: 100m",
+      "       memory: 128Mi",
+      "3. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod resource-pod -n saturn -o jsonpath='{.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 2,
+      "description": "Pod should request 100m CPU"
+    },
+    {
+      "command": "kubectl get pod resource-pod -n saturn -o jsonpath='{.spec.containers[0].resources.requests.memory}'",
+      "expected": "128Mi",
+      "points": 2,
+      "description": "Pod should request 128Mi memory"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-108",
+  "title": "Helm Status Check",
+  "description": "Check the status of a Helm release named ||monitoring|| in namespace ||venus|| and identify if it's in ||deployed|| state.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "helm",
+    "status",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": [
+      "helm create /tmp/monitoring",
+      "helm install monitoring /tmp/monitoring -n venus"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Check Helm release status:",
+      "   helm status monitoring -n venus",
+      "2. Get status in JSON format:",
+      "   helm status monitoring -n venus -o json | jq -r '.info.status'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "helm status monitoring -n venus -o json | jq -r '.info.status'",
+      "expected": "deployed",
+      "points": 3,
+      "description": "Release should be in deployed state"
+    }
+  ]
+}

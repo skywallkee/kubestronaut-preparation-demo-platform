@@ -1,0 +1,68 @@
+{
+  "id": "ckad-e-116",
+  "title": "ServiceAccount Token Volume",
+  "description": "Create a ServiceAccount named ||token-sa|| in namespace ||mercury|| and a Pod named ||token-pod|| that mounts the ServiceAccount token at ||/var/run/secrets/custom||.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Application Design and Build",
+  "tags": [
+    "service-accounts",
+    "volumes",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount token-sa -n mercury",
+      "2. Create Pod with token volume:",
+      "   cat > pod.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Pod",
+      "metadata:",
+      "  name: token-pod",
+      "  namespace: mercury",
+      "spec:",
+      "  serviceAccountName: token-sa",
+      "  containers:",
+      "  - name: app",
+      "    image: alpine:3.16",
+      "    command: ['sh', '-c', 'sleep 3600']",
+      "    volumeMounts:",
+      "    - name: token",
+      "      mountPath: /var/run/secrets/custom",
+      "  volumes:",
+      "  - name: token",
+      "    projected:",
+      "      sources:",
+      "      - serviceAccountToken:",
+      "          path: token",
+      "EOF",
+      "3. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod token-pod -n mercury -o jsonpath='{.spec.serviceAccountName}'",
+      "expected": "token-sa",
+      "points": 3,
+      "description": "Pod should use token-sa ServiceAccount"
+    },
+    {
+      "command": "kubectl get pod token-pod -n mercury -o jsonpath='{.spec.containers[0].volumeMounts[0].mountPath}'",
+      "expected": "/var/run/secrets/custom",
+      "points": 3,
+      "description": "Token should be mounted at custom path"
+    }
+  ]
+}

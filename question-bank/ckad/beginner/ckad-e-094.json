@@ -1,0 +1,64 @@
+{
+  "id": "ckad-e-094",
+  "title": "Deployment with Resource Requirements",
+  "description": "Create a Deployment named ||app-deploy|| in namespace ||jupiter|| with ||2|| replicas, image ||httpd:2.4-alpine||, requesting ||50m|| CPU and ||64Mi|| memory, with limits of ||100m|| CPU and ||128Mi|| memory.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "deployments",
+    "resources",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "jupiter"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment:",
+      "   kubectl create deployment app-deploy --image=httpd:2.4-alpine --replicas=2 -n jupiter --dry-run=client -o yaml > deploy.yaml",
+      "2. Add resource requirements:",
+      "   resources:",
+      "     requests:",
+      "       cpu: 50m",
+      "       memory: 64Mi",
+      "     limits:",
+      "       cpu: 100m",
+      "       memory: 128Mi",
+      "3. Apply deployment:",
+      "   kubectl apply -f deploy.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment app-deploy -n jupiter -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "50m",
+      "points": 1.5,
+      "description": "Deployment should request 50m CPU"
+    },
+    {
+      "command": "kubectl get deployment app-deploy -n jupiter -o jsonpath='{.spec.template.spec.containers[0].resources.requests.memory}'",
+      "expected": "64Mi",
+      "points": 1.5,
+      "description": "Deployment should request 64Mi memory"
+    },
+    {
+      "command": "kubectl get deployment app-deploy -n jupiter -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}'",
+      "expected": "100m",
+      "points": 1.5,
+      "description": "Deployment should limit CPU to 100m"
+    },
+    {
+      "command": "kubectl get deployment app-deploy -n jupiter -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'",
+      "expected": "128Mi",
+      "points": 1.5,
+      "description": "Deployment should limit memory to 128Mi"
+    }
+  ]
+}

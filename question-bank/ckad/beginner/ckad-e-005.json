@@ -1,7 +1,7 @@
 {
   "id": "ckad-e-005",
   "title": "Expose a Deployment with ClusterIP Service",
-  "description": "Create a ClusterIP Service named ||web-svc|| that exposes the ||web-deploy|| Deployment on port ||80||.",
+  "description": "Create a ClusterIP Service named ||web-svc|| in namespace ||jupiter|| that exposes the ||web-deploy|| Deployment on port ||80||.",
   "points": 3,
   "timeLimit": 8,
   "category": "Services and Networking",

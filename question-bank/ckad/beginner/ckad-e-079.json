@@ -1,0 +1,48 @@
+{
+  "id": "ckad-e-079",
+  "title": "Job with Taint Tolerations",
+  "description": "Create a Job named ||backup-job|| in namespace ||mercury|| using image ||busybox:latest|| that tolerates taint ||job-type=batch:NoSchedule|| and runs command ||echo 'Backup complete'||.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "tolerations",
+    "jobs",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create job yaml:",
+      "   kubectl create job backup-job --image=busybox:latest -n mercury --dry-run=client -o yaml -- echo 'Backup complete' > job.yaml",
+      "2. Add tolerations to pod template:",
+      "   spec:",
+      "     template:",
+      "       spec:",
+      "         tolerations:",
+      "         - key: job-type",
+      "           operator: Equal",
+      "           value: batch",
+      "           effect: NoSchedule",
+      "3. Apply job:",
+      "   kubectl apply -f job.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get job backup-job -n mercury -o jsonpath='{.spec.template.spec.tolerations[0].value}'",
+      "expected": "batch",
+      "points": 5,
+      "description": "Job should tolerate job-type=batch"
+    }
+  ]
+}

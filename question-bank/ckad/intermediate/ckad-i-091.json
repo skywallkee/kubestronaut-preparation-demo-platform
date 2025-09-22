@@ -1,0 +1,103 @@
+{
+  "id": "ckad-i-091",
+  "title": "Multi-Namespace RBAC with Resource Names",
+  "description": "Create a ClusterRole named ||namespace-admin|| that allows ||get||, ||list||, ||create||, and ||delete|| on ||pods|| and ||services|| across all namespaces, but restricts ||delete|| operations to only resources named ||temp-*||. Bind it to User ||john|| in namespaces ||dev|| and ||staging||.",
+  "points": 10,
+  "timeLimit": 20,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "clusterroles",
+    "resource-names",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "dev",
+      "staging"
+    ],
+    "resources": [
+      "clusterroles",
+      "rolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ClusterRole with resource name restrictions:",
+      "   cat > clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: namespace-admin",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\", \"services\"]",
+      "  verbs: [\"get\", \"list\", \"create\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\", \"services\"]",
+      "  verbs: [\"delete\"]",
+      "  resourceNames: [\"temp-*\"]",
+      "EOF",
+      "2. Create RoleBindings in both namespaces:",
+      "   cat > rolebindings.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: RoleBinding",
+      "metadata:",
+      "  name: namespace-admin-dev",
+      "  namespace: dev",
+      "roleRef:",
+      "  apiGroup: rbac.authorization.k8s.io",
+      "  kind: ClusterRole",
+      "  name: namespace-admin",
+      "subjects:",
+      "- apiGroup: rbac.authorization.k8s.io",
+      "  kind: User",
+      "  name: john",
+      "---",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: RoleBinding",
+      "metadata:",
+      "  name: namespace-admin-staging",
+      "  namespace: staging",
+      "roleRef:",
+      "  apiGroup: rbac.authorization.k8s.io",
+      "  kind: ClusterRole",
+      "  name: namespace-admin",
+      "subjects:",
+      "- apiGroup: rbac.authorization.k8s.io",
+      "  kind: User",
+      "  name: john",
+      "EOF",
+      "3. Apply RBAC resources:",
+      "   kubectl apply -f clusterrole.yaml",
+      "   kubectl apply -f rolebindings.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole namespace-admin -o jsonpath='{.rules[0].verbs}' | grep -c create",
+      "expected": "1",
+      "points": 3,
+      "description": "ClusterRole should allow create operations"
+    },
+    {
+      "command": "kubectl get clusterrole namespace-admin -o jsonpath='{.rules[1].resourceNames[0]}'",
+      "expected": "temp-*",
+      "points": 4,
+      "description": "ClusterRole should restrict delete to temp-* resources"
+    },
+    {
+      "command": "kubectl get rolebinding namespace-admin-dev -n dev -o jsonpath='{.subjects[0].name}'",
+      "expected": "john",
+      "points": 1.5,
+      "description": "RoleBinding in dev should bind to user john"
+    },
+    {
+      "command": "kubectl get rolebinding namespace-admin-staging -n staging -o jsonpath='{.subjects[0].name}'",
+      "expected": "john",
+      "points": 1.5,
+      "description": "RoleBinding in staging should bind to user john"
+    }
+  ]
+}

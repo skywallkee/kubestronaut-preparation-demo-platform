@@ -1,0 +1,49 @@
+{
+  "id": "ckad-e-085",
+  "title": "RBAC for ConfigMap Access",
+  "description": "Create a Role named ||config-editor|| in namespace ||testing|| that allows all operations (||*||) on ||configmaps|| and bind it to ServiceAccount ||tester||.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "configmaps",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "testing"
+    ],
+    "resources": [
+      "roles",
+      "rolebindings",
+      "serviceaccounts"
+    ],
+    "prerequisites": [
+      "kubectl create namespace testing",
+      "kubectl create serviceaccount tester -n testing"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create role with all permissions on configmaps:",
+      "   kubectl create role config-editor --verb='*' --resource=configmaps -n testing",
+      "2. Create rolebinding:",
+      "   kubectl create rolebinding config-editor-binding --role=config-editor --serviceaccount=testing:tester -n testing"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get role config-editor -n testing -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"*\"]",
+      "points": 3,
+      "description": "Role should allow all operations"
+    },
+    {
+      "command": "kubectl get rolebinding config-editor-binding -n testing -o jsonpath='{.subjects[0].name}'",
+      "expected": "tester",
+      "points": 3,
+      "description": "RoleBinding should bind to tester ServiceAccount"
+    }
+  ]
+}

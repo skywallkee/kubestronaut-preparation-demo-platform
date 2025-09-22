@@ -1,0 +1,38 @@
+{
+  "id": "ckad-e-072",
+  "title": "Remove Node Taint",
+  "description": "Remove the taint with key ||app|| from the single cluster node.",
+  "points": 3,
+  "timeLimit": 6,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "taints",
+    "node-management",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "nodes"
+    ],
+    "prerequisites": [
+      "NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}'); kubectl taint nodes $NODE app=legacy:NoSchedule"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Get the node name:",
+      "   NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')",
+      "2. Remove taint from node:",
+      "   kubectl taint nodes $NODE app-"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | xargs kubectl describe node | grep -c 'app=' || echo '0'",
+      "expected": "0",
+      "points": 3,
+      "description": "Node should not have the app taint"
+    }
+  ]
+}

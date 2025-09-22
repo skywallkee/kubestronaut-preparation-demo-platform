@@ -1,0 +1,48 @@
+{
+  "id": "ckad-e-084",
+  "title": "Role with Multiple Resources",
+  "description": "Create a Role named ||app-manager|| in namespace ||staging|| that allows ||create||, ||delete||, and ||patch|| operations on both ||deployments|| and ||services||.",
+  "points": 6,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "roles",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "staging"
+    ],
+    "resources": [
+      "roles"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create role with multiple resources:",
+      "   kubectl create role app-manager --verb=create,delete,patch --resource=deployments,services -n staging"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get role app-manager -n staging -o jsonpath='{.rules[0].verbs}'",
+      "expected": "[\"create\",\"delete\",\"patch\"]",
+      "points": 3,
+      "description": "Role should have correct verbs"
+    },
+    {
+      "command": "kubectl get role app-manager -n staging -o jsonpath='{.rules[0].resources}' | grep -c deployments",
+      "expected": "1",
+      "points": 1.5,
+      "description": "Role should include deployments"
+    },
+    {
+      "command": "kubectl get role app-manager -n staging -o jsonpath='{.rules[0].resources}' | grep -c services",
+      "expected": "1",
+      "points": 1.5,
+      "description": "Role should include services"
+    }
+  ]
+}

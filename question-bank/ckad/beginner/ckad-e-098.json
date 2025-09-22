@@ -1,0 +1,64 @@
+{
+  "id": "ckad-e-098",
+  "title": "HorizontalPodAutoscaler with Resources",
+  "description": "Create a Deployment named ||autoscale-app|| in namespace ||saturn|| with image ||nginx:1.21||, CPU request ||100m||, and a HorizontalPodAutoscaler that scales between ||2|| and ||5|| replicas at ||50%|| CPU utilization.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Deployment, Observability and Maintenance",
+  "tags": [
+    "hpa",
+    "autoscaling",
+    "resources",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "saturn"
+    ],
+    "resources": [
+      "deployments",
+      "horizontalpodautoscalers"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create deployment with CPU request:",
+      "   kubectl create deployment autoscale-app --image=nginx:1.21 -n saturn --dry-run=client -o yaml > deploy.yaml",
+      "2. Add CPU request to deployment:",
+      "   resources:",
+      "     requests:",
+      "       cpu: 100m",
+      "3. Apply deployment:",
+      "   kubectl apply -f deploy.yaml",
+      "4. Create HPA:",
+      "   kubectl autoscale deployment autoscale-app --cpu-percent=50 --min=2 --max=5 -n saturn"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get deployment autoscale-app -n saturn -o jsonpath='{.spec.template.spec.containers[0].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 2,
+      "description": "Deployment should request 100m CPU"
+    },
+    {
+      "command": "kubectl get hpa autoscale-app -n saturn -o jsonpath='{.spec.minReplicas}'",
+      "expected": "2",
+      "points": 1.5,
+      "description": "HPA should have minimum 2 replicas"
+    },
+    {
+      "command": "kubectl get hpa autoscale-app -n saturn -o jsonpath='{.spec.maxReplicas}'",
+      "expected": "5",
+      "points": 1.5,
+      "description": "HPA should have maximum 5 replicas"
+    },
+    {
+      "command": "kubectl get hpa autoscale-app -n saturn -o jsonpath='{.spec.targetCPUUtilizationPercentage}'",
+      "expected": "50",
+      "points": 2,
+      "description": "HPA should target 50% CPU utilization"
+    }
+  ]
+}

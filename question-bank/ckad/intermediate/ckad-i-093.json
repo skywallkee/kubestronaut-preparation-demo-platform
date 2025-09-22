@@ -1,0 +1,108 @@
+{
+  "id": "ckad-i-093",
+  "title": "Group-Based RBAC with Namespace Isolation",
+  "description": "Create RBAC policies for two groups: ||developers|| (can manage pods, services, configmaps in ||dev|| namespace) and ||devops|| (can manage deployments, statefulsets, daemonsets cluster-wide, plus all resources in ||devops|| namespace). Create appropriate ClusterRoles and bindings.",
+  "points": 11,
+  "timeLimit": 22,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "groups",
+    "namespace-isolation",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "dev",
+      "devops"
+    ],
+    "resources": [
+      "clusterroles",
+      "rolebindings",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create ClusterRole for developers:",
+      "   cat > developer-clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: developer-role",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\", \"services\", \"configmaps\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods/log\", \"pods/status\"]",
+      "  verbs: [\"get\", \"list\"]",
+      "EOF",
+      "2. Create ClusterRole for devops:",
+      "   cat > devops-clusterrole.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: devops-cluster-role",
+      "rules:",
+      "- apiGroups: [\"apps\"]",
+      "  resources: [\"deployments\", \"statefulsets\", \"daemonsets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "- apiGroups: [\"apps\"]",
+      "  resources: [\"deployments/scale\", \"statefulsets/scale\"]",
+      "  verbs: [\"get\", \"update\", \"patch\"]",
+      "---",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: devops-namespace-role",
+      "rules:",
+      "- apiGroups: [\"*\"]",
+      "  resources: [\"*\"]",
+      "  verbs: [\"*\"]",
+      "EOF",
+      "3. Create RoleBinding for developers in dev namespace:",
+      "   kubectl create rolebinding developers-dev-binding --clusterrole=developer-role --group=developers -n dev",
+      "4. Create ClusterRoleBinding for devops cluster access:",
+      "   kubectl create clusterrolebinding devops-cluster-binding --clusterrole=devops-cluster-role --group=devops",
+      "5. Create RoleBinding for devops in devops namespace:",
+      "   kubectl create rolebinding devops-namespace-binding --clusterrole=devops-namespace-role --group=devops -n devops",
+      "6. Apply roles:",
+      "   kubectl apply -f developer-clusterrole.yaml",
+      "   kubectl apply -f devops-clusterrole.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole developer-role -o jsonpath='{.rules[0].resources}' | grep -c pods",
+      "expected": "1",
+      "points": 2,
+      "description": "Developer role should manage pods"
+    },
+    {
+      "command": "kubectl get clusterrole devops-cluster-role -o jsonpath='{.rules[0].apiGroups[0]}'",
+      "expected": "apps",
+      "points": 2,
+      "description": "DevOps cluster role should target apps API group"
+    },
+    {
+      "command": "kubectl get rolebinding developers-dev-binding -n dev -o jsonpath='{.subjects[0].kind}'",
+      "expected": "Group",
+      "points": 2,
+      "description": "Developer binding should target Group"
+    },
+    {
+      "command": "kubectl get clusterrolebinding devops-cluster-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "devops",
+      "points": 2.5,
+      "description": "DevOps cluster binding should bind to devops group"
+    },
+    {
+      "command": "kubectl get rolebinding devops-namespace-binding -n devops -o jsonpath='{.roleRef.name}'",
+      "expected": "devops-namespace-role",
+      "points": 2.5,
+      "description": "DevOps namespace binding should use correct role"
+    }
+  ]
+}

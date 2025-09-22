@@ -1,0 +1,41 @@
+{
+  "id": "ckad-e-113",
+  "title": "ServiceAccount with ImagePullSecrets",
+  "description": "Create a ServiceAccount named ||registry-sa|| in namespace ||pluto|| and add an imagePullSecret named ||docker-secret|| to it.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "service-accounts",
+    "secrets",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "serviceaccounts",
+      "secrets"
+    ],
+    "prerequisites": [
+      "kubectl create secret docker-registry docker-secret --docker-server=registry.example.com --docker-username=user --docker-password=pass -n pluto"
+    ]
+  },
+  "solution": {
+    "steps": [
+      "1. Create ServiceAccount:",
+      "   kubectl create serviceaccount registry-sa -n pluto",
+      "2. Add imagePullSecret:",
+      "   kubectl patch serviceaccount registry-sa -n pluto -p '{\"imagePullSecrets\":[{\"name\":\"docker-secret\"}]}'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get serviceaccount registry-sa -n pluto -o jsonpath='{.imagePullSecrets[0].name}'",
+      "expected": "docker-secret",
+      "points": 5,
+      "description": "ServiceAccount should have docker-secret as imagePullSecret"
+    }
+  ]
+}

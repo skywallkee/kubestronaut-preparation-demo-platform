@@ -1,0 +1,73 @@
+{
+  "id": "ckad-i-083",
+  "title": "Dynamic Taint Removal and Pod Evacuation",
+  "description": "Add taint ||maintenance=scheduled:NoExecute|| with ||tolerationSeconds=300|| to the single cluster node. Create a Pod named ||evacuation-test|| that tolerates this taint for only ||60|| seconds, then verify pod behavior when taint is applied.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "taints",
+    "tolerationSeconds",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "testing"
+    ],
+    "resources": [
+      "nodes",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod with short toleration time:",
+      "   cat > pod.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Pod",
+      "metadata:",
+      "  name: evacuation-test",
+      "  namespace: testing",
+      "spec:",
+      "  tolerations:",
+      "  - key: maintenance",
+      "    operator: Equal",
+      "    value: scheduled",
+      "    effect: NoExecute",
+      "    tolerationSeconds: 60",
+      "  containers:",
+      "  - name: test",
+      "    image: alpine:3.16",
+      "    command: ['sh', '-c', 'while true; do echo alive; sleep 5; done']",
+      "EOF",
+      "2. Apply pod first:",
+      "   kubectl apply -f pod.yaml",
+      "3. Wait for pod to be running, then apply taint:",
+      "   NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')",
+      "   kubectl taint nodes $NODE maintenance=scheduled:NoExecute",
+      "4. Monitor pod status - it should be terminated after 60 seconds:",
+      "   kubectl get pod evacuation-test -n testing --watch"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod evacuation-test -n testing -o jsonpath='{.spec.tolerations[0].tolerationSeconds}'",
+      "expected": "60",
+      "points": 4,
+      "description": "Pod should have 60 second toleration"
+    },
+    {
+      "command": "kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | xargs kubectl describe node | grep -c 'maintenance=scheduled:NoExecute'",
+      "expected": "1",
+      "points": 3,
+      "description": "Node should have maintenance taint"
+    },
+    {
+      "command": "kubectl get pod evacuation-test -n testing -o jsonpath='{.metadata.name}' 2>/dev/null || echo 'terminated'",
+      "expected": "terminated",
+      "points": 2,
+      "description": "Pod should be terminated due to taint intolerance"
+    }
+  ]
+}

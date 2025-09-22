@@ -1,0 +1,96 @@
+{
+  "id": "ckad-i-095",
+  "title": "RBAC Aggregation with Label Selectors",
+  "description": "Create multiple ClusterRoles with aggregation labels: ||base-reader|| (read pods, services), ||config-manager|| (manage configmaps, secrets), and ||aggregated-role|| that aggregates both using label selectors. Create a User binding to demonstrate role aggregation.",
+  "points": 9,
+  "timeLimit": 18,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "rbac",
+    "aggregation",
+    "label-selectors",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [],
+    "resources": [
+      "clusterroles",
+      "clusterrolebindings"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create base reader ClusterRole:",
+      "   cat > base-reader.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: base-reader",
+      "  labels:",
+      "    rbac.example.com/aggregate-to-admin: \"true\"",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"pods\", \"services\"]",
+      "  verbs: [\"get\", \"list\", \"watch\"]",
+      "EOF",
+      "2. Create config manager ClusterRole:",
+      "   cat > config-manager.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: config-manager",
+      "  labels:",
+      "    rbac.example.com/aggregate-to-admin: \"true\"",
+      "rules:",
+      "- apiGroups: [\"\"]",
+      "  resources: [\"configmaps\", \"secrets\"]",
+      "  verbs: [\"get\", \"list\", \"create\", \"update\", \"patch\", \"delete\"]",
+      "EOF",
+      "3. Create aggregated ClusterRole:",
+      "   cat > aggregated-role.yaml << EOF",
+      "apiVersion: rbac.authorization.k8s.io/v1",
+      "kind: ClusterRole",
+      "metadata:",
+      "  name: aggregated-role",
+      "aggregationRule:",
+      "  clusterRoleSelectors:",
+      "  - matchLabels:",
+      "      rbac.example.com/aggregate-to-admin: \"true\"",
+      "rules: []",
+      "EOF",
+      "4. Create ClusterRoleBinding:",
+      "   kubectl create clusterrolebinding aggregated-admin-binding --clusterrole=aggregated-role --user=admin-user",
+      "5. Apply all ClusterRoles:",
+      "   kubectl apply -f base-reader.yaml",
+      "   kubectl apply -f config-manager.yaml",
+      "   kubectl apply -f aggregated-role.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get clusterrole base-reader -o jsonpath='{.metadata.labels.rbac\\.example\\.com/aggregate-to-admin}'",
+      "expected": "true",
+      "points": 2,
+      "description": "Base reader should have aggregation label"
+    },
+    {
+      "command": "kubectl get clusterrole config-manager -o jsonpath='{.rules[0].resources}' | grep -c configmaps",
+      "expected": "1",
+      "points": 2,
+      "description": "Config manager should manage configmaps"
+    },
+    {
+      "command": "kubectl get clusterrole aggregated-role -o jsonpath='{.aggregationRule.clusterRoleSelectors[0].matchLabels.rbac\\.example\\.com/aggregate-to-admin}'",
+      "expected": "true",
+      "points": 3,
+      "description": "Aggregated role should have correct selector"
+    },
+    {
+      "command": "kubectl get clusterrolebinding aggregated-admin-binding -o jsonpath='{.subjects[0].name}'",
+      "expected": "admin-user",
+      "points": 2,
+      "description": "Binding should bind to admin-user"
+    }
+  ]
+}

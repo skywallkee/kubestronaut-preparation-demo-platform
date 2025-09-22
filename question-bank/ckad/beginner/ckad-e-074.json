@@ -1,0 +1,43 @@
+{
+  "id": "ckad-e-074",
+  "title": "Toleration with Operator Exists",
+  "description": "Create a Pod named ||exists-pod|| in namespace ||venus|| using image ||busybox:1.35|| that tolerates any value for taint key ||tier|| with ||NoSchedule|| effect.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "tolerations",
+    "pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run exists-pod --image=busybox:1.35 -n venus --dry-run=client -o yaml -- sleep 3600 > pod.yaml",
+      "2. Add toleration with Exists operator:",
+      "   tolerations:",
+      "   - key: tier",
+      "     operator: Exists",
+      "     effect: NoSchedule",
+      "3. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod exists-pod -n venus -o jsonpath='{.spec.tolerations[?(@.key==\"tier\")].operator}'",
+      "expected": "Exists",
+      "points": 5,
+      "description": "Pod should have Exists operator for tier key"
+    }
+  ]
+}

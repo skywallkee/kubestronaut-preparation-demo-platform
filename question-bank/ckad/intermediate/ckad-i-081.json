@@ -1,0 +1,80 @@
+{
+  "id": "ckad-i-081",
+  "title": "Complex Node Taints with Multiple Effects",
+  "description": "Apply multiple taints to the single cluster node: ||environment=production:NoSchedule||, ||gpu=true:PreferNoSchedule||, and ||disktype=ssd:NoExecute||. Create a Pod named ||complex-pod|| that tolerates all three taints.",
+  "points": 8,
+  "timeLimit": 15,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "taints",
+    "tolerations",
+    "intermediate"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "production"
+    ],
+    "resources": [
+      "nodes",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Get the node name:",
+      "   NODE=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')",
+      "2. Apply multiple taints to node:",
+      "   kubectl taint nodes $NODE environment=production:NoSchedule",
+      "   kubectl taint nodes $NODE gpu=true:PreferNoSchedule",
+      "   kubectl taint nodes $NODE disktype=ssd:NoExecute",
+      "3. Create pod with multiple tolerations:",
+      "   cat > pod.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Pod",
+      "metadata:",
+      "  name: complex-pod",
+      "  namespace: production",
+      "spec:",
+      "  tolerations:",
+      "  - key: environment",
+      "    operator: Equal",
+      "    value: production",
+      "    effect: NoSchedule",
+      "  - key: gpu",
+      "    operator: Equal",
+      "    value: \"true\"",
+      "    effect: PreferNoSchedule",
+      "  - key: disktype",
+      "    operator: Equal",
+      "    value: ssd",
+      "    effect: NoExecute",
+      "  containers:",
+      "  - name: app",
+      "    image: nginx:1.21",
+      "EOF",
+      "4. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | xargs kubectl describe node | grep -c 'environment=production:NoSchedule'",
+      "expected": "1",
+      "points": 2.5,
+      "description": "Node should have environment taint"
+    },
+    {
+      "command": "kubectl get nodes -o jsonpath='{.items[0].metadata.name}' | xargs kubectl describe node | grep -c 'gpu=true:PreferNoSchedule'",
+      "expected": "1",
+      "points": 2.5,
+      "description": "Node should have gpu taint"
+    },
+    {
+      "command": "kubectl get pod complex-pod -n production -o jsonpath='{.spec.tolerations}' | grep -c environment",
+      "expected": "1",
+      "points": 3,
+      "description": "Pod should tolerate all three taints"
+    }
+  ]
+}

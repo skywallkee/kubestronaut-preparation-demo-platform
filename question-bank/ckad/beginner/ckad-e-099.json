@@ -1,0 +1,77 @@
+{
+  "id": "ckad-e-099",
+  "title": "PriorityClass with Resources",
+  "description": "Create a PriorityClass named ||high-priority|| with value ||1000|| and a Pod named ||priority-pod|| in namespace ||venus|| that uses this PriorityClass and requests ||200m|| CPU.",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "priorityclass",
+    "resources",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "venus"
+    ],
+    "resources": [
+      "priorityclasses",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create PriorityClass:",
+      "   cat > priority.yaml << EOF",
+      "apiVersion: scheduling.k8s.io/v1",
+      "kind: PriorityClass",
+      "metadata:",
+      "  name: high-priority",
+      "value: 1000",
+      "globalDefault: false",
+      "description: \"High priority class\"",
+      "EOF",
+      "2. Apply PriorityClass:",
+      "   kubectl apply -f priority.yaml",
+      "3. Create pod with PriorityClass:",
+      "   cat > pod.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Pod",
+      "metadata:",
+      "  name: priority-pod",
+      "  namespace: venus",
+      "spec:",
+      "  priorityClassName: high-priority",
+      "  containers:",
+      "  - name: nginx",
+      "    image: nginx:1.21",
+      "    resources:",
+      "      requests:",
+      "        cpu: 200m",
+      "EOF",
+      "4. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get priorityclass high-priority -o jsonpath='{.value}'",
+      "expected": "1000",
+      "points": 3,
+      "description": "PriorityClass should have value 1000"
+    },
+    {
+      "command": "kubectl get pod priority-pod -n venus -o jsonpath='{.spec.priorityClassName}'",
+      "expected": "high-priority",
+      "points": 2,
+      "description": "Pod should use high-priority PriorityClass"
+    },
+    {
+      "command": "kubectl get pod priority-pod -n venus -o jsonpath='{.spec.containers[0].resources.requests.cpu}'",
+      "expected": "200m",
+      "points": 2,
+      "description": "Pod should request 200m CPU"
+    }
+  ]
+}

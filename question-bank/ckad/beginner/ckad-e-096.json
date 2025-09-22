@@ -1,0 +1,65 @@
+{
+  "id": "ckad-e-096",
+  "title": "LimitRange for CPU",
+  "description": "Create a LimitRange named ||cpu-limit|| in namespace ||mercury|| that sets minimum CPU request to ||10m||, maximum CPU limit to ||500m||, and default CPU request to ||50m||.",
+  "points": 6,
+  "timeLimit": 12,
+  "category": "Application Environment, Configuration and Security",
+  "tags": [
+    "limitrange",
+    "cpu",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "mercury"
+    ],
+    "resources": [
+      "limitranges"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create LimitRange for CPU:",
+      "   cat > limitrange.yaml << EOF",
+      "apiVersion: v1",
+      "kind: LimitRange",
+      "metadata:",
+      "  name: cpu-limit",
+      "  namespace: mercury",
+      "spec:",
+      "  limits:",
+      "  - min:",
+      "      cpu: 10m",
+      "    max:",
+      "      cpu: 500m",
+      "    defaultRequest:",
+      "      cpu: 50m",
+      "    type: Container",
+      "EOF",
+      "2. Apply LimitRange:",
+      "   kubectl apply -f limitrange.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get limitrange cpu-limit -n mercury -o jsonpath='{.spec.limits[0].min.cpu}'",
+      "expected": "10m",
+      "points": 2,
+      "description": "LimitRange should set minimum CPU to 10m"
+    },
+    {
+      "command": "kubectl get limitrange cpu-limit -n mercury -o jsonpath='{.spec.limits[0].max.cpu}'",
+      "expected": "500m",
+      "points": 2,
+      "description": "LimitRange should set maximum CPU to 500m"
+    },
+    {
+      "command": "kubectl get limitrange cpu-limit -n mercury -o jsonpath='{.spec.limits[0].defaultRequest.cpu}'",
+      "expected": "50m",
+      "points": 2,
+      "description": "LimitRange should set default CPU request to 50m"
+    }
+  ]
+}

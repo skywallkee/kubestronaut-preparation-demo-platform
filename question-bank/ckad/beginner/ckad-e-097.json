@@ -1,0 +1,76 @@
+{
+  "id": "ckad-e-097",
+  "title": "Multi-Container Pod with Resources",
+  "description": "Create a Pod named ||multi-resource|| in namespace ||uranus|| with two containers: ||nginx|| (nginx:alpine, 50m CPU, 64Mi memory) and ||redis|| (redis:alpine, 100m CPU, 128Mi memory).",
+  "points": 7,
+  "timeLimit": 12,
+  "category": "Application Design and Build",
+  "tags": [
+    "multi-container",
+    "resources",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "uranus"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create multi-container pod:",
+      "   cat > pod.yaml << EOF",
+      "apiVersion: v1",
+      "kind: Pod",
+      "metadata:",
+      "  name: multi-resource",
+      "  namespace: uranus",
+      "spec:",
+      "  containers:",
+      "  - name: nginx",
+      "    image: nginx:alpine",
+      "    resources:",
+      "      requests:",
+      "        cpu: 50m",
+      "        memory: 64Mi",
+      "  - name: redis",
+      "    image: redis:alpine",
+      "    resources:",
+      "      requests:",
+      "        cpu: 100m",
+      "        memory: 128Mi",
+      "EOF",
+      "2. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod multi-resource -n uranus -o jsonpath='{.spec.containers[?(@.name==\"nginx\")].resources.requests.cpu}'",
+      "expected": "50m",
+      "points": 1.75,
+      "description": "Nginx container should request 50m CPU"
+    },
+    {
+      "command": "kubectl get pod multi-resource -n uranus -o jsonpath='{.spec.containers[?(@.name==\"nginx\")].resources.requests.memory}'",
+      "expected": "64Mi",
+      "points": 1.75,
+      "description": "Nginx container should request 64Mi memory"
+    },
+    {
+      "command": "kubectl get pod multi-resource -n uranus -o jsonpath='{.spec.containers[?(@.name==\"redis\")].resources.requests.cpu}'",
+      "expected": "100m",
+      "points": 1.75,
+      "description": "Redis container should request 100m CPU"
+    },
+    {
+      "command": "kubectl get pod multi-resource -n uranus -o jsonpath='{.spec.containers[?(@.name==\"redis\")].resources.requests.memory}'",
+      "expected": "128Mi",
+      "points": 1.75,
+      "description": "Redis container should request 128Mi memory"
+    }
+  ]
+}

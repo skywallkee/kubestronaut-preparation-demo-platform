@@ -1,0 +1,45 @@
+{
+  "id": "ckad-e-076",
+  "title": "Taint with TolerationSeconds",
+  "description": "Create a Pod named ||temp-pod|| in namespace ||pluto|| with image ||alpine:3.16|| that tolerates taint ||maintenance=true:NoExecute|| for ||300|| seconds.",
+  "points": 5,
+  "timeLimit": 10,
+  "category": "Application Design and Build",
+  "tags": [
+    "tolerations",
+    "pods",
+    "basic"
+  ],
+  "infrastructure": {
+    "namespaces": [
+      "pluto"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. Create pod yaml:",
+      "   kubectl run temp-pod --image=alpine:3.16 -n pluto --dry-run=client -o yaml -- sleep 3600 > pod.yaml",
+      "2. Add toleration with tolerationSeconds:",
+      "   tolerations:",
+      "   - key: maintenance",
+      "     operator: Equal",
+      "     value: \"true\"",
+      "     effect: NoExecute",
+      "     tolerationSeconds: 300",
+      "3. Apply pod:",
+      "   kubectl apply -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "kubectl get pod temp-pod -n pluto -o jsonpath='{.spec.tolerations[?(@.key==\"maintenance\")].tolerationSeconds}'",
+      "expected": "300",
+      "points": 5,
+      "description": "Pod should tolerate maintenance taint for 300 seconds"
+    }
+  ]
+}
