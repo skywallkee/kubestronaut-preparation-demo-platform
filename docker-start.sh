@@ -55,6 +55,32 @@ fi
 cd "$PROJECT_ROOT"
 print_success "Project root verified"
 
+# Platform detection for cross-platform compatibility
+PLATFORM=$(uname -s)
+IS_WSL2=false
+IS_MACOS=false
+IS_LINUX=false
+
+case "$PLATFORM" in
+    "Darwin")
+        IS_MACOS=true
+        print_status "Platform: macOS"
+        ;;
+    "Linux")
+        IS_LINUX=true
+        if [ -f /proc/sys/fs/binfmt_misc/WSLInterop ]; then
+            IS_WSL2=true
+            print_status "Platform: WSL2 (Linux on Windows)"
+        else
+            print_status "Platform: Native Linux"
+        fi
+        ;;
+    *)
+        print_status "Platform: $PLATFORM (assuming Linux-compatible)"
+        IS_LINUX=true
+        ;;
+esac
+
 # Step 2: Streamlined Interactive Configuration
 echo ""
 echo "🔧 Configuration (select numbered options or press Enter for defaults)"
@@ -93,12 +119,40 @@ MOUNT_KUBECONFIG=""
 KUBE_CONTEXT=""
 
 if [ "$KUBECTL_AVAILABLE" = true ]; then
-    # Check for kubeconfig
-    if [ -f "$HOME/.kube/config" ]; then
-        print_success "Found kubeconfig at $HOME/.kube/config"
+    # Cross-platform kubeconfig detection
+    KUBECONFIG_PATH=""
+    ORIGINAL_USER=""
 
-        # Get current context
-        current_context=$(kubectl config current-context 2>/dev/null || echo "")
+    # Detect original user (for sudo/root scenarios)
+    if [ -n "$SUDO_USER" ]; then
+        ORIGINAL_USER="$SUDO_USER"
+    elif [ -n "$(logname 2>/dev/null)" ]; then
+        ORIGINAL_USER="$(logname 2>/dev/null)"
+    else
+        ORIGINAL_USER="$USER"
+    fi
+
+    # Check multiple possible kubeconfig locations
+    POSSIBLE_KUBECONFIG_PATHS=(
+        "$KUBECONFIG"
+        "$HOME/.kube/config"
+        "/home/$ORIGINAL_USER/.kube/config"
+        "/Users/$ORIGINAL_USER/.kube/config"
+        "/mnt/c/Users/$ORIGINAL_USER/.kube/config"
+    )
+
+    for path in "${POSSIBLE_KUBECONFIG_PATHS[@]}"; do
+        if [ -n "$path" ] && [ -f "$path" ]; then
+            KUBECONFIG_PATH="$path"
+            break
+        fi
+    done
+
+    if [ -n "$KUBECONFIG_PATH" ]; then
+        print_success "Found kubeconfig at $KUBECONFIG_PATH"
+
+        # Get current context using the found kubeconfig
+        current_context=$(KUBECONFIG="$KUBECONFIG_PATH" kubectl config current-context 2>/dev/null || echo "")
 
         if [ -n "$current_context" ]; then
             print_input "Kubernetes context options:"
@@ -106,7 +160,7 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
             echo -e "  ${CYAN}2.${NC} Run without kubeconfig (isolated)"
 
             # Get available contexts for reference
-            contexts=$(kubectl config get-contexts -o name 2>/dev/null || echo "")
+            contexts=$(KUBECONFIG="$KUBECONFIG_PATH" kubectl config get-contexts -o name 2>/dev/null || echo "")
             if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
                 echo -e "  ${CYAN}3.${NC} Select different context"
                 echo -e "  ${DIM}Available contexts: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
@@ -118,7 +172,7 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
                 "" | "1")
                     # Default: use current context
                     KUBE_CONTEXT=$current_context
-                    MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                    MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                     print_success "Using current context: $current_context"
                     ;;
                 "2")
@@ -141,29 +195,29 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
 
                         if [ -n "$selected_context" ] && echo "$contexts" | grep -q "^$selected_context$"; then
                             KUBE_CONTEXT=$selected_context
-                            MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                            MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                             print_success "Using context: $selected_context"
                         else
                             print_warning "Context '$selected_context' not found. Using default: $current_context"
                             KUBE_CONTEXT=$current_context
-                            MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                            MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                         fi
                     else
                         print_warning "No other contexts available. Using default: $current_context"
                         KUBE_CONTEXT=$current_context
-                        MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                        MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                     fi
                     ;;
                 *)
                     # Check if the input is a valid context name
                     if echo "$contexts" | grep -q "^$context_choice$"; then
                         KUBE_CONTEXT=$context_choice
-                        MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                        MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                         print_success "Using context: $context_choice"
                     else
                         print_warning "Invalid choice or context '$context_choice' not found. Using default: $current_context"
                         KUBE_CONTEXT=$current_context
-                        MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                        MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                     fi
                     ;;
             esac
@@ -173,7 +227,7 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
             KUBE_CONTEXT=""
         fi
     else
-        print_warning "No kubeconfig found at $HOME/.kube/config"
+        print_warning "No kubeconfig found in standard locations (checked: $HOME/.kube/config, /home/$ORIGINAL_USER/.kube/config, /Users/$ORIGINAL_USER/.kube/config)"
         MOUNT_KUBECONFIG=""
         KUBE_CONTEXT=""
     fi
@@ -183,24 +237,38 @@ else
     KUBE_CONTEXT=""
 fi
 
-# Networking configuration
+# Platform-aware networking configuration
 echo ""
 print_input "Container networking options:"
-echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - isolated with port mapping"
-echo -e "  ${CYAN}2.${NC} Host network - shares host network stack"
+if [ "$IS_MACOS" = true ]; then
+    echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - recommended for macOS"
+    echo -e "  ${CYAN}2.${NC} Host network - limited support on macOS"
+elif [ "$IS_WSL2" = true ]; then
+    echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - isolated with port mapping"
+    echo -e "  ${CYAN}2.${NC} Host network - shares WSL2 network stack"
+else
+    echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - isolated with port mapping"
+    echo -e "  ${CYAN}2.${NC} Host network - shares host network stack"
+fi
 echo -e "  ${CYAN}3.${NC} Custom network - specify network name"
 read -p "Choose option (1-3, default 1): " network_choice
 
 case "$network_choice" in
     "" | "1")
-        # Default: bridge network
+        # Default: bridge network - works on all platforms
         NETWORK_CONFIG="-p $APP_PORT:8080"
         NETWORK_MODE="bridge"
         print_success "Using bridge network (default)"
         ;;
     "2")
-        NETWORK_CONFIG="--network host"
-        NETWORK_MODE="host"
+        if [ "$IS_MACOS" = true ]; then
+            print_warning "Host networking has limited support on macOS Docker Desktop"
+            NETWORK_CONFIG="--network host"
+            NETWORK_MODE="host"
+        else
+            NETWORK_CONFIG="--network host"
+            NETWORK_MODE="host"
+        fi
         print_success "Using host network"
         print_warning "Application accessible on all host interfaces"
         ;;
@@ -351,7 +419,7 @@ done
 
 # Check question bank content for all exam types
 EXAM_TYPES=("ckad" "cka" "cks" "kcna")
-DIFFICULTIES=("easy" "intermediate" "hard")
+DIFFICULTIES=("beginner" "intermediate" "advanced")
 TOTAL_QUESTIONS=0
 
 print_status "Checking question banks for Docker build..."
@@ -363,7 +431,8 @@ for exam_type in "${EXAM_TYPES[@]}"; do
         for difficulty in "${DIFFICULTIES[@]}"; do
             DIFFICULTY_DIR="$EXAM_DIR/$difficulty"
             if [ -d "$DIFFICULTY_DIR" ]; then
-                QUESTION_COUNT=$(find "$DIFFICULTY_DIR" -name "*.json" | wc -l)
+                # Use ls instead of find to avoid I/O errors with OneDrive
+                QUESTION_COUNT=$(ls "$DIFFICULTY_DIR"/*.json 2>/dev/null | wc -l || echo "0")
                 if [ $QUESTION_COUNT -gt 0 ]; then
                     print_success "  $difficulty: $QUESTION_COUNT questions"
                     TOTAL_QUESTIONS=$((TOTAL_QUESTIONS + QUESTION_COUNT))
@@ -429,8 +498,7 @@ else
     print_status "Using Docker layer caching for faster builds on subsequent runs"
 fi
 
-# Use BuildKit for better performance and caching
-export DOCKER_BUILDKIT=1
+# BuildKit configuration - will be set per platform in build function
 
 # Check if Dockerfile exists
 if [ ! -f "$DOCKERFILE" ]; then
@@ -441,11 +509,115 @@ if [ ! -f "$DOCKERFILE" ]; then
     exit 1
 fi
 
-if docker build -f "$DOCKERFILE" -t "$IMAGE_TAG" .; then
-    print_success "Docker image built successfully: $IMAGE_TAG"
-else
-    print_error "Docker build failed"
-    exit 1
+# Advanced Docker Build with WSL2/OneDrive Detection and Automatic Workaround
+# This section handles problematic environments automatically
+
+# Check if we already have the image built
+IMAGE_EXISTS=$(docker images -q "$IMAGE_TAG" 2>/dev/null || echo "")
+
+# Detect and handle WSL2 OneDrive issues automatically
+if [ -f /proc/sys/fs/binfmt_misc/WSLInterop ] && [[ "$(pwd)" == *"OneDrive"* ]]; then
+    print_warning "WSL2 with OneDrive sync detected - files may be corrupted"
+    print_status "Automatically copying project to native filesystem for reliable build..."
+
+    # Create working directory
+    WORK_DIR="/tmp/k8s-exam-simulator-$$"
+    mkdir -p "$WORK_DIR"
+
+    # Copy essential files only (avoid corrupted node_modules)
+    print_status "Copying project files (excluding node_modules)..."
+
+    # Copy root files to working directory
+    cp Dockerfile* docker-entrypoint.sh .dockerignore *.md "$WORK_DIR/" 2>/dev/null || true
+
+    # Copy directories selectively
+    cp -r helm-templates "$WORK_DIR/" 2>/dev/null || true
+    cp -r question-bank "$WORK_DIR/" 2>/dev/null || true
+
+    # Copy app structure without node_modules
+    mkdir -p "$WORK_DIR/app"
+    if [ -d "app/backend" ]; then
+        mkdir -p "$WORK_DIR/app/backend"
+        cp app/backend/package*.json "$WORK_DIR/app/backend/" 2>/dev/null || true
+        cp -r app/backend/src "$WORK_DIR/app/backend/" 2>/dev/null || true
+    fi
+
+    if [ -d "app/frontend" ]; then
+        mkdir -p "$WORK_DIR/app/frontend"
+        cp app/frontend/package*.json app/frontend/*.js app/frontend/*.json app/frontend/.env "$WORK_DIR/app/frontend/" 2>/dev/null || true
+        cp -r app/frontend/public "$WORK_DIR/app/frontend/" 2>/dev/null || true
+        cp -r app/frontend/src "$WORK_DIR/app/frontend/" 2>/dev/null || true
+    fi
+
+
+    if [ -f "$WORK_DIR/Dockerfile" ]; then
+        print_success "Project copied to working directory: $WORK_DIR"
+        print_status "Changing to working directory for build..."
+        cd "$WORK_DIR"
+
+        # Set cleanup trap
+        trap "cd '$PROJECT_ROOT'; rm -rf '$WORK_DIR'" EXIT
+    else
+        print_error "Failed to copy project files. OneDrive corruption is too severe."
+        print_error "Manual solution: cp -r . /tmp/k8s-project && cd /tmp/k8s-project && ./docker-start.sh"
+        exit 1
+    fi
+fi
+
+# Function to perform robust Docker build
+perform_docker_build() {
+    local build_context="$1"
+    local dockerfile="$2"
+    local image_tag="$3"
+
+    print_status "Building Docker image: $image_tag"
+    print_status "Using build context: $build_context"
+    print_status "Using Dockerfile: $dockerfile"
+
+    # Platform-aware BuildKit configuration
+    if [ "$IS_WSL2" = true ]; then
+        # WSL2 often has buildx issues, disable BuildKit
+        export DOCKER_BUILDKIT=0
+        print_status "Disabled BuildKit for WSL2 compatibility"
+    elif [ "$IS_MACOS" = true ]; then
+        # BuildKit works well on macOS
+        export DOCKER_BUILDKIT=1
+        print_status "Using BuildKit for optimized builds on macOS"
+    else
+        export DOCKER_BUILDKIT=1
+        print_status "Using BuildKit for optimized builds"
+    fi
+
+    # Change to build context and build
+    (cd "$build_context" && docker build -f "$dockerfile" -t "$image_tag" .)
+    return $?
+}
+
+
+# Main build logic
+if [ -n "$IMAGE_EXISTS" ]; then
+    print_success "Found existing Docker image: $IMAGE_TAG"
+    print_input "Rebuild image?"
+    echo "  1. Skip rebuild and use existing image (default)"
+    echo "  2. Rebuild image"
+    read -p "Choose option (1-2, default 1): " rebuild_choice
+
+    if [ "$rebuild_choice" != "2" ]; then
+        print_success "Using existing image: $IMAGE_TAG"
+    else
+        FORCE_REBUILD=true
+    fi
+fi
+
+# Perform build if needed
+if [ -z "$IMAGE_EXISTS" ] || [ "$FORCE_REBUILD" = true ]; then
+    print_status "Building Docker image..."
+    if perform_docker_build "." "$DOCKERFILE" "$IMAGE_TAG"; then
+        print_success "Docker image built successfully: $IMAGE_TAG"
+    else
+        print_error "Docker build failed"
+        exit 1
+    fi
 fi
 
 # Step 8: Run the container with selected configuration
@@ -461,9 +633,19 @@ if [ -n "$MEMORY_LIMIT" ]; then
     DOCKER_CMD="$DOCKER_CMD $MEMORY_LIMIT"
 fi
 
-# Add host networking fix for Kubernetes cluster access
-# This allows the container to reach the host machine's services
-DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
+# Platform-specific networking fixes for Kubernetes cluster access
+if [ "$IS_MACOS" = true ]; then
+    # macOS Docker Desktop already provides host.docker.internal
+    DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
+elif [ "$IS_WSL2" = true ]; then
+    # WSL2 needs special handling for host connectivity
+    DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
+    # Add WSL2-specific environment variable if needed
+    DOCKER_CMD="$DOCKER_CMD -e WSL_INTEROP=/tmp/wsl-interop"
+else
+    # Native Linux - use host networking gateway
+    DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:172.17.0.1"
+fi
 
 if [ -n "$KUBE_CONTEXT" ]; then
     DOCKER_CMD="$DOCKER_CMD -e KUBE_CONTEXT=$KUBE_CONTEXT"

@@ -60,7 +60,7 @@ fi
 
 # Check all exam types and difficulties
 EXAM_TYPES=("ckad" "cka" "cks" "kcna")
-DIFFICULTIES=("easy" "intermediate" "hard")
+DIFFICULTIES=("beginner" "intermediate" "advanced")
 TOTAL_QUESTIONS=0
 
 print_status "Checking question banks..."

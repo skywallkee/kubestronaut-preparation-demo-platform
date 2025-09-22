@@ -69,8 +69,14 @@ if [ -f "/root/.kube/config" ]; then
         sed -i 's|https://127\.0\.0\.1:|https://host.docker.internal:|g' "$WORKING_CONFIG"
         sed -i 's|https://localhost:|https://host.docker.internal:|g' "$WORKING_CONFIG"
 
+        # For local development clusters (like Rancher Desktop), disable certificate verification
+        # since the certificate won't include host.docker.internal in the SAN
+        echo "🔧 Configuring certificate validation for local development cluster..."
+        kubectl config set-cluster $(kubectl config view --raw -o jsonpath='{.clusters[0].name}') --insecure-skip-tls-verify=true
+
         NEW_SERVER=$(kubectl config view --raw -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || echo "")
         echo "   Updated cluster endpoint: $NEW_SERVER"
+        echo "   Disabled TLS verification for local development"
         echo "✅ Updated cluster endpoints for container networking"
     elif [[ -n "$CURRENT_SERVER" ]]; then
         echo "   Using external cluster endpoint: $CURRENT_SERVER"

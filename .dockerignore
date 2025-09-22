@@ -1,8 +1,26 @@
-# Dependencies
-node_modules
-*/node_modules
+# Dependencies - aggressive exclusion for WSL2 compatibility
+node_modules/
+*/node_modules/
+**/*node_modules*/
 npm-debug.log
 */npm-debug.log
+*.log
+yarn-error.log
+yarn-debug.log
+package-lock.json
+*/package-lock.json
+
+# WSL2 compatibility - exclude problematic files
+**/.git
+**/.vscode
+**/.idea
+**/coverage
+**/.nyc_output
+**/dist
+**/build
+**/.cache
+**/tmp
+**/temp
 
 # Development files
 .git
@@ -38,10 +56,17 @@ README.md
 !app/frontend/.env
 Screenshot*.png
 docker-build-guide.md
+KUBECONFIG-TROUBLESHOOTING.md
 
 # Development tools
 .claude
 .venv
+
+# Backup and temporary files
+*.backup
+*.original
+*.bak
+*.tmp
 
 # Local development scripts (not needed in container)
 local-start.sh
