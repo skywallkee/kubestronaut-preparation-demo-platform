@@ -112,7 +112,7 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
                 echo -e "  ${DIM}Available contexts: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
             fi
 
-            read -p "Choose option (1-3, default 1): " context_choice
+            read -p "Choose option (1-3, default 1) or enter context name directly: " context_choice
 
             case "$context_choice" in
                 "" | "1")
@@ -131,9 +131,15 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
                     if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
                         echo "Available contexts:"
                         echo "$contexts" | nl -w2 -s'. '
-                        read -p "Enter context name: " selected_context
+                        read -p "Enter context name or number: " selected_context
 
-                        if echo "$contexts" | grep -q "^$selected_context$"; then
+                        # Check if input is a number
+                        if [[ "$selected_context" =~ ^[0-9]+$ ]]; then
+                            # User entered a number, get the context at that line
+                            selected_context=$(echo "$contexts" | sed -n "${selected_context}p")
+                        fi
+
+                        if [ -n "$selected_context" ] && echo "$contexts" | grep -q "^$selected_context$"; then
                             KUBE_CONTEXT=$selected_context
                             MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
                             print_success "Using context: $selected_context"
@@ -149,9 +155,16 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
                     fi
                     ;;
                 *)
-                    print_warning "Invalid choice. Using default: $current_context"
-                    KUBE_CONTEXT=$current_context
-                    MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                    # Check if the input is a valid context name
+                    if echo "$contexts" | grep -q "^$context_choice$"; then
+                        KUBE_CONTEXT=$context_choice
+                        MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                        print_success "Using context: $context_choice"
+                    else
+                        print_warning "Invalid choice or context '$context_choice' not found. Using default: $current_context"
+                        KUBE_CONTEXT=$current_context
+                        MOUNT_KUBECONFIG="-v $HOME/.kube/config:/root/.kube/config:ro"
+                    fi
                     ;;
             esac
         else

@@ -1,20 +1,27 @@
 #!/bin/bash
 set -e
 
+# Mac compatibility fixes for Go runtime issues
+export GODEBUG=madvdontneed=1
+export GOGC=100
+export GOMEMLIMIT=256MiB
+
 echo "🚀 Starting Kubernetes Exam Simulator..."
 
-# Check if kubectl is available
+# Check if kubectl is available with timeout protection
 if command -v kubectl &> /dev/null; then
     echo "✅ kubectl is available"
-    kubectl version --client || echo "⚠️  kubectl client version check failed"
+    # Use timeout to prevent hanging and add runtime safeguards
+    timeout 10s kubectl version --client &>/dev/null && echo "✅ kubectl client working" || echo "⚠️  kubectl client version check failed"
 else
     echo "❌ kubectl not found"
 fi
 
-# Check if helm is available
+# Check if helm is available with timeout protection
 if command -v helm &> /dev/null; then
     echo "✅ helm is available"
-    helm version || echo "⚠️  helm version check failed"
+    # Use timeout to prevent hanging
+    timeout 10s helm version &>/dev/null && echo "✅ helm working" || echo "⚠️  helm version check failed"
 else
     echo "❌ helm not found"
 fi
@@ -73,27 +80,34 @@ if [ -f "/root/.kube/config" ]; then
     fi
 fi
 
-# Try to connect to Kubernetes cluster with proper context
+# Try to connect to Kubernetes cluster with proper context and timeout protection
 echo "🔍 Checking Kubernetes cluster connectivity..."
 if [ -n "$KUBE_CONTEXT" ]; then
     echo "   Using context: $KUBE_CONTEXT"
-    if kubectl cluster-info &> /dev/null; then
+    # Use timeout to prevent kubectl from hanging
+    if timeout 15s kubectl cluster-info &> /dev/null; then
         echo "✅ Connected to Kubernetes cluster"
-        kubectl get nodes --no-headers 2>/dev/null | wc -l | xargs -I {} echo "📊 Found {} nodes in cluster"
-        echo "📋 Available contexts: $(kubectl config get-contexts -o name | tr '\n' ', ' | sed 's/,$//')"
+        # Protected node count check
+        NODE_COUNT=$(timeout 10s kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
+        echo "📊 Found $NODE_COUNT nodes in cluster"
+        # Protected context listing
+        CONTEXTS=$(timeout 10s kubectl config get-contexts -o name 2>/dev/null | tr '\n' ', ' | sed 's/,$//' || echo "unknown")
+        echo "📋 Available contexts: $CONTEXTS"
     else
         echo "⚠️  Cannot connect to Kubernetes cluster with context '$KUBE_CONTEXT'"
         echo "   This might be due to:"
         echo "   - Cluster not running on host machine"
         echo "   - Network connectivity issues"
         echo "   - Invalid certificates or authentication"
+        echo "   - Go runtime compatibility issues on Mac (working on fix)"
         echo "   The application will still start and generate Helm charts"
     fi
 else
     echo "ℹ️  No specific context configured - using default kubeconfig behavior"
-    if kubectl cluster-info &> /dev/null; then
+    if timeout 15s kubectl cluster-info &> /dev/null; then
         echo "✅ Connected to Kubernetes cluster"
-        kubectl get nodes --no-headers 2>/dev/null | wc -l | xargs -I {} echo "📊 Found {} nodes in cluster"
+        NODE_COUNT=$(timeout 10s kubectl get nodes --no-headers 2>/dev/null | wc -l || echo "0")
+        echo "📊 Found $NODE_COUNT nodes in cluster"
     else
         echo "⚠️  No Kubernetes cluster connection detected"
         echo "   This is normal if you haven't set up kubectl access yet"

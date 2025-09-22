@@ -55,22 +55,31 @@ COPY app/backend/*.js* ./
 # Stage 3: Final ultra-lightweight runtime using distroless or alpine with static node
 FROM alpine:3.19 AS runtime
 
-# Install only the absolute minimum - static Node.js binary instead of full package
+# Install only the absolute minimum with Mac compatibility
 RUN apk add --no-cache libstdc++ libgcc && \
-    # Download static Node.js binary (much smaller than full nodejs package)
-    wget -q https://unofficial-builds.nodejs.org/download/release/v18.19.0/node-v18.19.0-linux-x64-musl.tar.xz && \
-    tar -xJf node-v18.19.0-linux-x64-musl.tar.xz && \
-    mv node-v18.19.0-linux-x64-musl/bin/node /usr/local/bin/node && \
-    rm -rf node-v18.19.0-linux-x64-musl* && \
-    # Install minimal kubectl binary
-    wget -q https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl && \
+    # Detect architecture for proper binary downloads (Mac compatibility)
+    ARCH=$(uname -m) && \
+    case $ARCH in \
+        x86_64) KUBECTL_ARCH="amd64"; NODE_ARCH="x64" ;; \
+        aarch64|arm64) KUBECTL_ARCH="arm64"; NODE_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    echo "Lightweight build: Detected architecture: $ARCH" && \
+    # Download static Node.js binary with architecture detection
+    wget -q https://unofficial-builds.nodejs.org/download/release/v18.19.0/node-v18.19.0-linux-${NODE_ARCH}-musl.tar.xz && \
+    tar -xJf node-v18.19.0-linux-${NODE_ARCH}-musl.tar.xz && \
+    mv node-v18.19.0-linux-${NODE_ARCH}-musl/bin/node /usr/local/bin/node && \
+    rm -rf node-v18.19.0-linux-${NODE_ARCH}-musl* && \
+    # Install kubectl with proper architecture
+    KUBECTL_VERSION=$(wget -qO- https://dl.k8s.io/release/stable.txt) && \
+    wget -q https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl -O /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
-    # Install minimal helm binary
-    wget -q https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.gz -O - | tar xz && \
-    mv linux-amd64/helm /usr/local/bin/ && \
-    rm -rf linux-amd64 && \
+    # Install helm with architecture detection
+    wget -q https://get.helm.sh/helm-v3.13.0-linux-${KUBECTL_ARCH}.tar.gz -O - | tar xz && \
+    mv linux-${KUBECTL_ARCH}/helm /usr/local/bin/ && \
+    rm -rf linux-${KUBECTL_ARCH} && \
     # Install minimal shell and curl for health checks
-    apk add --no-cache bash curl ca-certificates && \
+    apk add --no-cache bash curl ca-certificates timeout && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /app
@@ -93,15 +102,28 @@ COPY question-bank/ckad ./question-bank/ckad
 # Minimal entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
-    mkdir -p /root/.kube /app/generated-charts
+    mkdir -p /root/.kube /app/generated-charts && \
+    # Create Helm directories for Mac compatibility
+    mkdir -p /tmp/helm-cache /tmp/helm-config /tmp/helm-data && \
+    chmod -R 755 /tmp/helm-cache /tmp/helm-config /tmp/helm-data
 
-# Set minimal environment
+# Set minimal environment with Mac compatibility fixes
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=256" \
     PORT=8080 \
     GENERATED_CHARTS_PATH=/app/generated-charts \
     QUESTION_BANK_PATH=/app/question-bank \
-    HELM_TEMPLATES_PATH=/app/helm-templates
+    HELM_TEMPLATES_PATH=/app/helm-templates \
+    KUBECONFIG=/root/.kube/config \
+    # Go runtime fixes for Mac compatibility (lightweight settings)
+    GODEBUG=madvdontneed=1 \
+    GOGC=200 \
+    GOMEMLIMIT=128MiB \
+    # Kubectl/helm optimizations for lightweight build
+    KUBECTL_DISABLE_CACHE=true \
+    HELM_CACHE_HOME=/tmp/helm-cache \
+    HELM_CONFIG_HOME=/tmp/helm-config \
+    HELM_DATA_HOME=/tmp/helm-data
 
 EXPOSE 8080
 

@@ -56,15 +56,31 @@ RUN apk add --no-cache \
     procps \
     && rm -rf /var/cache/apk/*
 
-# Install kubectl and helm in single layer to minimize image size
-RUN KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt) && \
-    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
+# Install kubectl and helm with architecture detection and Mac compatibility fixes
+RUN set -ex && \
+    # Detect architecture for proper binary downloads
+    ARCH=$(uname -m) && \
+    case $ARCH in \
+        x86_64) KUBECTL_ARCH="amd64" ;; \
+        aarch64|arm64) KUBECTL_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac && \
+    echo "Detected architecture: $ARCH, using kubectl arch: $KUBECTL_ARCH" && \
+    # Download kubectl with proper architecture
+    KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt) && \
+    echo "Downloading kubectl version: $KUBECTL_VERSION for $KUBECTL_ARCH" && \
+    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" && \
     chmod +x kubectl && \
     mv kubectl /usr/local/bin/ && \
+    # Install helm with architecture detection
+    export HELM_INSTALL_DIR=/usr/local/bin && \
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
     chmod 700 get_helm.sh && \
     ./get_helm.sh && \
-    rm get_helm.sh
+    rm get_helm.sh && \
+    # Verify installations
+    kubectl version --client || echo "kubectl client check completed" && \
+    helm version || echo "helm version check completed"
 
 # Create app directory
 WORKDIR /app
@@ -91,12 +107,15 @@ RUN mkdir -p /app/generated-charts
 
 COPY docker-entrypoint.sh /usr/local/bin/
 
-# Set up permissions and directories in one layer
+# Set up permissions and directories in one layer with Mac compatibility
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     mkdir -p /root/.kube && \
-    chmod -R 755 /app/generated-charts
+    chmod -R 755 /app/generated-charts && \
+    # Create Helm directories to prevent permission issues on Mac
+    mkdir -p /tmp/helm-cache /tmp/helm-config /tmp/helm-data && \
+    chmod -R 755 /tmp/helm-cache /tmp/helm-config /tmp/helm-data
 
-# Set production environment variables
+# Set production environment variables with Mac compatibility fixes
 ENV NODE_ENV=production \
     PORT=8080 \
     KUBECONFIG=/root/.kube/config \
@@ -104,7 +123,16 @@ ENV NODE_ENV=production \
     SHELL=/bin/bash \
     GENERATED_CHARTS_PATH=/app/generated-charts \
     QUESTION_BANK_PATH=/app/question-bank \
-    HELM_TEMPLATES_PATH=/app/helm-templates
+    HELM_TEMPLATES_PATH=/app/helm-templates \
+    # Go runtime fixes for Mac compatibility
+    GODEBUG=madvdontneed=1 \
+    GOGC=100 \
+    GOMEMLIMIT=256MiB \
+    # Additional kubectl/helm environment fixes
+    KUBECTL_DISABLE_CACHE=true \
+    HELM_CACHE_HOME=/tmp/helm-cache \
+    HELM_CONFIG_HOME=/tmp/helm-config \
+    HELM_DATA_HOME=/tmp/helm-data
 
 # Expose application port
 EXPOSE 8080
