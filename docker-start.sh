@@ -57,29 +57,35 @@ print_success "Project root verified"
 
 # Platform detection for cross-platform compatibility
 PLATFORM=$(uname -s)
-IS_WSL2=false
-IS_MACOS=false
-IS_LINUX=false
+IS_WSL2="false"
+IS_MACOS="false"
+IS_LINUX="false"
+IS_WINDOWS_GITBASH="false"
 
 case "$PLATFORM" in
     "Darwin")
-        IS_MACOS=true
+        IS_MACOS="true"
         print_status "Platform: macOS"
         ;;
     "Linux")
-        IS_LINUX=true
+        IS_LINUX="true"
         if [ -f /proc/sys/fs/binfmt_misc/WSLInterop ]; then
-            IS_WSL2=true
+            IS_WSL2="true"
             print_status "Platform: WSL2 (Linux on Windows)"
         else
             print_status "Platform: Native Linux"
         fi
         ;;
+    "MINGW"* | "CYGWIN"*)
+        IS_WINDOWS_GITBASH="true"
+        print_status "Platform: Windows (Git Bash/Cygwin)"
+        ;;
     *)
         print_status "Platform: $PLATFORM (assuming Linux-compatible)"
-        IS_LINUX=true
+        IS_LINUX="true"
         ;;
 esac
+echo "📋 Got IS_WSL2=$IS_WSL2, IS_MACOS=$IS_MACOS, IS_LINUX=$IS_LINUX, IS_WINDOWS_GITBASH=$IS_WINDOWS_GITBASH."
 
 # Step 2: Streamlined Interactive Configuration
 echo ""
@@ -89,7 +95,7 @@ echo "=============================================================="
 # Port selection with direct input
 print_input "Application port:"
 print_default "Press Enter for default: ${BOLD_GREEN}8080${NC}"
-read -p "Port: " port_input
+read -rp "Port: " port_input # read without -r will mangle backslashes. (shellcheck SC2162)
 if [[ "$port_input" =~ ^[0-9]+$ ]] && [ "$port_input" -ge 1000 ] && [ "$port_input" -le 65535 ]; then
     APP_PORT=$port_input
     print_success "Using port: $APP_PORT"
@@ -108,9 +114,9 @@ print_input "Kubernetes Configuration:"
 # Check if kubectl is available
 if ! command -v kubectl &> /dev/null; then
     print_warning "kubectl not found on host system"
-    KUBECTL_AVAILABLE=false
+    KUBECTL_AVAILABLE="false"
 else
-    KUBECTL_AVAILABLE=true
+    KUBECTL_AVAILABLE="true"
     print_success "kubectl found on host system"
 fi
 
@@ -118,7 +124,7 @@ fi
 MOUNT_KUBECONFIG=""
 KUBE_CONTEXT=""
 
-if [ "$KUBECTL_AVAILABLE" = true ]; then
+if [ "$KUBECTL_AVAILABLE" = "true" ]; then
     # Cross-platform kubeconfig detection
     KUBECONFIG_PATH=""
     ORIGINAL_USER=""
@@ -134,11 +140,12 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
 
     # Check multiple possible kubeconfig locations
     POSSIBLE_KUBECONFIG_PATHS=(
-        "$KUBECONFIG"
-        "$HOME/.kube/config"
-        "/home/$ORIGINAL_USER/.kube/config"
-        "/Users/$ORIGINAL_USER/.kube/config"
-        "/mnt/c/Users/$ORIGINAL_USER/.kube/config"
+        "$KUBECONFIG" # (!!!) It's empty here, if not set as environment variable.
+        "$HOME/.kube/config" # Git Bash on Windows
+        "/home/$ORIGINAL_USER/.kube/config" # Linux
+        "/root/.kube/config" # Linux when running as root
+        "/Users/$ORIGINAL_USER/.kube/config" # macOS
+        "/mnt/c/Users/$ORIGINAL_USER/.kube/config" # WSL2 on Windows
     )
 
     for path in "${POSSIBLE_KUBECONFIG_PATHS[@]}"; do
@@ -161,18 +168,25 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
 
             # Get available contexts for reference
             contexts=$(KUBECONFIG="$KUBECONFIG_PATH" kubectl config get-contexts -o name 2>/dev/null || echo "")
-            if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
+            if [ -n "$contexts" ] && [ "$(echo "$contexts" | wc -l)" -gt 1 ]; then # Quote this to prevent word splitting. (shellcheck SC2046)
                 echo -e "  ${CYAN}3.${NC} Select different context"
                 echo -e "  ${DIM}Available contexts: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
             fi
 
-            read -p "Choose option (1-3, default 1) or enter context name directly: " context_choice
+            read -rp "Choose option (1-3, default 1) or enter context name directly: " context_choice
 
+            MOUNT_KUBECONFIG="-v ${KUBECONFIG_PATH}:/root/.kube/config:ro"
+            if [[ "$IS_WINDOWS_GITBASH" == "true" ]]; then
+                # Converting a path to physical Windows path: /c/Users/<username>/.kube -> C:/Users/<username>/.kube
+                # Adding an additional slash at the start: /C:/Users/<username>/.kube.
+                # It's required for the correct mounting of the docker volume in Windows.
+                KUBECONFIG_PATH_WIN="/$(cygpath -m "$KUBECONFIG_PATH")" # Use -m to get mixed slashes (C:/...)
+                MOUNT_KUBECONFIG="-v ${KUBECONFIG_PATH_WIN}:/root/.kube/config:ro"
+            fi
             case "$context_choice" in
                 "" | "1")
                     # Default: use current context
                     KUBE_CONTEXT=$current_context
-                    MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                     print_success "Using current context: $current_context"
                     ;;
                 "2")
@@ -182,10 +196,10 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
                     print_status "Container will run isolated (no kubeconfig)"
                     ;;
                 "3")
-                    if [ -n "$contexts" ] && [ $(echo "$contexts" | wc -l) -gt 1 ]; then
+                    if [ -n "$contexts" ] && [ "$(echo "$contexts" | wc -l)" -gt 1 ]; then # Quote this to prevent word splitting. (shellcheck SC2046)
                         echo "Available contexts:"
                         echo "$contexts" | nl -w2 -s'. '
-                        read -p "Enter context name or number: " selected_context
+                        read -rp "Enter context name or number: " selected_context
 
                         # Check if input is a number
                         if [[ "$selected_context" =~ ^[0-9]+$ ]]; then
@@ -195,55 +209,46 @@ if [ "$KUBECTL_AVAILABLE" = true ]; then
 
                         if [ -n "$selected_context" ] && echo "$contexts" | grep -q "^$selected_context$"; then
                             KUBE_CONTEXT=$selected_context
-                            MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                             print_success "Using context: $selected_context"
                         else
                             print_warning "Context '$selected_context' not found. Using default: $current_context"
                             KUBE_CONTEXT=$current_context
-                            MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                         fi
                     else
                         print_warning "No other contexts available. Using default: $current_context"
                         KUBE_CONTEXT=$current_context
-                        MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                     fi
                     ;;
                 *)
                     # Check if the input is a valid context name
                     if echo "$contexts" | grep -q "^$context_choice$"; then
                         KUBE_CONTEXT=$context_choice
-                        MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                         print_success "Using context: $context_choice"
                     else
                         print_warning "Invalid choice or context '$context_choice' not found. Using default: $current_context"
                         KUBE_CONTEXT=$current_context
-                        MOUNT_KUBECONFIG="-v $KUBECONFIG_PATH:/root/.kube/config:ro"
                     fi
                     ;;
             esac
         else
             print_warning "No current context found in kubeconfig"
-            MOUNT_KUBECONFIG=""
-            KUBE_CONTEXT=""
         fi
     else
         print_warning "No kubeconfig found in standard locations (checked: $HOME/.kube/config, /home/$ORIGINAL_USER/.kube/config, /Users/$ORIGINAL_USER/.kube/config)"
-        MOUNT_KUBECONFIG=""
-        KUBE_CONTEXT=""
     fi
 else
     print_status "Skipping Kubernetes configuration (kubectl not available)"
-    MOUNT_KUBECONFIG=""
-    KUBE_CONTEXT=""
 fi
 
 # Platform-aware networking configuration
 echo ""
 print_input "Container networking options:"
-if [ "$IS_MACOS" = true ]; then
+if [ "$IS_MACOS" = "true" ]; then
     echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - recommended for macOS"
     echo -e "  ${CYAN}2.${NC} Host network - limited support on macOS"
-elif [ "$IS_WSL2" = true ]; then
+elif [ "$IS_WINDOWS_GITBASH" = "true" ]; then
+    echo -e "  ${BOLD_GREEN}1.${NC} Host network (default) - recommended for Git Bash on Windows"
+elif [ "$IS_WSL2" = "true" ]; then
     echo -e "  ${BOLD_GREEN}1.${NC} Bridge network (default) - isolated with port mapping"
     echo -e "  ${CYAN}2.${NC} Host network - shares WSL2 network stack"
 else
@@ -251,17 +256,22 @@ else
     echo -e "  ${CYAN}2.${NC} Host network - shares host network stack"
 fi
 echo -e "  ${CYAN}3.${NC} Custom network - specify network name"
-read -p "Choose option (1-3, default 1): " network_choice
+read -rp "Choose option (1-3, default 1): " network_choice
 
 case "$network_choice" in
     "" | "1")
-        # Default: bridge network - works on all platforms
-        NETWORK_CONFIG="-p $APP_PORT:8080"
-        NETWORK_MODE="bridge"
-        print_success "Using bridge network (default)"
+        if [ "$IS_WINDOWS_GITBASH" = "true" ]; then
+            NETWORK_CONFIG="--network host"
+            NETWORK_MODE="host"
+        else
+            # Default: bridge network - works on all platforms
+            NETWORK_CONFIG="-p $APP_PORT:8080"
+            NETWORK_MODE="bridge"
+            print_success "Using bridge network (default)"
+        fi
         ;;
     "2")
-        if [ "$IS_MACOS" = true ]; then
+        if [ "$IS_MACOS" = "true" ]; then
             print_warning "Host networking has limited support on macOS Docker Desktop"
             NETWORK_CONFIG="--network host"
             NETWORK_MODE="host"
@@ -273,7 +283,7 @@ case "$network_choice" in
         print_warning "Application accessible on all host interfaces"
         ;;
     "3")
-        read -p "Enter custom network name: " custom_network
+        read -rp "Enter custom network name: " custom_network
         if [ -n "$custom_network" ]; then
             NETWORK_CONFIG="--network $custom_network -p $APP_PORT:8080"
             NETWORK_MODE="custom ($custom_network)"
@@ -297,15 +307,16 @@ echo ""
 print_input "Docker build variant options:"
 echo -e "  ${BOLD_GREEN}1.${NC} Standard build (default) - full featured, all exam types"
 echo -e "  ${CYAN}2.${NC} Lightweight build - minimal resources (256MB RAM, smaller image)"
-read -p "Choose option (1-2, default 1): " build_choice
+read -rp "Choose option (1-2, default 1): " build_choice
+
+BUILD_VARIANT="standard"
+DOCKERFILE="Dockerfile"
+IMAGE_TAG="k8s-exam-simulator"
+MEMORY_LIMIT=""
 
 case "$build_choice" in
     "" | "1")
         # Default: standard build
-        BUILD_VARIANT="standard"
-        DOCKERFILE="Dockerfile"
-        IMAGE_TAG="k8s-exam-simulator"
-        MEMORY_LIMIT=""
         print_success "Using standard build (default)"
         ;;
     "2")
@@ -317,11 +328,7 @@ case "$build_choice" in
         print_warning "Optimized for minimal resource usage"
         ;;
     *)
-        print_warning "Invalid choice. Using default standard build"
-        BUILD_VARIANT="standard"
-        DOCKERFILE="Dockerfile"
-        IMAGE_TAG="k8s-exam-simulator"
-        MEMORY_LIMIT=""
+        print_warning "Invalid choice. Using default standard build."
         ;;
 esac
 
@@ -331,7 +338,7 @@ print_input "Docker runtime options:"
 echo -e "  ${BOLD_GREEN}1.${NC} Standard (default) - no special privileges"
 echo -e "  ${CYAN}2.${NC} Privileged mode - elevated privileges"
 echo -e "  ${CYAN}3.${NC} Custom options - specify custom Docker flags"
-read -p "Choose option (1-3, default 1): " docker_choice
+read -rp "Choose option (1-3, default 1): " docker_choice
 
 case "$docker_choice" in
     "" | "1")
@@ -345,7 +352,7 @@ case "$docker_choice" in
         print_warning "Running with elevated privileges"
         ;;
     "3")
-        read -p "Enter custom Docker options: " custom_options
+        read -rp "Enter custom Docker options: " custom_options
         if [ -n "$custom_options" ]; then
             ADDITIONAL_OPTIONS="$custom_options"
             print_success "Using custom options: $custom_options"
@@ -386,7 +393,7 @@ echo ""
 print_input "Continue with this configuration?"
 echo -e "  ${BOLD_GREEN}1.${NC} Yes, proceed with build and deployment (default)"
 echo -e "  ${CYAN}2.${NC} No, exit and restart configuration"
-read -p "Choose option (1-2, default 1): " confirm_choice
+read -rp "Choose option (1-2, default 1): " confirm_choice
 
 case "$confirm_choice" in
     "" | "1")
@@ -427,12 +434,14 @@ for exam_type in "${EXAM_TYPES[@]}"; do
     EXAM_DIR="question-bank/$exam_type"
     if [ -d "$EXAM_DIR" ]; then
         print_status "Found $exam_type exam type"
-        
+
         for difficulty in "${DIFFICULTIES[@]}"; do
             DIFFICULTY_DIR="$EXAM_DIR/$difficulty"
             if [ -d "$DIFFICULTY_DIR" ]; then
                 # Use ls instead of find to avoid I/O errors with OneDrive
+                # shellcheck disable=SC2012 # Use find instead of ls to better handle non-alphanumeric filenames. (shellcheck SC2012)
                 QUESTION_COUNT=$(ls "$DIFFICULTY_DIR"/*.json 2>/dev/null | wc -l || echo "0")
+                # shellcheck disable=SC2086 # Double quote to prevent globbing and word splitting. (shellcheck SC2086)
                 if [ $QUESTION_COUNT -gt 0 ]; then
                     print_success "  $difficulty: $QUESTION_COUNT questions"
                     TOTAL_QUESTIONS=$((TOTAL_QUESTIONS + QUESTION_COUNT))
@@ -485,7 +494,6 @@ if [ "$1" = "--clean" ]; then
     print_status "Removing old Docker images..."
     docker rmi k8s-exam-simulator 2>/dev/null || true
     docker rmi k8s-exam-simulator:lightweight 2>/dev/null || true
-    docker system prune -f
     print_success "Old images cleaned up"
 fi
 
@@ -528,7 +536,7 @@ if [ -f /proc/sys/fs/binfmt_misc/WSLInterop ] && [[ "$(pwd)" == *"OneDrive"* ]];
     print_status "Copying project files (excluding node_modules)..."
 
     # Copy root files to working directory
-    cp Dockerfile* docker-entrypoint.sh .dockerignore *.md "$WORK_DIR/" 2>/dev/null || true
+    cp Dockerfile* docker-entrypoint.sh .dockerignore ./*.md "$WORK_DIR/" 2>/dev/null || true # Use ./*glob* or -- *glob* so names with dashes won't become options. (shellcheck SC2035)
 
     # Copy directories selectively
     cp -r helm-templates "$WORK_DIR/" 2>/dev/null || true
@@ -556,7 +564,8 @@ if [ -f /proc/sys/fs/binfmt_misc/WSLInterop ] && [[ "$(pwd)" == *"OneDrive"* ]];
         cd "$WORK_DIR"
 
         # Set cleanup trap
-        trap "cd '$PROJECT_ROOT'; rm -rf '$WORK_DIR'" EXIT
+        trap 'cd "$PROJECT_ROOT"; rm -rf "$WORK_DIR"' EXIT # Use single quotes, otherwise this expands now rather than when signalled. (shellcheck SC2064)
+
     else
         print_error "Failed to copy project files. OneDrive corruption is too severe."
         print_error "Manual solution: cp -r . /tmp/k8s-project && cd /tmp/k8s-project && ./docker-start.sh"
@@ -575,11 +584,11 @@ perform_docker_build() {
     print_status "Using Dockerfile: $dockerfile"
 
     # Platform-aware BuildKit configuration
-    if [ "$IS_WSL2" = true ]; then
+    if [ "$IS_WSL2" = "true" ]; then
         # WSL2 often has buildx issues, disable BuildKit
         export DOCKER_BUILDKIT=0
         print_status "Disabled BuildKit for WSL2 compatibility"
-    elif [ "$IS_MACOS" = true ]; then
+    elif [ "$IS_MACOS" = "true" ]; then
         # BuildKit works well on macOS
         export DOCKER_BUILDKIT=1
         print_status "Using BuildKit for optimized builds on macOS"
@@ -600,17 +609,21 @@ if [ -n "$IMAGE_EXISTS" ]; then
     print_input "Rebuild image?"
     echo "  1. Skip rebuild and use existing image (default)"
     echo "  2. Rebuild image"
-    read -p "Choose option (1-2, default 1): " rebuild_choice
+    read -rp "Choose option (1-2, default 1): " rebuild_choice
 
     if [ "$rebuild_choice" != "2" ]; then
         print_success "Using existing image: $IMAGE_TAG"
     else
-        FORCE_REBUILD=true
+        FORCE_REBUILD="true"
     fi
 fi
 
 # Perform build if needed
-if [ -z "$IMAGE_EXISTS" ] || [ "$FORCE_REBUILD" = true ]; then
+if [ -z "$IMAGE_EXISTS" ] || [ "$FORCE_REBUILD" = "true" ]; then
+    print_status "Removing old Docker images..."
+    docker rmi k8s-exam-simulator 2>/dev/null || true
+    docker rmi k8s-exam-simulator:lightweight 2>/dev/null || true
+
     print_status "Building Docker image..."
     if perform_docker_build "." "$DOCKERFILE" "$IMAGE_TAG"; then
         print_success "Docker image built successfully: $IMAGE_TAG"
@@ -634,10 +647,13 @@ if [ -n "$MEMORY_LIMIT" ]; then
 fi
 
 # Platform-specific networking fixes for Kubernetes cluster access
-if [ "$IS_MACOS" = true ]; then
+if [ "$IS_MACOS" = "true" ]; then
     # macOS Docker Desktop already provides host.docker.internal
     DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
-elif [ "$IS_WSL2" = true ]; then
+elif [ "$IS_WINDOWS_GITBASH" = "true" ]; then
+    # Windows Git Bash needs special handling for host connectivity
+    DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
+elif [ "$IS_WSL2" = "true" ]; then
     # WSL2 needs special handling for host connectivity
     DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
     # Add WSL2-specific environment variable if needed
@@ -663,7 +679,7 @@ DOCKER_CMD="$DOCKER_CMD $IMAGE_TAG"
 
 # Execute the command
 print_status "Executing: $DOCKER_CMD"
-eval $DOCKER_CMD
+eval "$DOCKER_CMD" # Double quote to prevent globbing and word splitting. (shellcheck SC2086)
 
 # Wait for container to start
 print_status "Waiting for container to fully initialize..."
@@ -695,7 +711,7 @@ else
 fi
 
 # Test health endpoint
-if curl -f -s $TEST_URL/api/health > /dev/null; then
+if curl -f -s "$TEST_URL/api/health" > /dev/null; then # Quote this to prevent word splitting. (shellcheck SC2046)
     print_success "Container is healthy and responding"
 else
     print_error "Container health check failed"
@@ -715,7 +731,7 @@ fi
 
 # Test helm API availability (NEW FIX VALIDATION)
 print_status "Testing Helm API integration..."
-HELM_RESPONSE=$(curl -s -X POST $TEST_URL/api/helm/generate \
+HELM_RESPONSE=$(curl -s -X POST "$TEST_URL/api/helm/generate" \
    -H "Content-Type: application/json" \
    -d '{"type":"ckad","difficulty":"beginner"}')
 
@@ -727,10 +743,12 @@ fi
 
 # Step 11: Test kubectl/helm availability in container (ORIGINAL FUNCTIONALITY)
 print_status "Verifying Kubernetes tools in container..."
+# shellcheck disable=SC2015 # Note that A && B || C is not if-then-else. C may run when A is true. (shellcheck SC2015)
 docker exec k8s-exam-simulator kubectl version --client > /dev/null 2>&1 && \
     print_success "✅ kubectl available in container" || \
     print_warning "⚠️  kubectl check failed"
 
+# shellcheck disable=SC2015 # Note that A && B || C is not if-then-else. C may run when A is true. (shellcheck SC2015)
 docker exec k8s-exam-simulator helm version > /dev/null 2>&1 && \
     print_success "✅ helm available in container" || \
     print_warning "⚠️  helm check failed"
@@ -791,7 +809,7 @@ echo -e "   ${BOLD_GREEN}6.${NC} Return to application to start exam with real q
 echo ""
 echo -e "🐳 Docker Commands:"
 echo -e "   View logs: ${GREEN}docker logs k8s-exam-simulator${NC}"
-echo -e "   Execute shell: ${GREEN}docker exec -it k8s-exam-simulator /bin/bash${NC}"
+echo -e "   Execute shell: ${GREEN}docker exec -it k8s-exam-simulator bash${NC}" # It's simpler, becasue need a double slash if IS_WINDOWS_GITBASH.
 if [ -n "$KUBE_CONTEXT" ]; then
     echo -e "   Test kubectl: ${GREEN}docker exec k8s-exam-simulator kubectl --context=$KUBE_CONTEXT get nodes${NC}"
 fi
