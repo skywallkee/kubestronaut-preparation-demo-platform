@@ -665,7 +665,6 @@ else
     # Native Linux - use host networking gateway
     DOCKER_CMD="$DOCKER_CMD --network=host"
     DOCKER_CMD="$DOCKER_CMD -v ${KUBECONFIG_PATH}:/root/.kube/config:ro"
-    DOCKER_CMD="$DOCKER_CMD -e KUBECONFIG=/root/.kube/config"
 fi
 
 if [ "$IS_WSL2" != "true" ]; then
