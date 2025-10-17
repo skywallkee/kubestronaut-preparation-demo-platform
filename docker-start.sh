@@ -146,6 +146,7 @@ if [ "$KUBECTL_AVAILABLE" = "true" ]; then
         "/root/.kube/config" # Linux when running as root
         "/Users/$ORIGINAL_USER/.kube/config" # macOS
         "/mnt/c/Users/$ORIGINAL_USER/.kube/config" # WSL2 on Windows
+        "/etc/rancher/k3s/k3s.yaml" # K3s default kubeconfig (Linux VM / bare metal)
     )
 
     for path in "${POSSIBLE_KUBECONFIG_PATHS[@]}"; do
@@ -654,25 +655,30 @@ elif [ "$IS_WINDOWS_GITBASH" = "true" ]; then
     # Windows Git Bash needs special handling for host connectivity
     DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
 elif [ "$IS_WSL2" = "true" ]; then
-    # WSL2 needs special handling for host connectivity
-    DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:host-gateway"
-    # Add WSL2-specific environment variable if needed
-    DOCKER_CMD="$DOCKER_CMD -e WSL_INTEROP=/tmp/wsl-interop"
+
+    DOCKER_CMD="$DOCKER_CMD --network=host"
+
+    DOCKER_CMD="$DOCKER_CMD -v ~/.kube/config:/kube-config:ro"
+
+    DOCKER_CMD="$DOCKER_CMD -e KUBECONFIG=/kube-config"
 else
     # Native Linux - use host networking gateway
-    DOCKER_CMD="$DOCKER_CMD --add-host=host.docker.internal:172.17.0.1"
+    DOCKER_CMD="$DOCKER_CMD --network=host"
+    DOCKER_CMD="$DOCKER_CMD -v ${KUBECONFIG_PATH}:/root/.kube/config:ro"
 fi
 
-if [ -n "$KUBE_CONTEXT" ]; then
-    DOCKER_CMD="$DOCKER_CMD -e KUBE_CONTEXT=$KUBE_CONTEXT"
-fi
+if [ "$IS_WSL2" != "true" ]; then
+    if [ -n "$KUBE_CONTEXT" ]; then
+        DOCKER_CMD="$DOCKER_CMD -e KUBE_CONTEXT=$KUBE_CONTEXT"
+    fi
 
-if [ -n "$MOUNT_KUBECONFIG" ]; then
-    DOCKER_CMD="$DOCKER_CMD $MOUNT_KUBECONFIG"
-fi
+    if [ -n "$MOUNT_KUBECONFIG" ]; then
+        DOCKER_CMD="$DOCKER_CMD $MOUNT_KUBECONFIG"
+    fi
 
-if [ -n "$ADDITIONAL_OPTIONS" ]; then
-    DOCKER_CMD="$DOCKER_CMD $ADDITIONAL_OPTIONS"
+    if [ -n "$ADDITIONAL_OPTIONS" ]; then
+        DOCKER_CMD="$DOCKER_CMD $ADDITIONAL_OPTIONS"
+    fi
 fi
 
 DOCKER_CMD="$DOCKER_CMD $IMAGE_TAG"
