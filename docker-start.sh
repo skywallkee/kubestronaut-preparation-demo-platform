@@ -738,8 +738,8 @@ fi
 # Test helm API availability (NEW FIX VALIDATION)
 print_status "Testing Helm API integration..."
 HELM_RESPONSE=$(curl -s -X POST "$TEST_URL/api/helm/generate" \
-   -H "Content-Type: application/json" \
-   -d '{"type":"ckad","difficulty":"beginner"}')
+    -H "Content-Type: application/json" \
+    -d '{"type":"ckad","difficulty":"beginner"}')
 
 if echo "$HELM_RESPONSE" | grep -q "success"; then
     print_success "✅ Helm API is working and generating charts with infrastructure requirements"
@@ -815,7 +815,7 @@ echo -e "   ${BOLD_GREEN}6.${NC} Return to application to start exam with real q
 echo ""
 echo -e "🐳 Docker Commands:"
 echo -e "   View logs: ${GREEN}docker logs k8s-exam-simulator${NC}"
-echo -e "   Execute shell: ${GREEN}docker exec -it k8s-exam-simulator bash${NC}" # It's simpler, becasue need a double slash if IS_WINDOWS_GITBASH.
+echo -e "   Execute shell: ${GREEN}docker exec -it k8s-exam-simulator bash${NC}"
 if [ -n "$KUBE_CONTEXT" ]; then
     echo -e "   Test kubectl: ${GREEN}docker exec k8s-exam-simulator kubectl --context=$KUBE_CONTEXT get nodes${NC}"
 fi
