@@ -29,6 +29,13 @@ The `docker-start.sh` script has been extensively enhanced and tested for cross-
 - **Docker**: ✅ Full BuildKit support optimized for macOS
 - **Cluster Access**: ✅ `--add-host=host.docker.internal:host-gateway`
 
+### ✅ **Git BASH on Windows (MINGW/CYGWIN)**
+- **Detection**: ✅ `uname -s` = "MINGW......"
+- **kubeconfig**: ✅ Checks `$HOME/.kube/config`
+- **Networking**: ✅ Host network recommended
+- **Docker**: ✅ Docker Engine
+- **Cluster Access**: ✅ `--add-host=host.docker.internal:host-gateway`
+
 ## 🔗 **Kubernetes Cluster Connectivity**
 
 ### ✅ **Multi-Context Support**
@@ -43,6 +50,10 @@ Choose: 1=current, 2=isolated, 3=select different
 # Dynamically mounts the correct kubeconfig path
 -v $KUBECONFIG_PATH:/root/.kube/config:ro
 ```
+
+For Git BASH on Windows:
+- Bash path is converted to Windows like path
+- use an additional slash for the host part of the path
 
 ### ✅ **Container-to-Cluster Connectivity**
 ```bash
@@ -67,7 +78,7 @@ docker exec k8s-exam-simulator kubectl --context="$CONTEXT" cluster-info
 
 ### ✅ **Network Configuration**
 - **Bridge Mode**: Works on all platforms with port mapping
-- **Host Mode**: Full support on Linux/WSL2, limited on macOS
+- **Host Mode**: Full support on Linux/WSL2 and Git BASH on Windows, limited on macOS
 - **Custom Networks**: Full support with user-specified networks
 
 ### ✅ **Memory Management**
@@ -81,6 +92,7 @@ docker exec k8s-exam-simulator kubectl --context="$CONTEXT" cluster-info
 ✅ WSL2 with OneDrive sync → Automatic workaround
 ✅ Native Linux → Standard optimized build
 ✅ macOS Docker Desktop → Platform-specific optimizations
+✅ Git BASH on Windows with Docker Eninge → Rancher Desktop, Docker Desktop, ...
 ✅ Sudo/root execution → Original user detection for kubeconfig
 ```
 
@@ -172,6 +184,7 @@ docker exec k8s-exam-simulator kubectl --context="$CONTEXT" cluster-info
 - ✅ macOS with Docker Desktop
 - ✅ AKS, GKE, EKS cluster connectivity
 - ✅ Rancher Desktop and Minikube local clusters
+- ✅ Git BASH on Windows with Rancher Desktop
 
 ### 🎯 **Key Achievements**
 1. **Single Script**: One `docker-start.sh` works everywhere
