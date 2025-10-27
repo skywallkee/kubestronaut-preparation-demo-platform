@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs'); // Added for reading file system
-const path = require('path'); // Added for handling file paths
 const ExamService = require('../services/exam-service');
 const ScoringService = require('../services/scoring-service');
 const fs = require('fs');
