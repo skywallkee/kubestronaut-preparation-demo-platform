@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 interface ExamConfig {
   type: string;
   difficulty: string;
   practiceMode?: boolean;
+}
+
+interface ExamOptions {
+  examTypes: string[];
+  difficultyLevels: Record<string, string[]>;
+  questionCounts: Record<string, Record<string, number>>;
 }
 
 const ExamSelection: React.FC = () => {
@@ -20,6 +26,13 @@ const ExamSelection: React.FC = () => {
   const [streamingLogs, setStreamingLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState<boolean>(false);
 
+  const [availableOptions, setAvailableOptions] = useState<ExamOptions>({
+    examTypes: [],
+    difficultyLevels: {},
+    questionCounts: {}
+  });
+
+
   const examTypes = [
     { id: 'ckad', name: 'CKAD', description: 'Certified Kubernetes Application Developer' },
     { id: 'cka', name: 'CKA', description: 'Certified Kubernetes Administrator' },
@@ -32,6 +45,43 @@ const ExamSelection: React.FC = () => {
     { id: 'intermediate', name: 'Intermediate', description: 'Standard certification level' },
     { id: 'advanced', name: 'Advanced', description: 'Complex scenarios and edge cases' }
   ];
+
+  useEffect(() => {
+  axios.get<ExamOptions>('/api/exams/options')
+      .then((res) => {
+        const data = res.data as Partial<ExamOptions> | undefined;
+        const examTypes = Array.isArray(data?.examTypes) ? data?.examTypes ?? [] : [];
+        const difficultyLevels = (data && typeof data.difficultyLevels === 'object' && data.difficultyLevels !== null)
+          ? data.difficultyLevels as Record<string, string[]>
+          : {};
+        const questionCounts = (data && typeof data.questionCounts === 'object' && data.questionCounts !== null)
+          ? data.questionCounts as Record<string, Record<string, number>>
+          : {};
+
+        setAvailableOptions({ examTypes, difficultyLevels, questionCounts });
+      })
+      .catch(() => {
+        setAvailableOptions({ examTypes: [], difficultyLevels: {}, questionCounts: {} });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (selectedExam && !availableOptions.examTypes.includes(selectedExam)) {
+      setSelectedExam('');
+      setSelectedDifficulty('');
+    }
+  }, [availableOptions.examTypes, selectedExam]);
+
+  useEffect(() => {
+    if (selectedExam && selectedDifficulty) {
+      const difficulties = availableOptions.difficultyLevels[selectedExam] ?? [];
+      if (!difficulties.includes(selectedDifficulty)) {
+        setSelectedDifficulty('');
+      }
+    }
+  }, [availableOptions.difficultyLevels, selectedExam, selectedDifficulty]);
+
+  const enabledExamTypes = availableOptions.examTypes ?? [];
 
   const generateHelmChart = async () => {
     if (!selectedExam || !selectedDifficulty) return;
@@ -101,13 +151,13 @@ const ExamSelection: React.FC = () => {
 
     eventSource.onopen = () => {
       console.log('✅ Streaming connection opened');
-      setStreamingLogs(prev => [...prev, '🔗 Connected to deployment stream...']);
+  setStreamingLogs((prev: string[]) => [...prev, '🔗 Connected to deployment stream...']);
     };
 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        setStreamingLogs(prev => [...prev, data.message]);
+  setStreamingLogs((prev: string[]) => [...prev, data.message]);
       } catch (parseError) {
         console.error('Error parsing message data:', parseError);
       }
@@ -116,7 +166,7 @@ const ExamSelection: React.FC = () => {
     eventSource.addEventListener('progress', (event) => {
       try {
         const data = JSON.parse(event.data);
-        setStreamingLogs(prev => [...prev, data.message]);
+  setStreamingLogs((prev: string[]) => [...prev, data.message]);
       } catch (parseError) {
         console.error('Error parsing progress data:', parseError);
       }
@@ -127,10 +177,10 @@ const ExamSelection: React.FC = () => {
         const data = JSON.parse(event.data);
         if (data.success) {
           setHelmApplied(true);
-          setStreamingLogs(prev => [...prev, '🎉 Deployment completed successfully!']);
+          setStreamingLogs((prev: string[]) => [...prev, '🎉 Deployment completed successfully!']);
         } else {
           setApplyError(data.error || 'Failed to apply Helm chart');
-          setStreamingLogs(prev => [...prev, `❌ Error: ${data.error || 'Unknown error'}`]);
+          setStreamingLogs((prev: string[]) => [...prev, `❌ Error: ${data.error || 'Unknown error'}`]);
         }
       } catch (parseError) {
         console.error('Error parsing completion data:', parseError);
@@ -144,11 +194,11 @@ const ExamSelection: React.FC = () => {
       try {
         const data = JSON.parse((event as any).data || '{}');
         setApplyError(data.error || 'Failed to apply Helm chart');
-        setStreamingLogs(prev => [...prev, `❌ Error: ${data.error || 'Connection error'}`]);
+  setStreamingLogs((prev: string[]) => [...prev, `❌ Error: ${data.error || 'Connection error'}`]);
       } catch (parseError) {
         console.error('Error parsing error data:', parseError);
         setApplyError('Failed to apply Helm chart. Please ensure your cluster is accessible.');
-        setStreamingLogs(prev => [...prev, '❌ Connection error or deployment failed']);
+  setStreamingLogs((prev: string[]) => [...prev, '❌ Connection error or deployment failed']);
       }
       setIsApplying(false);
       eventSource.close();
@@ -158,10 +208,10 @@ const ExamSelection: React.FC = () => {
       console.error('EventSource error:', error);
       if (eventSource.readyState === EventSource.CLOSED) {
         setApplyError('Connection lost. Please try again.');
-        setStreamingLogs(prev => [...prev, '❌ Connection lost']);
+  setStreamingLogs((prev: string[]) => [...prev, '❌ Connection lost']);
       } else {
         setApplyError('Connection error. Please try again.');
-        setStreamingLogs(prev => [...prev, '❌ Connection error']);
+  setStreamingLogs((prev: string[]) => [...prev, '❌ Connection error']);
       }
       setIsApplying(false);
       eventSource.close();
@@ -184,7 +234,7 @@ const ExamSelection: React.FC = () => {
         difficulty: selectedDifficulty,
         practiceMode: practiceMode
       });
-      
+
       if (response.data.success) {
         // Navigate to exam interface
         window.location.href = '/exam';
@@ -212,56 +262,88 @@ const ExamSelection: React.FC = () => {
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Certification</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {examTypes.map((exam) => (
-              <div
-                key={exam.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  selectedExam === exam.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => {
-                  setSelectedExam(exam.id);
-                  // Reset helm chart when exam type changes
-                  setHelmChartReady(false);
-                  setHelmApplied(false);
-                  setHelmDownloaded(false);
-                  setApplyError('');
-                  setStreamingLogs([]);
-                }}
-              >
-                <h3 className="font-semibold text-gray-900">{exam.name}</h3>
-                <p className="text-sm text-gray-600">{exam.description}</p>
-              </div>
-            ))}
+            {examTypes.map((exam) => {
+              const enabled = enabledExamTypes.includes(exam.id);
+              const examQuestionCounts: Record<string, number> = availableOptions.questionCounts[exam.id] ?? {};
+              const totalQuestions = (Object.values(examQuestionCounts) as number[]).reduce((sum, count) => (
+                sum + (typeof count === 'number' ? count : 0)
+              ), 0);
+              return (
+                <div
+                  key={exam.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    selectedExam === exam.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : enabled
+                        ? 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-100 bg-gray-100 opacity-50 cursor-not-allowed'
+                  }`}
+                  onClick={() => {
+                    if (!enabled) return;
+                    setSelectedExam(exam.id);
+                    setHelmChartReady(false);
+                    setHelmApplied(false);
+                    setHelmDownloaded(false);
+                    setApplyError('');
+                    setStreamingLogs([]);
+                  }}
+                  aria-disabled={!enabled}
+                >
+                  <h3 className="font-semibold text-gray-900">{exam.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {exam.description}<br />
+                    {` (${totalQuestions} questions)`}
+                  </p>
+                  {!enabled && (
+                    <span className="text-xs text-gray-500 block mt-2">No questions available</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Difficulty</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {difficultyLevels.map((level) => (
-              <div
-                key={level.id}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  selectedDifficulty === level.id
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => {
-                  setSelectedDifficulty(level.id);
-                  // Reset helm chart when difficulty changes
-                  setHelmChartReady(false);
-                  setHelmApplied(false);
-                  setHelmDownloaded(false);
-                  setApplyError('');
-                  setStreamingLogs([]);
-                }}
-              >
-                <h3 className="font-semibold text-gray-900">{level.name}</h3>
-                <p className="text-sm text-gray-600">{level.description}</p>
-              </div>
-            ))}
+            {difficultyLevels.map((level) => {
+              const selectedExamDifficulties = availableOptions.difficultyLevels[selectedExam] ?? [];
+              const enabled = Boolean(selectedExam) && selectedExamDifficulties.includes(level.id);
+              const difficultyCount = enabled
+                ? availableOptions.questionCounts[selectedExam]?.[level.id] ?? 0
+                : 0;
+              return (
+                <div
+                  key={level.id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    selectedDifficulty === level.id
+                      ? 'border-green-500 bg-green-50'
+                      : enabled
+                        ? 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-100 bg-gray-100 opacity-50 cursor-not-allowed'
+                  }`}
+                  onClick={() => {
+                    if (!enabled) return;
+                    setSelectedDifficulty(level.id);
+                    setHelmChartReady(false);
+                    setHelmApplied(false);
+                    setHelmDownloaded(false);
+                    setApplyError('');
+                    setStreamingLogs([]);
+                  }}
+                  aria-disabled={!enabled}
+                >
+                  <h3 className="font-semibold text-gray-900">{level.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {level.description}<br />
+                    {selectedExam ? ` (${difficultyCount} questions)` : ''}
+                  </p>
+                  {!enabled && (
+                    <span className="text-xs text-gray-500 block mt-2">No questions available</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -298,7 +380,7 @@ const ExamSelection: React.FC = () => {
 
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Generate Exam Environment</h2>
-          
+
           {selectedExam && selectedDifficulty ? (
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 rounded-lg">
@@ -307,7 +389,7 @@ const ExamSelection: React.FC = () => {
                   {practiceMode && <span className="ml-2 text-xs bg-blue-200 text-blue-900 px-2 py-1 rounded">Practice Mode</span>}
                 </p>
               </div>
-              
+
               {!helmChartReady ? (
                 <button
                   onClick={generateHelmChart}

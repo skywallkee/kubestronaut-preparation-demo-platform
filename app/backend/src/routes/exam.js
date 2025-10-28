@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const ExamService = require('../services/exam-service');
 const ScoringService = require('../services/scoring-service');
+const fs = require('fs');
+const path = require('path');
 
 // Create new exam session
 router.post('/', async (req, res) => {
@@ -60,8 +62,8 @@ router.get('/current', async (req, res) => {
 router.post('/start', async (req, res) => {
   try {
     const result = ExamService.startExam();
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: result.message || 'Exam started',
       timeRemaining: result.timeRemaining,
       status: result.status,
@@ -172,6 +174,85 @@ router.get('/results', async (req, res) => {
   }
 });
 
+// GET /api/exams/options
+router.get('/options', (req, res) => {
+  const questionBankPath = process.env.QUESTION_BANK_PATH ||
+    path.join(__dirname, '../../../../question-bank');
+
+  try {
+    console.log('[exam-options] Resolving question bank from:', questionBankPath);
+
+    if (!fs.existsSync(questionBankPath)) {
+      console.warn(`Question bank path not found: ${questionBankPath}`);
+      return res.json({ examTypes: [], difficultyLevels: {} });
+    }
+
+    const examTypes = [];
+    const difficultyLevels = {};
+    const questionCounts = {};
+
+    const examTypeEntries = fs.readdirSync(questionBankPath, { withFileTypes: true });
+
+    examTypeEntries.forEach((entry) => {
+      if (!entry.isDirectory()) {
+        return;
+      }
+
+      const examType = entry.name;
+      const examTypePath = path.join(questionBankPath, examType);
+      let hasAtLeastOneDifficulty = false;
+
+      difficultyLevels[examType] = [];
+      questionCounts[examType] = {};
+
+      try {
+        const difficultyEntries = fs.readdirSync(examTypePath, { withFileTypes: true });
+
+        difficultyEntries.forEach((difficultyEntry) => {
+          if (!difficultyEntry.isDirectory()) {
+            return;
+          }
+
+          const difficultyName = difficultyEntry.name;
+          const difficultyPath = path.join(examTypePath, difficultyName);
+
+          try {
+            const files = fs.readdirSync(difficultyPath);
+            const questionFiles = files.filter((file) => file.endsWith('.json'));
+            const hasQuestions = questionFiles.length > 0;
+
+            if (hasQuestions) {
+              difficultyLevels[examType].push(difficultyName);
+              questionCounts[examType][difficultyName] = questionFiles.length;
+              hasAtLeastOneDifficulty = true;
+            }
+          } catch (innerError) {
+            console.warn(`Failed to read difficulty folder ${difficultyPath}:`, innerError.message);
+          }
+        });
+      } catch (error) {
+        console.warn(`Failed to read exam type folder ${examTypePath}:`, error.message);
+      }
+
+      if (hasAtLeastOneDifficulty) {
+        examTypes.push(examType);
+      } else {
+        delete difficultyLevels[examType];
+        delete questionCounts[examType];
+      }
+    });
+
+    console.log('[exam-options] Exam types found:', examTypes);
+    console.log('[exam-options] Difficulty levels found:', difficultyLevels);
+    console.log('[exam-options] Question counts:', questionCounts);
+
+    res.json({ examTypes, difficultyLevels, questionCounts });
+  } catch (error) {
+    console.error('Error loading exam options:', error);
+    res.status(500).json({ error: 'Failed to load exam options' });
+  }
+});
+
 // Reset exam for retry
 router.post('/reset', async (req, res) => {
   try {
@@ -181,8 +262,8 @@ router.post('/reset', async (req, res) => {
     }
 
     ExamService.resetExamForRetry();
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Exam reset successfully. You can start again.',
       exam: {
         id: exam.id,
@@ -201,9 +282,9 @@ router.post('/reset', async (req, res) => {
 router.delete('/session', async (req, res) => {
   try {
     ExamService.resetExam();
-    res.json({ 
-      success: true, 
-      message: 'Exam session cleared. Create a new exam to continue.' 
+    res.json({
+      success: true,
+      message: 'Exam session cleared. Create a new exam to continue.'
     });
   } catch (error) {
     console.error('Error clearing exam session:', error);
