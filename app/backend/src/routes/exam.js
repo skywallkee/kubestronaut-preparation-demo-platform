@@ -45,7 +45,6 @@ router.get('/current', async (req, res) => {
         points: q.points,
         flagged: q.flagged || false,
         completed: q.completed || false,
-        // Only include solution/validations in practice mode
         solution: exam.practiceMode ? q.solution : undefined,
         validations: exam.practiceMode ? q.validations : undefined
       })),
@@ -293,73 +292,4 @@ router.delete('/session', async (req, res) => {
   }
 });
 
-// --- Added Route for Exam Options ---
-
-// Get available exam options (types, difficulties, counts)
-router.get('/options', (req, res) => {
-  // Define path relative to this file's location (__dirname)
-  // Goes up from src/routes -> src -> backend -> app -> root, then into question-bank
-  const questionBankDir = '/app/question-bank';
-  console.log(`[Exam Options Route] Attempting to read from: ${questionBankDir}`);
-
-  const examOptions = {
-    examTypes: [],
-    difficultyLevels: {},
-    questionCounts: {}
-  };
-
-  try {
-    // Read top-level directories in question-bank (ckad, cks, etc.)
-    const examDirs = fs.readdirSync(questionBankDir, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name);
-
-    for (const examType of examDirs) {
-      examOptions.examTypes.push(examType);
-      examOptions.difficultyLevels[examType] = [];
-      examOptions.questionCounts[examType] = {};
-
-      const examTypeDir = path.join(questionBankDir, examType);
-
-      // Check if exam type directory exists before reading difficulties
-      if (!fs.existsSync(examTypeDir)) {
-          console.warn(`Directory not found for exam type: ${examTypeDir}`);
-          continue; // Skip this exam type if directory is missing
-      }
-
-      // Read difficulty directories (beginner, intermediate, advanced)
-      const difficultyDirs = fs.readdirSync(examTypeDir, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
-
-      for (const difficulty of difficultyDirs) {
-        examOptions.difficultyLevels[examType].push(difficulty);
-
-        const difficultyDir = path.join(examTypeDir, difficulty);
-
-         // Check if difficulty directory exists before reading files
-        if (!fs.existsSync(difficultyDir)) {
-            console.warn(`Directory not found for difficulty: ${difficultyDir}`);
-            examOptions.questionCounts[examType][difficulty] = 0; // Set count to 0 if dir missing
-            continue; // Skip this difficulty if directory is missing
-        }
-
-        // Count .json files in the difficulty directory
-        const questionFiles = fs.readdirSync(difficultyDir)
-          .filter(file => file.endsWith('.json'));
-
-        examOptions.questionCounts[examType][difficulty] = questionFiles.length;
-      }
-    }
-
-    // Send the compiled options object as JSON
-    res.json(examOptions);
-
-  } catch (error) {
-    console.error("Error reading question bank:", error);
-    res.status(500).json({ error: "Failed to read question bank details" });
-  }
-});
-
-// --- Export the router ---
 module.exports = router;
