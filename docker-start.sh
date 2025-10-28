@@ -9,9 +9,16 @@ set -e
 echo "🐳 Starting Kubernetes Exam Simulator (Docker Deployment)"
 echo "================================================"
 
-RUN_WITH_DEFAULTS="false"
+if [[ $1 == "--help" ]]; then
+    echo "Usage: ./docker-start.sh [--clean] [--default]"
+    echo "    None or only one argument is accepted at a time."
+    echo -e "  > ${GREEN}./docker-start.sh${NC} # Asks the user for the options"
+    echo -e "  > ${GREEN}./docker-start.sh --clean${NC} # Cleans up old images and asks user for other options"
+    echo -e "  > ${GREEN}./docker-start.sh --default${NC} # Runs with default values, also cleans up old images"
+    exit 0
+fi
+
 if [[ $1 == "--default" ]]; then
-    RUN_WITH_DEFAULTS="true"
     echo "⚙️  Running with default configuration (no prompts)"
 fi
 
@@ -101,7 +108,7 @@ echo "=============================================================="
 # Port selection with direct input
 print_input "Application port:"
 print_default "Press Enter for default: ${BOLD_GREEN}8080${NC}"
-if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+if [[ $1 == "--default" ]]; then
     print_default "Running with --default argument."
     port_input=8080
 else
@@ -189,7 +196,7 @@ if [ "$KUBECTL_AVAILABLE" = "true" ]; then
                 echo -e "  ${DIM}Available contexts: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
             fi
 
-            if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+            if [[ $1 == "--default" ]]; then
                 print_default "Running with --default argument."
                 context_choice="1"
             else
@@ -283,7 +290,7 @@ else
     echo -e "  ${CYAN}2.${NC} Host network - shares host network stack"
 fi
 echo -e "  ${CYAN}3.${NC} Custom network - specify network name"
-if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+if [[ $1 == "--default" ]]; then
     print_default "Running with --default argument."
     network_choice="1"
 else
@@ -346,7 +353,7 @@ echo ""
 print_input "Docker build variant options:"
 echo -e "  ${BOLD_GREEN}1.${NC} Standard build (default) - full featured, all exam types"
 echo -e "  ${CYAN}2.${NC} Lightweight build - minimal resources (256MB RAM, smaller image)"
-if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+if [[ $1 == "--default" ]]; then
     print_default "Running with --default argument."
     build_choice="1"
 else
@@ -386,7 +393,7 @@ print_input "Docker runtime options:"
 echo -e "  ${BOLD_GREEN}1.${NC} Standard (default) - no special privileges"
 echo -e "  ${CYAN}2.${NC} Privileged mode - elevated privileges"
 echo -e "  ${CYAN}3.${NC} Custom options - specify custom Docker flags"
-if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+if [[ $1 == "--default" ]]; then
     print_default "Running with --default argument."
     docker_choice="1"
 else
@@ -454,7 +461,7 @@ echo ""
 print_input "Continue with this configuration?"
 echo -e "  ${BOLD_GREEN}1.${NC} Yes, proceed with build and deployment (default)"
 echo -e "  ${CYAN}2.${NC} No, exit and restart configuration"
-if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+if [[ $1 == "--default" ]]; then
     print_default "Running with --default argument."
     confirm_choice="1"
 else
@@ -560,7 +567,7 @@ docker rm k8s-exam-simulator 2>/dev/null || true
 print_success "Existing containers cleaned up"
 
 # Step 6: Remove old images (optional - use --clean flag)
-if [[ "$1" == "--clean" || "$RUN_WITH_DEFAULTS" == "true" ]]; then
+if [[ "$1" == "--clean" || $1 == "--default" ]]; then
     print_status "Removing old Docker images..."
     docker rmi k8s-exam-simulator 2>/dev/null || true
     docker rmi k8s-exam-simulator:lightweight 2>/dev/null || true
@@ -679,7 +686,7 @@ if [ -n "$IMAGE_EXISTS" ]; then
     print_input "Rebuild image?"
     echo "  1. Skip rebuild and use existing image (default)"
     echo "  2. Rebuild image"
-    if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+    if [[ $1 == "--default" ]]; then
         print_default "Running with --default argument."
         rebuild_choice="1"
     else
