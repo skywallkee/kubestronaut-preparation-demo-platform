@@ -9,6 +9,12 @@ set -e
 echo "🐳 Starting Kubernetes Exam Simulator (Docker Deployment)"
 echo "================================================"
 
+RUN_WITH_DEFAULTS="false"
+if [[ $1 == "--default" ]]; then
+    RUN_WITH_DEFAULTS="true"
+    echo "⚙️  Running with default configuration (no prompts)"
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -95,10 +101,19 @@ echo "=============================================================="
 # Port selection with direct input
 print_input "Application port:"
 print_default "Press Enter for default: ${BOLD_GREEN}8080${NC}"
-read -rp "Port: " port_input # read without -r will mangle backslashes. (shellcheck SC2162)
+if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+    print_default "Running with --default argument."
+    port_input=8080
+else
+    read -rp "Port (quit q, default 8080): " port_input # read without -r will mangle backslashes. (shellcheck SC2162)
+fi
+
 if [[ "$port_input" =~ ^[0-9]+$ ]] && [ "$port_input" -ge 1000 ] && [ "$port_input" -le 65535 ]; then
     APP_PORT=$port_input
     print_success "Using port: $APP_PORT"
+elif [[ "$port_input" == "q" || "$port_input" == "Q" ]]; then
+    print_error "Exiting as requested."
+    exit 1
 elif [ -z "$port_input" ]; then
     APP_PORT=8080
     print_success "Using default port: 8080"
@@ -174,7 +189,12 @@ if [ "$KUBECTL_AVAILABLE" = "true" ]; then
                 echo -e "  ${DIM}Available contexts: $(echo "$contexts" | tr '\n' ', ' | sed 's/, $//')${NC}"
             fi
 
-            read -rp "Choose option (1-3, default 1) or enter context name directly: " context_choice
+            if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+                print_default "Running with --default argument."
+                context_choice="1"
+            else
+                read -rp "Choose option (1-3, quit q, default 1) or enter context name directly: " context_choice
+            fi
 
             MOUNT_KUBECONFIG="-v ${KUBECONFIG_PATH}:/root/.kube/config:ro"
             if [[ "$IS_WINDOWS_GITBASH" == "true" ]]; then
@@ -200,12 +220,15 @@ if [ "$KUBECTL_AVAILABLE" = "true" ]; then
                     if [ -n "$contexts" ] && [ "$(echo "$contexts" | wc -l)" -gt 1 ]; then # Quote this to prevent word splitting. (shellcheck SC2046)
                         echo "Available contexts:"
                         echo "$contexts" | nl -w2 -s'. '
-                        read -rp "Enter context name or number: " selected_context
+                        read -rp "Enter context name or number (quit q, default $current_context): " selected_context
 
                         # Check if input is a number
                         if [[ "$selected_context" =~ ^[0-9]+$ ]]; then
                             # User entered a number, get the context at that line
                             selected_context=$(echo "$contexts" | sed -n "${selected_context}p")
+                        elif [[ "$selected_context" == "q" || "$selected_context" == "Q" ]]; then
+                            print_error "Exiting as requested."
+                            exit 1
                         fi
 
                         if [ -n "$selected_context" ] && echo "$contexts" | grep -q "^$selected_context$"; then
@@ -225,6 +248,9 @@ if [ "$KUBECTL_AVAILABLE" = "true" ]; then
                     if echo "$contexts" | grep -q "^$context_choice$"; then
                         KUBE_CONTEXT=$context_choice
                         print_success "Using context: $context_choice"
+                    elif [[ "$context_choice" == "q" || "$context_choice" == "Q" ]]; then
+                        print_error "Exiting as requested."
+                        exit 1
                     else
                         print_warning "Invalid choice or context '$context_choice' not found. Using default: $current_context"
                         KUBE_CONTEXT=$current_context
@@ -257,7 +283,12 @@ else
     echo -e "  ${CYAN}2.${NC} Host network - shares host network stack"
 fi
 echo -e "  ${CYAN}3.${NC} Custom network - specify network name"
-read -rp "Choose option (1-3, default 1): " network_choice
+if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+    print_default "Running with --default argument."
+    network_choice="1"
+else
+    read -rp "Choose option (1-3, quit q, default 1): " network_choice
+fi
 
 case "$network_choice" in
     "" | "1")
@@ -284,11 +315,14 @@ case "$network_choice" in
         print_warning "Application accessible on all host interfaces"
         ;;
     "3")
-        read -rp "Enter custom network name: " custom_network
+        read -rp "Enter custom network name (quit q, default bridge): " custom_network
         if [ -n "$custom_network" ]; then
             NETWORK_CONFIG="--network $custom_network -p $APP_PORT:8080"
             NETWORK_MODE="custom ($custom_network)"
             print_success "Using custom network: $custom_network"
+        elif [[ "$custom_network" == "q" || "$custom_network" == "Q" ]]; then
+            print_error "Exiting as requested."
+            exit 1
         else
             # Fallback to default
             NETWORK_CONFIG="-p $APP_PORT:8080"
@@ -297,6 +331,10 @@ case "$network_choice" in
         fi
         ;;
     *)
+        if [[ "$network_choice" == "q" || "$network_choice" == "Q" ]]; then
+            print_error "Exiting as requested."
+            exit 1
+        fi
         print_warning "Invalid choice. Using default bridge network"
         NETWORK_CONFIG="-p $APP_PORT:8080"
         NETWORK_MODE="bridge"
@@ -308,7 +346,12 @@ echo ""
 print_input "Docker build variant options:"
 echo -e "  ${BOLD_GREEN}1.${NC} Standard build (default) - full featured, all exam types"
 echo -e "  ${CYAN}2.${NC} Lightweight build - minimal resources (256MB RAM, smaller image)"
-read -rp "Choose option (1-2, default 1): " build_choice
+if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+    print_default "Running with --default argument."
+    build_choice="1"
+else
+    read -rp "Choose option (1-2, quit q, default 1): " build_choice
+fi
 
 BUILD_VARIANT="standard"
 DOCKERFILE="Dockerfile"
@@ -329,6 +372,10 @@ case "$build_choice" in
         print_warning "Optimized for minimal resource usage"
         ;;
     *)
+        if [[ "$build_choice" == "q" || "$build_choice" == "Q" ]]; then
+            print_error "Exiting as requested."
+            exit 1
+        fi
         print_warning "Invalid choice. Using default standard build."
         ;;
 esac
@@ -339,7 +386,12 @@ print_input "Docker runtime options:"
 echo -e "  ${BOLD_GREEN}1.${NC} Standard (default) - no special privileges"
 echo -e "  ${CYAN}2.${NC} Privileged mode - elevated privileges"
 echo -e "  ${CYAN}3.${NC} Custom options - specify custom Docker flags"
-read -rp "Choose option (1-3, default 1): " docker_choice
+if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+    print_default "Running with --default argument."
+    docker_choice="1"
+else
+    read -rp "Choose option (1-3, quit q, default 1): " docker_choice
+fi
 
 case "$docker_choice" in
     "" | "1")
@@ -353,8 +405,12 @@ case "$docker_choice" in
         print_warning "Running with elevated privileges"
         ;;
     "3")
-        read -rp "Enter custom Docker options: " custom_options
+        read -rp "Enter custom Docker options (quit q): " custom_options
         if [ -n "$custom_options" ]; then
+            if [[ "$custom_options" == "q" || "$custom_options" == "Q" ]]; then
+                print_error "Exiting as requested."
+                exit 1
+            fi
             ADDITIONAL_OPTIONS="$custom_options"
             print_success "Using custom options: $custom_options"
         else
@@ -363,6 +419,10 @@ case "$docker_choice" in
         fi
         ;;
     *)
+        if [[ "$docker_choice" == "q" || "$docker_choice" == "Q" ]]; then
+            print_error "Exiting as requested."
+            exit 1
+        fi
         print_warning "Invalid choice. Using default standard options"
         ADDITIONAL_OPTIONS=""
         ;;
@@ -394,7 +454,12 @@ echo ""
 print_input "Continue with this configuration?"
 echo -e "  ${BOLD_GREEN}1.${NC} Yes, proceed with build and deployment (default)"
 echo -e "  ${CYAN}2.${NC} No, exit and restart configuration"
-read -rp "Choose option (1-2, default 1): " confirm_choice
+if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+    print_default "Running with --default argument."
+    confirm_choice="1"
+else
+    read -rp "Choose option (1-2, quit q, default 1): " confirm_choice
+fi
 
 case "$confirm_choice" in
     "" | "1")
@@ -405,6 +470,10 @@ case "$confirm_choice" in
         exit 0
         ;;
     *)
+        if [[ "$confirm_choice" == "q" || "$confirm_choice" == "Q" ]]; then
+            print_error "Exiting as requested."
+            exit 1
+        fi
         print_warning "Invalid choice. Proceeding with deployment..."
         ;;
 esac
@@ -491,7 +560,7 @@ docker rm k8s-exam-simulator 2>/dev/null || true
 print_success "Existing containers cleaned up"
 
 # Step 6: Remove old images (optional - use --clean flag)
-if [ "$1" = "--clean" ]; then
+if [[ "$1" == "--clean" || "$RUN_WITH_DEFAULTS" == "true" ]]; then
     print_status "Removing old Docker images..."
     docker rmi k8s-exam-simulator 2>/dev/null || true
     docker rmi k8s-exam-simulator:lightweight 2>/dev/null || true
@@ -610,9 +679,17 @@ if [ -n "$IMAGE_EXISTS" ]; then
     print_input "Rebuild image?"
     echo "  1. Skip rebuild and use existing image (default)"
     echo "  2. Rebuild image"
-    read -rp "Choose option (1-2, default 1): " rebuild_choice
+    if [[ "$RUN_WITH_DEFAULTS" == "true" ]]; then
+        print_default "Running with --default argument."
+        rebuild_choice="1"
+    else
+        read -rp "Choose option (1-2, quit q, default 1): " rebuild_choice
+    fi
 
-    if [ "$rebuild_choice" != "2" ]; then
+    if [[ "$rebuild_choice" == "q" || "$rebuild_choice" == "Q" ]]; then
+        print_error "Exiting as requested."
+        exit 1
+    elif [ "$rebuild_choice" != "2" ]; then
         print_success "Using existing image: $IMAGE_TAG"
     else
         FORCE_REBUILD="true"
