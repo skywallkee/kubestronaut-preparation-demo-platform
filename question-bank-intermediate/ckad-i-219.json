@@ -1,0 +1,46 @@
+{
+  "id": "ckad-i-219",
+  "title": "Create busybox pod with two containers, each one will have the image busybox and will run the 'sleep 3600' command. Make both containers mount an emptyDir at '/etc/foo'. Connect to the second busybox, write the first column of '/etc/passwd' file to '/etc/foo/passwd'. Connect to the first busybox and write '/etc/foo/passwd' file to standard output. Delete pod.",
+  "description": "Create busybox pod with two containers, each one will have the image busybox and will run the 'sleep 3600' command. Make both containers mount an emptyDir at '/etc/foo'. Connect to the second busybox, write the first column of '/etc/passwd' file to '/etc/foo/passwd'. Connect to the first busybox and write '/etc/foo/passwd' file to standard output. Delete pod.",
+  "difficulty": "intermediate",
+  "category": "State Persistence",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run busybox --image=busybox --restart=Never -o yaml --dry-run=client -- /bin/sh -c 'sleep 3600' > pod.yaml",
+      "2. vi pod.yaml",
+      "3. -- /bin/sh -c 'sleep 3600'",
+      "4. kubectl exec -it busybox -c busybox2 -- /bin/sh",
+      "5. cat /etc/passwd | cut -f 1 -d ':' > /etc/foo/passwd # instead of cut command you can use awk -F \":\" '{print $1}'",
+      "6. cat /etc/foo/passwd # confirm that stuff has been written successfully",
+      "7. exit",
+      "8. kubectl exec -it busybox -c busybox -- /bin/sh",
+      "9. mount | grep foo # confirm the mounting",
+      "10. cat /etc/foo/passwd",
+      "11. exit",
+      "12. kubectl delete po busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

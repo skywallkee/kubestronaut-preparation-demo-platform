@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-140",
+  "title": "View the YAML of the replica set that was created by this deployment",
+  "description": "View the YAML of the replica set that was created by this deployment",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl describe deploy nginx # you'll see the name of the replica set on the Events section and in the 'NewReplicaSet' property",
+      "2. kubectl get rs -l run=nginx # if you created deployment by 'run' command",
+      "3. kubectl get rs -l app=nginx # if you created deployment by 'create' command",
+      "4. kubectl get rs nginx-7bf7478b77 -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "ckad-i-234",
+  "title": "Install the `bitnami/node` chart setting the number of replicas to 5",
+  "description": "Install the `bitnami/node` chart setting the number of replicas to 5",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm show values bitnami/node | grep -i replica",
+      "2. replicaCount: 1",
+      "3. helm install mynode bitnami/node --set replicaCount=5"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "ckad-i-188",
+  "title": "Create a pod with resource requests `cpu=0.5`, `memory=1Gi` and limits `cpu=1`, `memory=2Gi` in namespace `one`",
+  "description": "Create a pod with resource requests `cpu=0.5`, `memory=1Gi` and limits `cpu=1`, `memory=2Gi` in namespace `one`",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "namespaces",
+    "secrets",
+    "pods",
+    "one"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "one"
+    ],
+    "resources": [
+      "namespaces",
+      "pods",
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. vi pod2.yaml",
+      "2. kubectl create -f pod2.yaml",
+      "3. kubectl get resourcequota -n one"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

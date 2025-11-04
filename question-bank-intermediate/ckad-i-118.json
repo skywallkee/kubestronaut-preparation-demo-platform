@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-118",
+  "title": "Do the same, but have the pod deleted automatically when it's completed",
+  "description": "Do the same, but have the pod deleted automatically when it's completed",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run busybox --image=busybox -it --rm --restart=Never -- /bin/sh -c 'echo hello world'",
+      "2. kubectl get po # nowhere to be found :)"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

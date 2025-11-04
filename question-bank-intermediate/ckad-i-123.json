@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-123",
+  "title": "Show all labels of the pods",
+  "description": "Show all labels of the pods",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get po --show-labels"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

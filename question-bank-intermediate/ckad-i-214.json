@@ -1,0 +1,36 @@
+{
+  "id": "ckad-i-214",
+  "title": "Create a deployment called foo using image 'dgkanatsios/simpleapp' (a simple server that returns hostname) and 3 replicas. Label it as 'app=foo'. Declare that containers in this pod will accept traffic on port 8080 (do NOT create a service yet)",
+  "description": "Create a deployment called foo using image 'dgkanatsios/simpleapp' (a simple server that returns hostname) and 3 replicas. Label it as 'app=foo'. Declare that containers in this pod will accept traffic on port 8080 (do NOT create a service yet)",
+  "difficulty": "intermediate",
+  "category": "Services and Networking",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create deploy foo --image=dgkanatsios/simpleapp --port=8080 --replicas=3",
+      "2. kubectl label deployment foo --overwrite app=foo #This is optional since kubectl create deploy foo will create label app=foo by default"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

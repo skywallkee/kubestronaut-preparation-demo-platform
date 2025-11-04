@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-199",
+  "title": "Create a new serviceaccount called 'myuser'",
+  "description": "Create a new serviceaccount called 'myuser'",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create sa myuser",
+      "2. kubectl get sa default -o yaml > sa.yaml",
+      "3. vim sa.yaml",
+      "4. kubectl create -f sa.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

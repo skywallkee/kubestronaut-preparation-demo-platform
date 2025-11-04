@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-249",
+  "title": "Create the manifest for a Pod that uses one of the two secrets just created to pull an image hosted on the relative private remote registry",
+  "description": "Create the manifest for a Pod that uses one of the two secrets just created to pull an image hosted on the relative private remote registry",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": []
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

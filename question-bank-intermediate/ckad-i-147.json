@@ -1,0 +1,36 @@
+{
+  "id": "ckad-i-147",
+  "title": "Verify that something's wrong with the rollout",
+  "description": "Verify that something's wrong with the rollout",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl rollout status deploy nginx",
+      "2. kubectl get po # you'll see 'ErrImagePull' or 'ImagePullBackOff'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

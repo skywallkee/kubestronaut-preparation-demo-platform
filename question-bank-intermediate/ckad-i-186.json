@@ -1,0 +1,40 @@
+{
+  "id": "ckad-i-186",
+  "title": "Create ResourceQuota in namespace `one` with hard requests `cpu=1`, `memory=1Gi` and hard limits `cpu=2`, `memory=2Gi`.",
+  "description": "Create ResourceQuota in namespace `one` with hard requests `cpu=1`, `memory=1Gi` and hard limits `cpu=2`, `memory=2Gi`.",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "namespaces",
+    "resourcequotas"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "namespaces",
+      "resourcequotas"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create ns one",
+      "2. vi rq-one.yaml",
+      "3. kubectl apply -f rq-one.yaml",
+      "4. kubectl create quota my-rq --namespace=one --hard=requests.cpu=1,requests.memory=1Gi,limits.cpu=2,limits.memory=2Gi"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

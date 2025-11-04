@@ -1,0 +1,44 @@
+{
+  "id": "ckad-i-217",
+  "title": "Create a temp busybox pod and connect via wget to foo service. Verify that each time there's a different hostname returned. Delete deployment and services to cleanup the cluster",
+  "description": "Create a temp busybox pod and connect via wget to foo service. Verify that each time there's a different hostname returned. Delete deployment and services to cleanup the cluster",
+  "difficulty": "intermediate",
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "default",
+    "deployments",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get svc # get the foo service ClusterIP",
+      "2. kubectl run busybox --image=busybox -it --rm --restart=Never -- sh",
+      "3. wget -O- foo:6262 # DNS works! run it many times, you'll see different pods responding",
+      "4. wget -O- <SERVICE_CLUSTER_IP>:6262 # ClusterIP works as well",
+      "5. kubectl delete svc foo",
+      "6. kubectl delete deploy foo"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

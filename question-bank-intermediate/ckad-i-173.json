@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-173",
+  "title": "Display its values",
+  "description": "Display its values",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get cm config -o yaml",
+      "2. kubectl describe cm config"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-252",
+  "title": "Run with Custom Environment Variables",
+  "description": "Run with Custom Environment Variables",
+  "difficulty": "intermediate",
+  "category": "General",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. docker run -p 8080:8080 \\",
+      "2. -e NODE_ENV=production \\",
+      "3. -e PORT=8080 \\",
+      "4. -e CLUSTER_NAME=my-k8s-cluster \\",
+      "5. -v ~/.kube/config:/root/.kube/config:ro \\",
+      "6. k8s-exam-simulator"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

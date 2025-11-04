@@ -1,0 +1,43 @@
+{
+  "id": "ckad-i-241",
+  "title": "Run the image locally, inspect its status and logs, finally test that it responds as expected",
+  "description": "Run the image locally, inspect its status and logs, finally test that it responds as expected",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman run -d --name test -p 8080:80 localhost/simpleapp",
+      "2. 2f3d7d613ea6ba19703811d30704d4025123c7302ff6fa295affc9bd30e532f8",
+      "3. :~$ podman ps",
+      "4. CONTAINER ID  IMAGE                       COMMAND           CREATED        STATUS            PORTS                 NAMES",
+      "5. 2f3d7d613ea6  localhost/simpleapp:latest  httpd-foreground  5 seconds ago  Up 6 seconds ago  0.0.0.0:8080->80/tcp  test",
+      "6. :~$ podman logs test",
+      "7. AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.0.2.100. Set the 'ServerName' directive globally to suppress this message",
+      "8. AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.0.2.100. Set the 'ServerName' directive globally to suppress this message",
+      "9. [Sat Jun 04 16:15:38.071377 2022] [mpm_event:notice] [pid 1:tid 139756978220352] AH00489: Apache/2.4.53 (Unix) configured -- resuming normal operations",
+      "10. [Sat Jun 04 16:15:38.073570 2022] [core:notice] [pid 1:tid 139756978220352] AH00094: Command line: 'httpd -D FOREGROUND'",
+      "11. :~$ curl 0.0.0.0:8080",
+      "12. Hello, World!"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

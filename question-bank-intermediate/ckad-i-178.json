@@ -1,0 +1,41 @@
+{
+  "id": "ckad-i-178",
+  "title": "Create a configMap 'anotherone' with values 'var6=val6', 'var7=val7'. Load this configMap as env variables into a new nginx pod",
+  "description": "Create a configMap 'anotherone' with values 'var6=val6', 'var7=val7'. Load this configMap as env variables into a new nginx pod",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "pods",
+    "configmaps"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "configmaps",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create configmap anotherone --from-literal=var6=val6 --from-literal=var7=val7",
+      "2. kubectl run --restart=Never nginx --image=nginx -o yaml --dry-run=client > pod.yaml",
+      "3. vi pod.yaml",
+      "4. kubectl create -f pod.yaml",
+      "5. kubectl exec -it nginx -- env"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

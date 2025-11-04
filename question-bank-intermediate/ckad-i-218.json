@@ -1,0 +1,48 @@
+{
+  "id": "ckad-i-218",
+  "title": "Create an nginx deployment of 2 replicas, expose it via a ClusterIP service on port 80. Create a NetworkPolicy so that only pods with labels 'access: granted' can access the pods in this deployment and apply it",
+  "description": "Create an nginx deployment of 2 replicas, expose it via a ClusterIP service on port 80. Create a NetworkPolicy so that only pods with labels 'access: granted' can access the pods in this deployment and apply it",
+  "difficulty": "intermediate",
+  "category": "Services and Networking",
+  "tags": [
+    "deployments",
+    "services",
+    "pods",
+    "default",
+    "ingresses"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "ingresses",
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create deployment nginx --image=nginx --replicas=2",
+      "2. kubectl expose deployment nginx --port=80",
+      "3. kubectl describe svc nginx # see the 'app=nginx' selector for the pods",
+      "4. kubectl get svc nginx -o yaml",
+      "5. vi policy.yaml",
+      "6. kubectl create -f policy.yaml",
+      "7. kubectl run busybox --image=busybox --rm -it --restart=Never -- wget -O- http://nginx:80 --timeout 2                          # This should not work. --timeout is optional here. But it helps to get answer more quickly (in seconds vs minutes)",
+      "8. kubectl run busybox --image=busybox --rm -it --restart=Never --labels=access=granted -- wget -O- http://nginx:80 --timeout 2  # This should be fine"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

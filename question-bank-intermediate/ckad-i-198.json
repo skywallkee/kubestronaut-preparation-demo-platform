@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-198",
+  "title": "See all the service accounts of the cluster in all namespaces",
+  "description": "See all the service accounts of the cluster in all namespaces",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get sa --all-namespaces",
+      "2. kubectl get sa -A"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

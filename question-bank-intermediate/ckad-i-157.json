@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-157",
+  "title": "Create a job named pi with image perl:5.34 that runs the command with arguments \"perl -Mbignum=bpi -wle 'print bpi(2000)'\"",
+  "description": "Create a job named pi with image perl:5.34 that runs the command with arguments \"perl -Mbignum=bpi -wle 'print bpi(2000)'\"",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create job pi  --image=perl:5.34 -- perl -Mbignum=bpi -wle 'print bpi(2000)'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

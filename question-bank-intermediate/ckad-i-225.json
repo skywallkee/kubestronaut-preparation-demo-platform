@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-225",
+  "title": "Creating a basic Helm chart",
+  "description": "Creating a basic Helm chart",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm create chart-test ## this would create a helm"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

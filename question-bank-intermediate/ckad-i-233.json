@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-233",
+  "title": "Write the contents of the values.yaml file of the `bitnami/node` chart to standard output",
+  "description": "Write the contents of the values.yaml file of the `bitnami/node` chart to standard output",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm show values bitnami/node"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

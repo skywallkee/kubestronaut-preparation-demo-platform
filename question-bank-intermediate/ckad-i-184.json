@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-184",
+  "title": "Describe the namespace limitrange",
+  "description": "Describe the namespace limitrange",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "limitrange"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "limitrange"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl describe limitrange ns-memory-limit -n limitrange"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

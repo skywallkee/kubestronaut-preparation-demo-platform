@@ -1,0 +1,36 @@
+{
+  "id": "ckad-i-146",
+  "title": "Do an on-purpose update of the deployment with a wrong image nginx:1.91",
+  "description": "Do an on-purpose update of the deployment with a wrong image nginx:1.91",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl set image deploy nginx nginx=nginx:1.91",
+      "2. kubectl edit deploy nginx"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

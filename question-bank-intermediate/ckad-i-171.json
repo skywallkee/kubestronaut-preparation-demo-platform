@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-171",
+  "title": "Create a job from cronjob.",
+  "description": "Create a job from cronjob.",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "cronjobs",
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "cronjobs",
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create job --from=cronjob/sample-cron-job sample-job"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

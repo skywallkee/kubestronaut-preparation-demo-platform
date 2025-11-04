@@ -1,0 +1,41 @@
+{
+  "id": "ckad-i-216",
+  "title": "Create a service that exposes the deployment on port 6262. Verify its existence, check the endpoints",
+  "description": "Create a service that exposes the deployment on port 6262. Verify its existence, check the endpoints",
+  "difficulty": "intermediate",
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "default",
+    "deployments",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl expose deploy foo --port=6262 --target-port=8080",
+      "2. kubectl get service foo # you will see ClusterIP as well as port 6262",
+      "3. kubectl get endpoints foo # you will see the IPs of the three replica pods, listening on port 8080"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "ckad-i-240",
+  "title": "Build and see how many layers the image consists of",
+  "description": "Build and see how many layers the image consists of",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman build -t simpleapp .",
+      "2. STEP 1/2: FROM httpd:2.4",
+      "3. STEP 2/2: RUN echo \"Hello, World!\" > /usr/local/apache2/htdocs/index.html",
+      "4. COMMIT simpleapp",
+      "5. --> ef4b14a72d0",
+      "6. Successfully tagged localhost/simpleapp:latest",
+      "7. ef4b14a72d02ae0577eb0632d084c057777725c279e12ccf5b0c6e4ff5fd598b",
+      "8. :~$ podman images",
+      "9. REPOSITORY               TAG         IMAGE ID      CREATED        SIZE",
+      "10. localhost/simpleapp      latest      ef4b14a72d02  8 seconds ago  148 MB",
+      "11. docker.io/library/httpd  2.4         98f93cd0ec3b  7 days ago     148 MB",
+      "12. :~$ podman image tree localhost/simpleapp:latest",
+      "13. Image ID: ef4b14a72d02",
+      "14. Tags:     [localhost/simpleapp:latest]",
+      "15. Size:     147.8MB",
+      "16. Image Layers",
+      "17. \u251c\u2500\u2500 ID: ad6562704f37 Size:  83.9MB",
+      "18. \u251c\u2500\u2500 ID: c234616e1912 Size: 3.072kB",
+      "19. \u251c\u2500\u2500 ID: c23a797b2d04 Size: 2.721MB",
+      "20. \u251c\u2500\u2500 ID: ede2e092faf0 Size: 61.11MB",
+      "21. \u251c\u2500\u2500 ID: 971c2cdf3872 Size: 3.584kB Top Layer of: [docker.io/library/httpd:2.4]",
+      "22. \u2514\u2500\u2500 ID: 61644e82ef1f Size: 6.144kB Top Layer of: [localhost/simpleapp:latest]"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

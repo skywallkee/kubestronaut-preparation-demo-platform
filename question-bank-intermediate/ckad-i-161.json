@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-161",
+  "title": "See the status of the job, describe it and see the logs",
+  "description": "See the status of the job, describe it and see the logs",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get jobs",
+      "2. kubectl describe jobs busybox",
+      "3. kubectl logs job/busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

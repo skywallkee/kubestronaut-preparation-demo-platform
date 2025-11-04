@@ -1,0 +1,40 @@
+{
+  "id": "ckad-i-221",
+  "title": "Create a PersistentVolumeClaim for this PersistentVolume, called 'mypvc', a request of 4Gi and an accessMode of ReadWriteOnce, with the storageClassName of normal, and save it on pvc.yaml. Create it on the cluster. Show the PersistentVolumeClaims of the cluster. Show the PersistentVolumes of the cluster",
+  "description": "Create a PersistentVolumeClaim for this PersistentVolume, called 'mypvc', a request of 4Gi and an accessMode of ReadWriteOnce, with the storageClassName of normal, and save it on pvc.yaml. Create it on the cluster. Show the PersistentVolumeClaims of the cluster. Show the PersistentVolumes of the cluster",
+  "difficulty": "intermediate",
+  "category": "State Persistence",
+  "tags": [
+    "persistentvolumes",
+    "default",
+    "persistentvolumeclaims"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "persistentvolumeclaims",
+      "persistentvolumes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. vi pvc.yaml",
+      "2. kubectl create -f pvc.yaml",
+      "3. kubectl get pvc # will show as 'Bound'",
+      "4. kubectl get pv # will show as 'Bound' as well"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

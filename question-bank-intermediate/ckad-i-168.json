@@ -1,0 +1,41 @@
+{
+  "id": "ckad-i-168",
+  "title": "Create the same cron job again, and watch the status. Once it ran, check which job ran by the created cron job. Check the log, and delete the cron job",
+  "description": "Create the same cron job again, and watch the status. Once it ran, check which job ran by the created cron job. Check the log, and delete the cron job",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get cj",
+      "2. kubectl get jobs --watch",
+      "3. kubectl get po --show-labels # observe that the pods have a label that mentions their 'parent' job",
+      "4. kubectl logs busybox-1529745840-m867r",
+      "5. kubectl delete cj busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

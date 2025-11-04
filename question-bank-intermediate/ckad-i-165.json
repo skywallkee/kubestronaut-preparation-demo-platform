@@ -1,0 +1,63 @@
+{
+  "id": "ckad-i-165",
+  "title": "Create a job but ensure that it will be automatically terminated by kubernetes if it takes more than 30 seconds to execute",
+  "description": "Create a job but ensure that it will be automatically terminated by kubernetes if it takes more than 30 seconds to execute",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "cronjobs",
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "cronjobs",
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create job busybox --image=busybox --dry-run=client -o yaml -- /bin/sh -c 'while true; do echo hello; sleep 10;done' > job.yaml",
+      "2. vi job.yaml",
+      "3. apiVersion: batch/v1",
+      "4. kind: Job",
+      "5. metadata:",
+      "6. creationTimestamp: null",
+      "7. labels:",
+      "8. run: busybox",
+      "9. name: busybox",
+      "10. spec:",
+      "11. activeDeadlineSeconds: 30 # add this line",
+      "12. template:",
+      "13. metadata:",
+      "14. creationTimestamp: null",
+      "15. labels:",
+      "16. run: busybox",
+      "17. spec:",
+      "18. containers:",
+      "19. - args:",
+      "20. - /bin/sh",
+      "21. - -c",
+      "22. - while true; do echo hello; sleep 10;done",
+      "23. image: busybox",
+      "24. name: busybox",
+      "25. resources: {}",
+      "26. restartPolicy: OnFailure",
+      "27. status: {}"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

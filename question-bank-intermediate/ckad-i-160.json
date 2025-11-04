@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-160",
+  "title": "Follow the logs for the pod (you'll wait for 30 seconds)",
+  "description": "Follow the logs for the pod (you'll wait for 30 seconds)",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get po # find the job pod",
+      "2. kubectl logs busybox-ptx58 -f # follow the logs"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

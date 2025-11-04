@@ -1,0 +1,44 @@
+{
+  "id": "ckad-i-179",
+  "title": "Create a configMap 'cmvolume' with values 'var8=val8', 'var9=val9'. Load this as a volume inside an nginx pod on path '/etc/lala'. Create the pod and 'ls' into the '/etc/lala' directory.",
+  "description": "Create a configMap 'cmvolume' with values 'var8=val8', 'var9=val9'. Load this as a volume inside an nginx pod on path '/etc/lala'. Create the pod and 'ls' into the '/etc/lala' directory.",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "pods",
+    "configmaps"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "configmaps",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create configmap cmvolume --from-literal=var8=val8 --from-literal=var9=val9",
+      "2. kubectl run nginx --image=nginx --restart=Never -o yaml --dry-run=client > pod.yaml",
+      "3. vi pod.yaml",
+      "4. kubectl create -f pod.yaml",
+      "5. kubectl exec -it nginx -- /bin/sh",
+      "6. cd /etc/lala",
+      "7. ls # will show var8 var9",
+      "8. cat var8 # will show val8"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-115",
+  "title": "If pod crashed and restarted, get logs about the previous instance",
+  "description": "If pod crashed and restarted, get logs about the previous instance",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl logs nginx -p",
+      "2. kubectl logs nginx --previous"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

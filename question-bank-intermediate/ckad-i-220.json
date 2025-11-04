@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-220",
+  "title": "Create a PersistentVolume of 10Gi, called 'myvolume'. Make it have accessMode of 'ReadWriteOnce' and 'ReadWriteMany', storageClassName 'normal', mounted on hostPath '/etc/foo'. Save it on pv.yaml, add it to the cluster. Show the PersistentVolumes that exist on the cluster",
+  "description": "Create a PersistentVolume of 10Gi, called 'myvolume'. Make it have accessMode of 'ReadWriteOnce' and 'ReadWriteMany', storageClassName 'normal', mounted on hostPath '/etc/foo'. Save it on pv.yaml, add it to the cluster. Show the PersistentVolumes that exist on the cluster",
+  "difficulty": "intermediate",
+  "category": "State Persistence",
+  "tags": [
+    "persistentvolumes",
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "persistentvolumes"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. vi pv.yaml",
+      "2. kubectl create -f pv.yaml",
+      "3. kubectl get pv"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

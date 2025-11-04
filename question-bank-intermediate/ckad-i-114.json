@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-114",
+  "title": "Get pod logs",
+  "description": "Get pod logs",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl logs nginx"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

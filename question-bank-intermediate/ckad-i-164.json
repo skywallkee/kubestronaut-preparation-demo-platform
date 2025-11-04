@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-164",
+  "title": "Create the same job, but make it run 5 parallel times",
+  "description": "Create the same job, but make it run 5 parallel times",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. vi job.yaml",
+      "2. kubectl create -f job.yaml",
+      "3. kubectl get jobs",
+      "4. kubectl delete job busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

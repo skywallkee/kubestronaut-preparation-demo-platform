@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-189",
+  "title": "Create a secret called mysecret with the values password=mypass",
+  "description": "Create a secret called mysecret with the values password=mypass",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "secrets"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create secret generic mysecret --from-literal=password=mypass"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

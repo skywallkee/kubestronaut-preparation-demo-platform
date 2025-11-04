@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-228",
+  "title": "Uninstall a Helm release",
+  "description": "Uninstall a Helm release",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "namespace",
+    "namespaces"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "namespace"
+    ],
+    "resources": [
+      "namespaces"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm uninstall -n namespace release_name"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

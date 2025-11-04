@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-246",
+  "title": "Run a pod with the image pushed to the registry",
+  "description": "Run a pod with the image pushed to the registry",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ kubectl run simpleapp --image=$registry_ip:5000/simpleapp --port=80",
+      "2. :~$ curl ${kubectl get pods simpleapp -o jsonpath='{.status.podIP}'}",
+      "3. Hello, World!"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

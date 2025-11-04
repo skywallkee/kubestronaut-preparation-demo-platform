@@ -1,0 +1,42 @@
+{
+  "id": "ckad-i-120",
+  "title": "Create a Pod with two containers, both with image busybox and command \"echo hello; sleep 3600\". Connect to the second container and run 'ls'",
+  "description": "Create a Pod with two containers, both with image busybox and command \"echo hello; sleep 3600\". Connect to the second container and run 'ls'",
+  "difficulty": "intermediate",
+  "category": "Multi-Container Pods",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run busybox --image=busybox --restart=Never -o yaml --dry-run=client -- /bin/sh -c 'echo hello;sleep 3600' > pod.yaml",
+      "2. vi pod.yaml",
+      "3. kubectl create -f pod.yaml",
+      "4. kubectl exec -it busybox -c busybox2 -- /bin/sh",
+      "5. ls",
+      "6. exit",
+      "7. kubectl exec -it busybox -c busybox2 -- ls",
+      "8. kubectl delete po busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

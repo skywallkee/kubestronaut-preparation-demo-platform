@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-236",
+  "title": "Create the CRD resource in the K8S API",
+  "description": "Create the CRD resource in the K8S API",
+  "difficulty": "intermediate",
+  "category": "Custom Resources",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl apply -f operator-crd.yml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

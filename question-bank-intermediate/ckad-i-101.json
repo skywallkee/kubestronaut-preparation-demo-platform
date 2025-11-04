@@ -1,0 +1,30 @@
+{
+  "id": "ckad-i-101",
+  "title": "Can I PR? There is an error/an alternative way/an extra question/solution I can offer",
+  "description": "Can I PR? There is an error/an alternative way/an extra question/solution I can offer",
+  "difficulty": "intermediate",
+  "category": "General",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": []
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "ckad-i-103",
+  "title": "Create the pod that was just described using YAML",
+  "description": "Create the pod that was just described using YAML",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "namespaces",
+    "mynamespace",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "mynamespace"
+    ],
+    "resources": [
+      "namespaces",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run nginx --image=nginx --restart=Never --dry-run=client -n mynamespace -o yaml > pod.yaml",
+      "2. cat pod.yaml",
+      "3. kubectl create -f pod.yaml",
+      "4. kubectl run nginx --image=nginx --restart=Never --dry-run=client -o yaml | kubectl create -n mynamespace -f -"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

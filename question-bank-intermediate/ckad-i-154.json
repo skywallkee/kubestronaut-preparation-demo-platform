@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-154",
+  "title": "Resume the rollout and check that the nginx:1.19.9 image has been applied",
+  "description": "Resume the rollout and check that the nginx:1.19.9 image has been applied",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl rollout resume deploy nginx",
+      "2. kubectl rollout history deploy nginx",
+      "3. kubectl rollout history deploy nginx --revision=6 # insert the number of your latest revision"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

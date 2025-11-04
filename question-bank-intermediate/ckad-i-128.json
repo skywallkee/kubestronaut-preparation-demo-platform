@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-128",
+  "title": "Add a new label tier=web to all pods having 'app=v2' or 'app=v1' labels",
+  "description": "Add a new label tier=web to all pods having 'app=v2' or 'app=v1' labels",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl label po -l \"app in(v1,v2)\" tier=web"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

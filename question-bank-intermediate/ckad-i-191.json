@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-191",
+  "title": "Get the value of mysecret2",
+  "description": "Get the value of mysecret2",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "secrets"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get secret mysecret2 -o yaml",
+      "2. echo -n YWRtaW4= | base64 -d # on MAC it is -D, which decodes the value and shows 'admin'",
+      "3. kubectl get secret mysecret2 -o jsonpath='{.data.username}' | base64 -d  # on MAC it is -D",
+      "4. kubectl get secret mysecret2 --template '{{.data.username}}' | base64 -d  # on MAC it is -D",
+      "5. kubectl get secret mysecret2 -o json | jq -r .data.username | base64 -d  # on MAC it is -D"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

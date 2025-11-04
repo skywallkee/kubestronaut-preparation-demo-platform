@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-108",
+  "title": "Get pods on all namespaces",
+  "description": "Get pods on all namespaces",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get po --all-namespaces",
+      "2. kubectl get po -A"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

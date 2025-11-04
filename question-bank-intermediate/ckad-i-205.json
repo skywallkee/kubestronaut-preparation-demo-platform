@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-205",
+  "title": "Lots of pods are running in `qa`,`alan`,`test`,`production` namespaces.  All of these pods are configured with liveness probe.  Please list all pods whose liveness probe are failed in the format of `<namespace>/<pod name>` per line.",
+  "description": "Lots of pods are running in `qa`,`alan`,`test`,`production` namespaces.  All of these pods are configured with liveness probe.  Please list all pods whose liveness probe are failed in the format of `<namespace>/<pod name>` per line.",
+  "difficulty": "intermediate",
+  "category": "Observability",
+  "tags": [
+    "namespaces",
+    "pods",
+    "by"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "by"
+    ],
+    "resources": [
+      "namespaces",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": []
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

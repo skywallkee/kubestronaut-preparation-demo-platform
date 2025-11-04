@@ -1,0 +1,49 @@
+{
+  "id": "ckad-i-243",
+  "title": "Tag the image with ip and port of a private local registry and then push the image to this registry",
+  "description": "Tag the image with ip and port of a private local registry and then push the image to this registry",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman tag localhost/simpleapp $registry_ip:5000/simpleapp",
+      "2. :~$ podman push $registry_ip:5000/simpleapp",
+      "3. :~$ curl http://$registry_ip:5000/v2/_catalog",
+      "4. {\"repositories\":[\"simpleapp\"]}",
+      "5. :~$ podman rmi $registry_ip:5000/simpleapp",
+      "6. :~$ podman pull $registry_ip:5000/simpleapp",
+      "7. Trying to pull 10.152.183.13:5000/simpleapp:latest...",
+      "8. Getting image source signatures",
+      "9. Copying blob 643ea8c2c185 skipped: already exists",
+      "10. Copying blob 972107ece720 skipped: already exists",
+      "11. Copying blob 9857eeea6120 skipped: already exists",
+      "12. Copying blob 93859aa62dbd skipped: already exists",
+      "13. Copying blob 8e47efbf2b7e skipped: already exists",
+      "14. Copying blob 42e0f5a91e40 skipped: already exists",
+      "15. Copying config ef4b14a72d done",
+      "16. Writing manifest to image destination",
+      "17. Storing signatures",
+      "18. ef4b14a72d02ae0577eb0632d084c057777725c279e12ccf5b0c6e4ff5fd598b"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

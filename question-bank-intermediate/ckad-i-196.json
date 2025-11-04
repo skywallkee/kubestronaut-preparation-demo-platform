@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-196",
+  "title": "Create a Secret named 'my-secret' of type 'kubernetes.io/ssh-auth' in the namespace 'secret-ops'. Define a single key named 'ssh-privatekey', and point it to the file 'id_rsa' in this directory.",
+  "description": "Create a Secret named 'my-secret' of type 'kubernetes.io/ssh-auth' in the namespace 'secret-ops'. Define a single key named 'ssh-privatekey', and point it to the file 'id_rsa' in this directory.",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "secret-ops",
+    "secrets"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "secret-ops"
+    ],
+    "resources": [
+      "secrets"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. export do=\"--dry-run=client -oyaml\"",
+      "2. export ns=\"-n secret-ops\"",
+      "3. ssh-keygen",
+      "4. k create secret generic my-secret $ns --type=\"kubernetes.io/ssh-auth\" --from-file=ssh-privatekey=id_rsa $do > sc.yaml",
+      "5. k apply -f sc.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

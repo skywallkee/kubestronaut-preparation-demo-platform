@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-176",
+  "title": "Create and display a configmap from a file, giving the key 'special'",
+  "description": "Create and display a configmap from a file, giving the key 'special'",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. echo -e \"var3=val3\\nvar4=val4\" > config4.txt",
+      "2. kubectl create cm configmap4 --from-file=special=config4.txt",
+      "3. kubectl describe cm configmap4",
+      "4. kubectl get cm configmap4 -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

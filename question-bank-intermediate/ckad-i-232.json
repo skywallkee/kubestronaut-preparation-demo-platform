@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-232",
+  "title": "Add the Bitnami repo at https://charts.bitnami.com/bitnami to Helm",
+  "description": "Add the Bitnami repo at https://charts.bitnami.com/bitnami to Helm",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm repo add bitnami https://charts.bitnami.com/bitnami"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

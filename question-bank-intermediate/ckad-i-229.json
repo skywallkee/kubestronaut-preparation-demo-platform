@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-229",
+  "title": "Upgrading a Helm chart",
+  "description": "Upgrading a Helm chart",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm upgrade -f myvalues.yaml -f override.yaml redis ./redis"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-202",
+  "title": "Create an nginx pod with a liveness probe that just runs the command 'ls'. Save its YAML in pod.yaml. Run it, check its probe status, delete it.",
+  "description": "Create an nginx pod with a liveness probe that just runs the command 'ls'. Save its YAML in pod.yaml. Run it, check its probe status, delete it.",
+  "difficulty": "intermediate",
+  "category": "Observability",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run nginx --image=nginx --restart=Never --dry-run=client -o yaml > pod.yaml",
+      "2. vi pod.yaml",
+      "3. kubectl create -f pod.yaml",
+      "4. kubectl describe pod nginx | grep -i liveness # run this to see that liveness probe works",
+      "5. kubectl delete -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

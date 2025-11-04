@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-172",
+  "title": "Create a configmap named config with values foo=lala,foo2=lolo",
+  "description": "Create a configmap named config with values foo=lala,foo2=lolo",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "configmaps"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "configmaps"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create configmap config --from-literal=foo=lala --from-literal=foo2=lolo"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

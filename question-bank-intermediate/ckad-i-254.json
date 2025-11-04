@@ -1,0 +1,34 @@
+{
+  "id": "ckad-i-254",
+  "title": "Terminal Not Working",
+  "description": "Terminal Not Working",
+  "difficulty": "intermediate",
+  "category": "General",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. curl -I http://localhost:8080",
+      "2. docker exec -it <container-id> bash",
+      "3. which bash kubectl helm"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

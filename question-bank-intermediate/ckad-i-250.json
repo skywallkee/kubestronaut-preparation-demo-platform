@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-250",
+  "title": "Clean up all the images and containers",
+  "description": "Clean up all the images and containers",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman rm --all --force",
+      "2. :~$ podman rmi --all",
+      "3. :~$ kubectl delete pod simpleapp"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

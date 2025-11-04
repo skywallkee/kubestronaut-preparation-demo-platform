@@ -1,0 +1,34 @@
+{
+  "id": "ckad-i-174",
+  "title": "Create and display a configmap from a file",
+  "description": "Create and display a configmap from a file",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. echo -e \"foo3=lili\\nfoo4=lele\" > config.txt",
+      "2. kubectl create cm configmap2 --from-file=config.txt",
+      "3. kubectl get cm configmap2 -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

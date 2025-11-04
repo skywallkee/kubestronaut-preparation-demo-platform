@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-113",
+  "title": "Get information about the pod, including details about potential issues (e.g. pod hasn't started)",
+  "description": "Get information about the pod, including details about potential issues (e.g. pod hasn't started)",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl describe po nginx"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

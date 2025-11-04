@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-231",
+  "title": "Download a Helm chart from a repository",
+  "description": "Download a Helm chart from a repository",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm pull [chart URL | repo/chartname] [...] [flags] ## this would download a helm, not install",
+      "2. helm pull --untar [rep/chartname] # untar the chart after downloading it"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

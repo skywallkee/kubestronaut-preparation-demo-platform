@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-112",
+  "title": "Get pod's YAML",
+  "description": "Get pod's YAML",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get po nginx -o yaml",
+      "2. kubectl get po nginx -oyaml",
+      "3. kubectl get po nginx --output yaml",
+      "4. kubectl get po nginx --output=yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

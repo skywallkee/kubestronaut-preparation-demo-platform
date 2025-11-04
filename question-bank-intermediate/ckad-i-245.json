@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-245",
+  "title": "Export a container to output.tar file",
+  "description": "Export a container to output.tar file",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman container ls -a # pick the container id",
+      "2. CONTAINER ID  IMAGE                             COMMAND     CREATED        STATUS      PORTS       NAMES",
+      "3. 51b613406e88  docker.io/library/busybox:latest  sh          2 minutes ago  Created                 adoring_almeida",
+      "4. :~$ podman export <container id> --output=output.tar",
+      "5. :~$ ls -al output.tar",
+      "6. -rw-r--r--@ 1 limistah  wheel  4272640 28 Aug 13:48 output.tar"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-166",
+  "title": "Create a cron job with image busybox that runs on a schedule of \"*/1 * * * *\" and writes 'date; echo Hello from the Kubernetes cluster' to standard output",
+  "description": "Create a cron job with image busybox that runs on a schedule of \"*/1 * * * *\" and writes 'date; echo Hello from the Kubernetes cluster' to standard output",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "cronjobs",
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "cronjobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create cronjob busybox --image=busybox --schedule=\"*/1 * * * *\" -- /bin/sh -c 'date; echo Hello from the Kubernetes cluster'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

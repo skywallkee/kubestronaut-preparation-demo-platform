@@ -1,0 +1,46 @@
+{
+  "id": "ckad-i-158",
+  "title": "Wait till it's done, get the output",
+  "description": "Wait till it's done, get the output",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get jobs -w # wait till 'SUCCESSFUL' is 1 (will take some time, perl image might be big)",
+      "2. kubectl get po # get the pod name",
+      "3. kubectl logs pi-**** # get the pi numbers",
+      "4. kubectl delete job pi",
+      "5. kubectl get jobs -w # wait till 'SUCCESSFUL' is 1 (will take some time, perl image might be big)",
+      "6. kubectl logs job/pi",
+      "7. kubectl delete job pi",
+      "8. kubectl wait --for=condition=complete --timeout=300s job pi",
+      "9. kubectl logs job/pi",
+      "10. kubectl delete job pi"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

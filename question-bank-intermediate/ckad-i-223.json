@@ -1,0 +1,46 @@
+{
+  "id": "ckad-i-223",
+  "title": "Create a second pod which is identical with the one you just created (you can easily do it by changing the 'name' property on pod.yaml). Connect to it and verify that '/etc/foo' contains the 'passwd' file. Delete pods to cleanup. Note: If you can't see the file from the second pod, can you figure out why? What would you do to fix that?",
+  "description": "Create a second pod which is identical with the one you just created (you can easily do it by changing the 'name' property on pod.yaml). Connect to it and verify that '/etc/foo' contains the 'passwd' file. Delete pods to cleanup. Note: If you can't see the file from the second pod, can you figure out why? What would you do to fix that?",
+  "difficulty": "intermediate",
+  "category": "State Persistence",
+  "tags": [
+    "persistentvolumes",
+    "default",
+    "persistentvolumeclaims",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "persistentvolumeclaims",
+      "persistentvolumes",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. vim pod.yaml",
+      "2. kubectl create -f pod.yaml",
+      "3. kubectl exec busybox2 -- ls /etc/foo # will show 'passwd'",
+      "4. kubectl delete po busybox busybox2",
+      "5. kubectl delete pvc mypvc",
+      "6. kubectl delete pv myvolume",
+      "7. kubectl get po busybox -o wide",
+      "8. kubectl get po busybox2 -o wide"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

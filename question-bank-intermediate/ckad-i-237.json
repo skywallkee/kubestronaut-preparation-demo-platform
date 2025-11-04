@@ -1,0 +1,32 @@
+{
+  "id": "ckad-i-237",
+  "title": "Create custom object from the CRD",
+  "description": "Create custom object from the CRD",
+  "difficulty": "intermediate",
+  "category": "Custom Resources",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl apply -f operator.yml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

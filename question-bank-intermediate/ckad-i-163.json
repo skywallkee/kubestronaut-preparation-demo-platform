@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-163",
+  "title": "Create the same job, make it run 5 times, one after the other. Verify its status and delete it",
+  "description": "Create the same job, make it run 5 times, one after the other. Verify its status and delete it",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create job busybox --image=busybox --dry-run=client -o yaml -- /bin/sh -c 'echo hello;sleep 30;echo world' > job.yaml",
+      "2. vi job.yaml",
+      "3. kubectl create -f job.yaml",
+      "4. kubectl get job busybox -w # will take two and a half minutes",
+      "5. kubectl delete jobs busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

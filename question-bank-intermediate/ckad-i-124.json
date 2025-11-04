@@ -1,0 +1,36 @@
+{
+  "id": "ckad-i-124",
+  "title": "Change the labels of pod 'nginx2' to be app=v2",
+  "description": "Change the labels of pod 'nginx2' to be app=v2",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl label po nginx2 app=v2 --overwrite",
+      "2. kubectl edit po nginx2"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

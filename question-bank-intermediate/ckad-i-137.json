@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-137",
+  "title": "Create a pod that will be placed on node `controlplane`. Use nodeSelector and tolerations.",
+  "description": "Create a pod that will be placed on node `controlplane`. Use nodeSelector and tolerations.",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. vi pod.yaml",
+      "2. kubectl create -f pod.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

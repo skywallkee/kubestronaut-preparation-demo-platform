@@ -1,0 +1,44 @@
+{
+  "id": "ckad-i-213",
+  "title": "Convert the ClusterIP to NodePort for the same service and find the NodePort port. Hit service using Node's IP. Delete the service and the pod at the end.",
+  "description": "Convert the ClusterIP to NodePort for the same service and find the NodePort port. Hit service using Node's IP. Delete the service and the pod at the end.",
+  "difficulty": "intermediate",
+  "category": "Services and Networking",
+  "tags": [
+    "services",
+    "default",
+    "namespaces",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "namespaces",
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl edit svc nginx",
+      "2. kubectl patch svc nginx -p '{\"spec\":{\"type\":\"NodePort\"}}'",
+      "3. kubectl get svc",
+      "4. wget -O- NODE_IP:31931 # if you're using Kubernetes with Docker for Windows/Mac, try 127.0.0.1",
+      "5. kubectl delete svc nginx # Deletes the service",
+      "6. kubectl delete pod nginx # Deletes the pod"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-206",
+  "title": "Create a busybox pod that runs `i=0; while true; do echo \"$i: $(date)\"; i=$((i+1)); sleep 1; done`. Check its logs",
+  "description": "Create a busybox pod that runs `i=0; while true; do echo \"$i: $(date)\"; i=$((i+1)); sleep 1; done`. Check its logs",
+  "difficulty": "intermediate",
+  "category": "Observability",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run busybox --image=busybox --restart=Never -- /bin/sh -c 'i=0; while true; do echo \"$i: $(date)\"; i=$((i+1)); sleep 1; done'",
+      "2. kubectl logs busybox -f # follow the logs"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

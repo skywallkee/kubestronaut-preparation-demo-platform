@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-145",
+  "title": "Undo the latest rollout and verify that new pods have the old image (nginx:1.18.0)",
+  "description": "Undo the latest rollout and verify that new pods have the old image (nginx:1.18.0)",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl rollout undo deploy nginx",
+      "2. kubectl get po # select one 'Running' Pod",
+      "3. kubectl describe po nginx-5ff4457d65-nslcl | grep -i image # should be nginx:1.18.0"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

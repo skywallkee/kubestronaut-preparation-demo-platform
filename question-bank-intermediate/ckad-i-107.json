@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-107",
+  "title": "Create the YAML for a new ResourceQuota called 'myrq' with hard limits of 1 CPU, 1G memory and 2 pods without creating it",
+  "description": "Create the YAML for a new ResourceQuota called 'myrq' with hard limits of 1 CPU, 1G memory and 2 pods without creating it",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default",
+    "pods",
+    "resourcequotas"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods",
+      "resourcequotas"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create quota myrq --hard=cpu=1,memory=1G,pods=2 --dry-run=client -o yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

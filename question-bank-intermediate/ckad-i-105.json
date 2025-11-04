@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-105",
+  "title": "Create a busybox pod (using YAML) that runs the command \"env\". Run it and see the output",
+  "description": "Create a busybox pod (using YAML) that runs the command \"env\". Run it and see the output",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run busybox --image=busybox --restart=Never --dry-run=client -o yaml --command -- env > envpod.yaml",
+      "2. cat envpod.yaml",
+      "3. kubectl apply -f envpod.yaml",
+      "4. kubectl logs busybox"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

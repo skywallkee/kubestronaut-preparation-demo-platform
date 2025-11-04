@@ -1,0 +1,40 @@
+{
+  "id": "ckad-i-247",
+  "title": "Log into a remote registry server and then read the credentials from the default file",
+  "description": "Log into a remote registry server and then read the credentials from the default file",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman login --username $YOUR_USER --password $YOUR_PWD docker.io",
+      "2. :~$ cat ${XDG_RUNTIME_DIR}/containers/auth.json",
+      "3. {",
+      "4. \"auths\": {",
+      "5. \"docker.io\": {",
+      "6. \"auth\": \"Z2l1bGl0JLSGtvbkxCcX1xb617251xh0x3zaUd4QW45Q3JuV3RDOTc=\"",
+      "7. }",
+      "8. }",
+      "9. }"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

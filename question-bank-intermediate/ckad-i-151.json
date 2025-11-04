@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-151",
+  "title": "Autoscale the deployment, pods between 5 and 10, targeting CPU utilization at 80%",
+  "description": "Autoscale the deployment, pods between 5 and 10, targeting CPU utilization at 80%",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "horizontalpodautoscalers",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "horizontalpodautoscalers"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl autoscale deploy nginx --min=5 --max=10 --cpu-percent=80",
+      "2. kubectl get hpa nginx"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

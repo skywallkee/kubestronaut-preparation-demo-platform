@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-135",
+  "title": "Create a pod that will be deployed to a Node that has the label 'accelerator=nvidia-tesla-p100'",
+  "description": "Create a pod that will be deployed to a Node that has the label 'accelerator=nvidia-tesla-p100'",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl label nodes <your-node-name> accelerator=nvidia-tesla-p100",
+      "2. kubectl get nodes --show-labels",
+      "3. kubectl explain po.spec"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

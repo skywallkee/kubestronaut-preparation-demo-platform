@@ -1,0 +1,38 @@
+{
+  "id": "ckad-i-110",
+  "title": "Change pod's image to nginx:1.24.0. Observe that the container will be restarted as soon as the image gets pulled",
+  "description": "Change pod's image to nginx:1.24.0. Observe that the container will be restarted as soon as the image gets pulled",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl set image pod/nginx nginx=nginx:1.24.0",
+      "2. kubectl describe po nginx # you will see an event 'Container will be killed and recreated'",
+      "3. kubectl get po nginx -w # watch it",
+      "4. kubectl get po nginx -o jsonpath='{.spec.containers[].image}{\"\\n\"}'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

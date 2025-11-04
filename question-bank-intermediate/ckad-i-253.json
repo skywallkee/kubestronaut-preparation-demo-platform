@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-253",
+  "title": "Container Won't Start",
+  "description": "Container Won't Start",
+  "difficulty": "intermediate",
+  "category": "General",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. docker logs <container-id>",
+      "2. docker run -it k8s-exam-simulator /bin/bash"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

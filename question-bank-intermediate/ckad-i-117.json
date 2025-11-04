@@ -1,0 +1,33 @@
+{
+  "id": "ckad-i-117",
+  "title": "Create a busybox pod that echoes 'hello world' and then exits",
+  "description": "Create a busybox pod that echoes 'hello world' and then exits",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl run busybox --image=busybox -it --restart=Never -- echo 'hello world'",
+      "2. kubectl run busybox --image=busybox -it --restart=Never -- /bin/sh -c 'echo hello world'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

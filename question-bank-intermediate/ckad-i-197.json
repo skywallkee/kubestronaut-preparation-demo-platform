@@ -1,0 +1,45 @@
+{
+  "id": "ckad-i-197",
+  "title": "Create a Pod named 'consumer' with the image 'nginx' in the namespace 'secret-ops', and consume the Secret as Volume. Mount the Secret as Volume to the path /var/app with read-only access. Open an interactive shell to the Pod, and render the contents of the file.",
+  "description": "Create a Pod named 'consumer' with the image 'nginx' in the namespace 'secret-ops', and consume the Secret as Volume. Mount the Secret as Volume to the path /var/app with read-only access. Open an interactive shell to the Pod, and render the contents of the file.",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "services",
+    "secrets",
+    "pods",
+    "secret-ops",
+    "namespaces"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "secret-ops"
+    ],
+    "resources": [
+      "namespaces",
+      "pods",
+      "secrets",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. export ns=\"-n secret-ops\"",
+      "2. export do=\"--dry-run=client -oyaml\"",
+      "3. k run consumer --image=nginx $ns $do > nginx.yaml",
+      "4. vi nginx.yaml",
+      "5. k exec -it $ns consumer -- /bin/sh"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

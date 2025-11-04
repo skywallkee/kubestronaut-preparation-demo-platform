@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-156",
+  "title": "Implement canary deployment by running two instances of nginx marked as version=v1 and version=v2 so that the load is balanced at 75%-25% ratio",
+  "description": "Implement canary deployment by running two instances of nginx marked as version=v1 and version=v2 so that the load is balanced at 75%-25% ratio",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "services",
+    "default",
+    "deployments",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "pods",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": []
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

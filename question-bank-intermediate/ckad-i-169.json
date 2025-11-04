@@ -1,0 +1,65 @@
+{
+  "id": "ckad-i-169",
+  "title": "Create a cron job with image busybox that runs every minute and writes 'date; echo Hello from the Kubernetes cluster' to standard output. The cron job should be terminated if it takes more than 17 seconds to start execution after its scheduled time (i.e. the job missed its scheduled time).",
+  "description": "Create a cron job with image busybox that runs every minute and writes 'date; echo Hello from the Kubernetes cluster' to standard output. The cron job should be terminated if it takes more than 17 seconds to start execution after its scheduled time (i.e. the job missed its scheduled time).",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "cronjobs",
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "cronjobs",
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create cronjob time-limited-job --image=busybox --restart=Never --dry-run=client --schedule=\"* * * * *\" -o yaml -- /bin/sh -c 'date; echo Hello from the Kubernetes cluster' > time-limited-job.yaml",
+      "2. vi time-limited-job.yaml",
+      "3. apiVersion: batch/v1",
+      "4. kind: CronJob",
+      "5. metadata:",
+      "6. creationTimestamp: null",
+      "7. name: time-limited-job",
+      "8. spec:",
+      "9. startingDeadlineSeconds: 17 # add this line",
+      "10. jobTemplate:",
+      "11. metadata:",
+      "12. creationTimestamp: null",
+      "13. name: time-limited-job",
+      "14. spec:",
+      "15. template:",
+      "16. metadata:",
+      "17. creationTimestamp: null",
+      "18. spec:",
+      "19. containers:",
+      "20. - args:",
+      "21. - /bin/sh",
+      "22. - -c",
+      "23. - date; echo Hello from the Kubernetes cluster",
+      "24. image: busybox",
+      "25. name: time-limited-job",
+      "26. resources: {}",
+      "27. restartPolicy: Never",
+      "28. schedule: '* * * * *'",
+      "29. status: {}"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

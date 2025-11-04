@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-153",
+  "title": "Update the image to nginx:1.19.9 and check that there's nothing going on, since we paused the rollout",
+  "description": "Update the image to nginx:1.19.9 and check that there's nothing going on, since we paused the rollout",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl set image deploy nginx nginx=nginx:1.19.9",
+      "2. kubectl edit deploy nginx",
+      "3. kubectl rollout history deploy nginx # no new revision"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

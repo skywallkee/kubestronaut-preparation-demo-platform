@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-111",
+  "title": "Get nginx pod's ip created in previous step, use a temp busybox image to wget its '/'",
+  "description": "Get nginx pod's ip created in previous step, use a temp busybox image to wget its '/'",
+  "difficulty": "intermediate",
+  "category": "Core Concepts",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl get po -o wide # get the IP, will be something like '10.1.1.131'",
+      "2. kubectl run busybox --image=busybox --rm -it --restart=Never -- wget -O- 10.1.1.131:80",
+      "3. NGINX_IP=$(kubectl get pod nginx -o jsonpath='{.status.podIP}')",
+      "4. kubectl run busybox --image=busybox --env=\"NGINX_IP=$NGINX_IP\" --rm -it --restart=Never -- sh -c 'wget -O- $NGINX_IP:80'",
+      "5. kubectl run busybox --image=busybox --rm -it --restart=Never -- wget -O- $(kubectl get pod nginx -o jsonpath='{.status.podIP}:{.spec.containers[0].ports[0].containerPort}')"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

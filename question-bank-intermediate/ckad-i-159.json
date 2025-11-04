@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-159",
+  "title": "Create a job with the image busybox that executes the command 'echo hello;sleep 30;echo world'",
+  "description": "Create a job with the image busybox that executes the command 'echo hello;sleep 30;echo world'",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "jobs"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "jobs"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create job busybox --image=busybox -- /bin/sh -c 'echo hello;sleep 30;echo world'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

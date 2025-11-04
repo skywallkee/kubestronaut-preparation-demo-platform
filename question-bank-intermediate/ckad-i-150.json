@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-150",
+  "title": "Scale the deployment to 5 replicas",
+  "description": "Scale the deployment to 5 replicas",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl scale deploy nginx --replicas=5",
+      "2. kubectl get po",
+      "3. kubectl describe deploy nginx"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

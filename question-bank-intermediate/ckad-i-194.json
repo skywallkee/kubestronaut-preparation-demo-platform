@@ -1,0 +1,40 @@
+{
+  "id": "ckad-i-194",
+  "title": "Create a Secret named 'ext-service-secret' in the namespace 'secret-ops'. Then, provide the key-value pair API_KEY=LmLHbYhsgWZwNifiqaRorH8T as literal.",
+  "description": "Create a Secret named 'ext-service-secret' in the namespace 'secret-ops'. Then, provide the key-value pair API_KEY=LmLHbYhsgWZwNifiqaRorH8T as literal.",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "services",
+    "secrets",
+    "secret-ops"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "secret-ops"
+    ],
+    "resources": [
+      "secrets",
+      "services"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. export ns=\"-n secret-ops\"",
+      "2. export do=\"--dry-run=client -oyaml\"",
+      "3. k create secret generic ext-service-secret --from-literal=API_KEY=LmLHbYhsgWZwNifiqaRorH8T $ns $do > sc.yaml",
+      "4. k apply -f sc.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

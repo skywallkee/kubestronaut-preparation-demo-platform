@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-185",
+  "title": "Create an nginx pod that requests 250Mi of memory in the limitrange namespace",
+  "description": "Create an nginx pod that requests 250Mi of memory in the limitrange namespace",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "namespaces",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "namespaces",
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl apply -f 2.yaml"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

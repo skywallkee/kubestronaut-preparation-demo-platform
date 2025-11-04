@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-155",
+  "title": "Delete the deployment and the horizontal pod autoscaler you created",
+  "description": "Delete the deployment and the horizontal pod autoscaler you created",
+  "difficulty": "intermediate",
+  "category": "Pod Design",
+  "tags": [
+    "default",
+    "horizontalpodautoscalers",
+    "deployments"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "deployments",
+      "horizontalpodautoscalers"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl delete deploy nginx",
+      "2. kubectl delete hpa nginx",
+      "3. kubectl delete deploy/nginx hpa/nginx"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

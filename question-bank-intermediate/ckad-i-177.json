@@ -1,0 +1,39 @@
+{
+  "id": "ckad-i-177",
+  "title": "Create a configMap called 'options' with the value var5=val5. Create a new nginx pod that loads the value from variable 'var5' in an env variable called 'option'",
+  "description": "Create a configMap called 'options' with the value var5=val5. Create a new nginx pod that loads the value from variable 'var5' in an env variable called 'option'",
+  "difficulty": "intermediate",
+  "category": "Configuration",
+  "tags": [
+    "default",
+    "pods"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [
+      "pods"
+    ],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. kubectl create cm options --from-literal=var5=val5",
+      "2. kubectl run nginx --image=nginx --restart=Never --dry-run=client -o yaml > pod.yaml",
+      "3. vi pod.yaml",
+      "4. kubectl create -f pod.yaml",
+      "5. kubectl exec -it nginx -- env | grep option # will show 'option=val5'"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

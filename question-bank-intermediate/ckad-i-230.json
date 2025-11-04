@@ -1,0 +1,37 @@
+{
+  "id": "ckad-i-230",
+  "title": "Using Helm repo",
+  "description": "Using Helm repo",
+  "difficulty": "intermediate",
+  "category": "Helm",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. helm repo add [NAME] [URL]  [flags]",
+      "2. helm repo list / helm repo ls",
+      "3. helm repo remove [REPO1] [flags]",
+      "4. helm repo update / helm repo up",
+      "5. helm repo update [REPO1] [flags]",
+      "6. helm repo index [DIR] [flags]"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

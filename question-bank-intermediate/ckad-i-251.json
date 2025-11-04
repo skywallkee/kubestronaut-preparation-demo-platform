@@ -1,0 +1,35 @@
+{
+  "id": "ckad-i-251",
+  "title": "Run in Development Mode (with volumes for hot reload)",
+  "description": "Run in Development Mode (with volumes for hot reload)",
+  "difficulty": "intermediate",
+  "category": "General",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. docker run -p 8080:8080 \\",
+      "2. -v $(pwd)/app/backend/src:/app/src:ro \\",
+      "3. -v ~/.kube/config:/root/.kube/config:ro \\",
+      "4. k8s-exam-simulator"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "ckad-i-244",
+  "title": "Create a container without running/starting it",
+  "description": "Create a container without running/starting it",
+  "difficulty": "intermediate",
+  "category": "Container Management",
+  "tags": [
+    "default"
+  ],
+  "points": 6,
+  "timeLimit": 10,
+  "infrastructure": {
+    "namespaces": [
+      "default"
+    ],
+    "resources": [],
+    "prerequisites": []
+  },
+  "solution": {
+    "steps": [
+      "1. :~$ podman create busybox # create",
+      "2. Resolved \"busybox\" as an alias (/etc/containers/registries.conf.d/000-shortnames.conf)",
+      "3. Trying to pull docker.io/library/busybox:latest...",
+      "4. Getting image source signatures",
+      "5. Copying blob sha256:213a27df5921cd9ae24732504c590bb6408911c20fb50a597f2a40896d554a8f",
+      "6. Copying config sha256:3fba0c87fcc8ba126bf99e4ee205b43c91ffc6b15bb052315312e71bc6296551",
+      "7. Writing manifest to image destination",
+      "8. 51b613406e8889213c176523e1c430e4bd00047965b0c22cff5b1c9badfbc452",
+      "9. :~$ podman container ls -a",
+      "10. CONTAINER ID  IMAGE                             COMMAND     CREATED        STATUS      PORTS       NAMES",
+      "11. 51b613406e88  docker.io/library/busybox:latest  sh          2 minutes ago  Created                 adoring_almeida"
+    ]
+  },
+  "validations": [
+    {
+      "command": "echo OK",
+      "expected": "OK",
+      "points": 1,
+      "description": "Placeholder validation"
+    }
+  ]
+}
